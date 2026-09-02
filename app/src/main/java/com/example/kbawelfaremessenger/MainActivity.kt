@@ -1,410 +1,887 @@
 package com.example.kbawelfaremessenger
 
 import android.Manifest
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
+import android.app.Activity
+import android.app.AlertDialog
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
 import android.telephony.SmsManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.Worker
-import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
+enum class SmsStatus {
+    NONE,
+    SENDING,
+    SENT,
+    FAILED
+}
 
 data class Contact(
     val name: String,
     val phone: String,
-    val fields: Map<String, String> = emptyMap(),
-    val row: Int
+    val fields: Map<String, String>,
+    val row: Int,
+    var smsStatus: SmsStatus = SmsStatus.NONE
 )
 
+data class SmsProgress(
+    val contact: Contact,
+    val totalParts: Int,
+    var completedParts: Int = 0,
+    var failed: Boolean = false,
+    var errorCode: Int = -1
+)
+
+data class SmsResult(
+    val contact: Contact,
+    val status: String,
+    val detail: String
+)
 
 class MainActivity : AppCompatActivity() {
 
-    private val contacts = mutableListOf<Contact>()
+    companion object {
+        private const val SMS_SENT_ACTION =
+            "com.example.kbawelfaremessenger.SMS_SENT"
+
+        private const val EXTRA_REQUEST_ID = "request_id"
+        private const val EXTRA_PHONE = "phone"
+
+        private const val SEND_DELAY_MS = 500L
+    }
+
+    private lateinit var edtMessage: EditText
+    private lateinit var edtSearch: EditText
+    private lateinit var txtStatus: TextView
+    private lateinit var txtStats: TextView
+    private lateinit var txtSelected: TextView
+    private lateinit var recyclerContacts: RecyclerView
+
+    private lateinit var btnUpload: Button
+    private lateinit var btnSelectAll: Button
+    private lateinit var btnUnselectAll: Button
+    private lateinit var btnPreview: Button
+    private lateinit var btnTestSms: Button
+    private lateinit var btnSendSms: Button
+    private lateinit var btnWhatsApp: Button
+    private lateinit var btnReset: Button
+    private lateinit var btnClearData: Button
+
+    private lateinit var txtFile: TextView
 
     private lateinit var adapter: ContactAdapter
 
-    private lateinit var message: EditText
-    private lateinit var search: EditText
-    private lateinit var status: TextView
-    private lateinit var stats: TextView
-    private lateinit var selectedText: TextView
+    private val contacts = mutableListOf<Contact>()
 
-    private var whatsappIndex = 0
+    private val handler = Handler(Looper.getMainLooper())
 
-    private val defaultMessage = """
-R/m {{name}} ji,
+    private var requestIdCounter = 1000
+
+    private val requestToPhone = mutableMapOf<Int, String>()
+    private val pendingSms = mutableMapOf<String, SmsProgress>()
+
+    private var smsOperationActive = false
+    private var sendQueue: List<Contact> = emptyList()
+    private var queueIndex = 0
+
+    private val operationResults = linkedMapOf<String, SmsResult>()
+
+    private var smsReceiverRegistered = false
+
+    private val defaultMessage = """R/m {{name}} ji,
 
 Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal election. Your blessings mean a lot.
 
-Thank you- Mohit Arora, 9518804747
-""".trimIndent()
+Thank you- Mohit Arora, 9518804747"""
 
-
-    private val picker =
-        registerForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri ->
+    private val pickCsvLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let {
                 loadCsv(it)
             }
         }
 
-
-    private var pendingSmsAction: (() -> Unit)? = null
-
-
-    private val smsPermission =
+    private val smsPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { granted ->
-
             if (granted) {
-                pendingSmsAction?.invoke()
+                startSmsConfirmation()
             } else {
-                status.text =
-                    "SMS permission was not granted."
+                showAlert(
+                    "SMS Permission",
+                    "SMS permission is required to send messages."
+                )
             }
-
-            pendingSmsAction = null
         }
 
+    private val smsSentReceiver = object : BroadcastReceiver() {
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
-        super.onCreate(savedInstanceState)
+        override fun onReceive(context: Context, intent: Intent) {
 
-        setContentView(
-            R.layout.activity_main
-        )
+            if (intent.action != SMS_SENT_ACTION) return
 
+            val requestId =
+                intent.getIntExtra(EXTRA_REQUEST_ID, -1)
 
-        message =
-            findViewById(
-                R.id.edtMessage
-            )
+            val phone =
+                requestToPhone.remove(requestId)
+                    ?: return
 
+            val progress =
+                pendingSms[phone]
+                    ?: return
 
-        search =
-            findViewById(
-                R.id.edtSearch
-            )
+            val resultCode = resultCode
 
+            if (resultCode == Activity.RESULT_OK) {
 
-        status =
-            findViewById(
-                R.id.txtStatus
-            )
+                progress.completedParts++
 
+            } else {
 
-        stats =
-            findViewById(
-                R.id.txtStats
-            )
-
-
-        selectedText =
-            findViewById(
-                R.id.txtSelected
-            )
-
-
-        val recycler =
-            findViewById<RecyclerView>(
-                R.id.recyclerContacts
-            )
-
-
-        recycler.layoutManager =
-            LinearLayoutManager(this)
-
-
-        adapter =
-            ContactAdapter(
-                emptyList()
-            ) {
-                updateSelectedCount()
+                progress.failed = true
+                progress.errorCode = resultCode
+                progress.completedParts++
             }
 
+            if (progress.completedParts >= progress.totalParts) {
 
-        recycler.adapter =
-            adapter
+                pendingSms.remove(phone)
 
+                if (progress.failed) {
 
-        /*
-         * Load saved draft.
-         * If no draft exists, load the default message.
-         */
-        val savedDraft =
-            getPreferences(0)
-                .getString(
-                    "draft",
-                    null
-                )
+                    completeSms(
+                        progress.contact,
+                        false,
+                        smsErrorMessage(progress.errorCode)
+                    )
 
+                } else {
 
-        message.setText(
-            savedDraft
-                ?: defaultMessage
-        )
+                    completeSms(
+                        progress.contact,
+                        true,
+                        "SMS submitted successfully to Android SMS service."
+                    )
+                }
+            }
 
+            updateCounts()
+            checkSmsOperationFinished()
+        }
+    }
 
-        restoreContacts()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
+        setContentView(R.layout.activity_main)
 
-        findViewById<Button>(
-            R.id.btnUpload
-        ).setOnClickListener {
+        initialiseViews()
+        setupRecycler()
+        setupButtons()
+        setupMessage()
+        setupSearch()
+        setupSmsReceiver()
+        setupButtonColors()
 
-            picker.launch(
+        updateCounts()
+    }
+
+    private fun initialiseViews() {
+
+        edtMessage = findViewById(R.id.edtMessage)
+        edtSearch = findViewById(R.id.edtSearch)
+
+        txtStatus = findViewById(R.id.txtStatus)
+        txtStats = findViewById(R.id.txtStats)
+        txtSelected = findViewById(R.id.txtSelected)
+
+        recyclerContacts = findViewById(R.id.recyclerContacts)
+
+        btnUpload = findViewById(R.id.btnUpload)
+        btnSelectAll = findViewById(R.id.btnSelectAll)
+        btnUnselectAll = findViewById(R.id.btnUnselectAll)
+        btnPreview = findViewById(R.id.btnPreview)
+        btnTestSms = findViewById(R.id.btnTestSms)
+        btnSendSms = findViewById(R.id.btnSendSms)
+        btnWhatsApp = findViewById(R.id.btnWhatsApp)
+        btnReset = findViewById(R.id.btnReset)
+        btnClearData = findViewById(R.id.btnClearData)
+
+        txtFile = findViewById(R.id.txtFile)
+
+        // Remove old Draft/Schedule controls if they still exist
+        hideOldButton("btnSaveDraft")
+        hideOldButton("btnSchedule")
+        hideOldButton("btnCancelSchedule")
+    }
+
+    private fun setupRecycler() {
+
+        adapter = ContactAdapter(
+            contacts
+        ) {
+            updateCounts()
+        }
+
+        recyclerContacts.layoutManager =
+            LinearLayoutManager(this)
+
+        recyclerContacts.adapter = adapter
+    }
+
+    private fun setupButtons() {
+
+        btnUpload.setOnClickListener {
+            pickCsvLauncher.launch(
                 arrayOf(
                     "text/csv",
                     "text/comma-separated-values",
+                    "application/csv",
+                    "text/plain",
                     "*/*"
                 )
             )
         }
 
+        btnSelectAll.setOnClickListener {
 
-        findViewById<Button>(
-            R.id.btnSelectAll
-        ).setOnClickListener {
+            if (contacts.isEmpty()) {
+                showAlert(
+                    "Select All",
+                    "Please upload a CSV file first."
+                )
+                return@setOnClickListener
+            }
 
-            adapter.selectAll()
-
-            updateSelectedCount()
-
-            status.text =
-                "All visible contacts selected."
+            adapter.selectAll(contacts)
+            updateCounts()
         }
 
+        btnUnselectAll.setOnClickListener {
 
-        findViewById<Button>(
-            R.id.btnUnselectAll
-        ).setOnClickListener {
+            adapter.unselectAll()
+            updateCounts()
+        }
+
+        btnPreview.setOnClickListener {
+            showPreview()
+        }
+
+        btnTestSms.setOnClickListener {
+            testSms()
+        }
+
+        btnSendSms.setOnClickListener {
+
+            if (smsOperationActive) {
+
+                Toast.makeText(
+                    this,
+                    "SMS sending is already in progress.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@setOnClickListener
+            }
+
+            val message =
+                edtMessage.text.toString().trim()
+
+            if (message.isEmpty()) {
+
+                showAlert(
+                    "Message Required",
+                    "Please enter a message first."
+                )
+
+                return@setOnClickListener
+            }
+
+            val selected = selectedContacts()
+
+            if (selected.isEmpty()) {
+
+                showAlert(
+                    "No Contacts Selected",
+                    "Please select at least one contact."
+                )
+
+                return@setOnClickListener
+            }
+
+            checkSmsPermissionAndStart()
+        }
+
+        btnWhatsApp.setOnClickListener {
+            sendWhatsApp()
+        }
+
+        btnReset.setOnClickListener {
 
             adapter.unselectAll()
 
-            whatsappIndex = 0
-
-            updateSelectedCount()
-
-            status.text =
-                "All contacts unselected."
-        }
-
-
-        search.addTextChangedListener(
-            object : android.text.TextWatcher {
-
-                override fun beforeTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    count: Int,
-                    after: Int
-                ) {
-                }
-
-
-                override fun onTextChanged(
-                    s: CharSequence?,
-                    start: Int,
-                    before: Int,
-                    count: Int
-                ) {
-                    refreshList()
-                }
-
-
-                override fun afterTextChanged(
-                    s: android.text.Editable?
-                ) {
-                }
+            contacts.forEach {
+                it.smsStatus = SmsStatus.NONE
             }
-        )
 
+            updateCounts()
 
-        findViewById<Button>(
-            R.id.btnSaveDraft
-        ).setOnClickListener {
+            adapter.notifyDataSetChanged()
 
-            getPreferences(0)
-                .edit()
-                .putString(
-                    "draft",
-                    message.text.toString()
-                )
-                .apply()
-
-            toast(
-                "Draft saved"
-            )
+            txtStatus.text =
+                "Selection and SMS status reset."
         }
 
+        btnClearData.setOnClickListener {
 
-        findViewById<Button>(
-            R.id.btnPreview
-        ).setOnClickListener {
+            if (smsOperationActive) {
 
-            preview()
-        }
+                Toast.makeText(
+                    this,
+                    "Please wait until SMS sending is completed.",
+                    Toast.LENGTH_SHORT
+                ).show()
 
-
-        findViewById<Button>(
-            R.id.btnTestSms
-        ).setOnClickListener {
-
-            ensureSmsPermission {
-                testSms()
+                return@setOnClickListener
             }
-        }
 
+            contacts.clear()
 
-        findViewById<Button>(
-            R.id.btnSendSms
-        ).setOnClickListener {
+            adapter.replaceContacts(emptyList())
 
-            ensureSmsPermission {
-                sendNow()
-            }
-        }
+            txtFile.text = "No CSV selected"
 
+            updateCounts()
 
-        findViewById<Button>(
-            R.id.btnSchedule
-        ).setOnClickListener {
-
-            schedule()
-        }
-
-
-        findViewById<Button>(
-            R.id.btnCancelSchedule
-        ).setOnClickListener {
-
-            WorkManager
-                .getInstance(this)
-                .cancelUniqueWork(
-                    "kba_sms_schedule"
-                )
-
-            status.text =
-                "Scheduled SMS cancelled."
-        }
-
-
-        findViewById<Button>(
-            R.id.btnWhatsApp
-        ).setOnClickListener {
-
-            nextWhatsApp()
-        }
-
-
-        findViewById<Button>(
-            R.id.btnReset
-        ).setOnClickListener {
-
-            search.setText("")
-
-            adapter.clearSelection()
-
-            whatsappIndex = 0
-
-            updateSelectedCount()
-
-            status.text =
-                "Selection and search reset."
-        }
-
-
-        findViewById<Button>(
-            R.id.btnClearData
-        ).setOnClickListener {
-
-            showClearContactsDialog()
+            txtStatus.text = "All contact data cleared."
         }
     }
 
+    private fun setupMessage() {
 
-    private fun showClearContactsDialog() {
+        if (edtMessage.text.toString().trim().isEmpty()) {
+            edtMessage.setText(defaultMessage)
+        }
+    }
+
+    private fun setupSearch() {
+
+        edtSearch.addTextChangedListener {
+
+            adapter.filter(
+                it?.toString().orEmpty()
+            )
+        }
+    }
+
+    private fun setupSmsReceiver() {
+
+        val filter =
+            IntentFilter(SMS_SENT_ACTION)
+
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+
+            registerReceiver(
+                smsSentReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+        } else {
+
+            registerReceiver(
+                smsSentReceiver,
+                filter
+            )
+        }
+
+        smsReceiverRegistered = true
+    }
+
+    private fun setupButtonColors() {
+
+        setButtonColor(btnUpload, "#1976D2")
+        setButtonColor(btnSelectAll, "#455A64")
+        setButtonColor(btnUnselectAll, "#757575")
+        setButtonColor(btnPreview, "#7B1FA2")
+        setButtonColor(btnTestSms, "#F9A825")
+        setButtonColor(btnSendSms, "#2E7D32")
+        setButtonColor(btnWhatsApp, "#00897B")
+        setButtonColor(btnReset, "#EF6C00")
+        setButtonColor(btnClearData, "#C62828")
+    }
+
+    private fun setButtonColor(
+        button: Button,
+        color: String
+    ) {
+
+        button.backgroundTintList =
+            ColorStateList.valueOf(
+                Color.parseColor(color)
+            )
+    }
+
+    private fun hideOldButton(name: String) {
+
+        val id =
+            resources.getIdentifier(
+                name,
+                "id",
+                packageName
+            )
+
+        if (id != 0) {
+
+            findViewById<android.view.View>(id)
+                ?.visibility = android.view.View.GONE
+        }
+    }
+
+    private fun loadCsv(uri: Uri) {
+
+        try {
+
+            val inputStream =
+                contentResolver.openInputStream(uri)
+                    ?: throw Exception("Unable to open CSV.")
+
+            val reader =
+                BufferedReader(
+                    InputStreamReader(inputStream, Charsets.UTF_8)
+                )
+
+            val lines =
+                reader.readLines()
+
+            reader.close()
+
+            if (lines.isEmpty()) {
+
+                showAlert(
+                    "CSV Error",
+                    "The selected CSV file is empty."
+                )
+
+                return
+            }
+
+            val headers =
+                parseCsvLine(
+                    lines[0]
+                ).mapIndexed { index, value ->
+
+                    if (index == 0) {
+                        value.trim().removePrefix("\uFEFF")
+                    } else {
+                        value.trim()
+                    }
+                }
+
+            val nameIndex =
+                findHeaderIndex(
+                    headers,
+                    listOf(
+                        "Name",
+                        "Original Name",
+                        "Given Name"
+                    )
+                )
+
+            val phoneIndex =
+                findHeaderIndex(
+                    headers,
+                    listOf(
+                        "Phone 1 - Value",
+                        "Mobile",
+                        "Mobile Number",
+                        "Phone",
+                        "Phone Number",
+                        "M.No."
+                    )
+                )
+
+            if (phoneIndex == -1) {
+
+                showAlert(
+                    "CSV Error",
+                    "Could not find a mobile/phone column in the CSV."
+                )
+
+                return
+            }
+
+            contacts.clear()
+
+            val usedPhones =
+                mutableSetOf<String>()
+
+            for (lineIndex in 1 until lines.size) {
+
+                val line = lines[lineIndex]
+
+                if (line.isBlank()) continue
+
+                val values =
+                    parseCsvLine(line)
+
+                val rawPhone =
+                    values.getOrNull(phoneIndex)
+                        ?.trim()
+                        .orEmpty()
+
+                val phone =
+                    normalizePhone(rawPhone)
+
+                if (phone.isEmpty()) continue
+
+                if (!usedPhones.add(phone)) {
+                    continue
+                }
+
+                val rawName =
+                    if (nameIndex >= 0) {
+                        values.getOrNull(nameIndex)
+                            ?.trim()
+                            .orEmpty()
+                    } else {
+                        ""
+                    }
+
+                val displayName =
+                    cleanName(rawName)
+                        .ifBlank {
+                            "Contact ${contacts.size + 1}"
+                        }
+
+                val fields =
+                    linkedMapOf<String, String>()
+
+                headers.forEachIndexed { index, header ->
+
+                    if (header.isNotBlank()) {
+
+                        fields[header] =
+                            values.getOrNull(index)
+                                ?.trim()
+                                .orEmpty()
+                    }
+                }
+
+                contacts.add(
+                    Contact(
+                        name = displayName,
+                        phone = phone,
+                        fields = fields,
+                        row = lineIndex
+                    )
+                )
+            }
+
+            adapter.replaceContacts(contacts)
+
+            txtFile.text =
+                getFileName(uri)
+
+            txtStatus.text =
+                "${contacts.size} contacts loaded successfully."
+
+            updateCounts()
+
+        } catch (e: Exception) {
+
+            showAlert(
+                "CSV Error",
+                e.message ?: "Unable to read CSV file."
+            )
+        }
+    }
+
+    private fun findHeaderIndex(
+        headers: List<String>,
+        possibleNames: List<String>
+    ): Int {
+
+        return headers.indexOfFirst { header ->
+
+            possibleNames.any {
+
+                header.equals(
+                    it,
+                    ignoreCase = true
+                )
+            }
+        }
+    }
+
+    private fun parseCsvLine(
+        line: String
+    ): List<String> {
+
+        val result = mutableListOf<String>()
+
+        var current = StringBuilder()
+        var insideQuotes = false
+
+        var index = 0
+
+        while (index < line.length) {
+
+            val char = line[index]
+
+            when {
+
+                char == '"' -> {
+
+                    if (
+                        insideQuotes &&
+                        index + 1 < line.length &&
+                        line[index + 1] == '"'
+                    ) {
+
+                        current.append('"')
+                        index++
+
+                    } else {
+
+                        insideQuotes =
+                            !insideQuotes
+                    }
+                }
+
+                char == ',' && !insideQuotes -> {
+
+                    result.add(
+                        current.toString()
+                    )
+
+                    current = StringBuilder()
+                }
+
+                else -> {
+                    current.append(char)
+                }
+            }
+
+            index++
+        }
+
+        result.add(
+            current.toString()
+        )
+
+        return result
+    }
+
+    private fun cleanName(
+        value: String
+    ): String {
+
+        return value
+            .trim()
+            .removePrefix("KBA ")
+            .removePrefix("KNL ")
+            .trim()
+    }
+
+    private fun normalizePhone(
+        value: String
+    ): String {
+
+        var raw =
+            value
+                .trim()
+                .replace(".0", "")
+
+        // If several values are present, try each one.
+        val candidates =
+            raw.split(
+                Regex("[,;/\\s]+")
+            )
+
+        for (candidate in candidates) {
+
+            var number =
+                candidate
+                    .replace(Regex("[^0-9+]"), "")
+
+            if (number.startsWith("+91")) {
+                number = number.substring(3)
+            } else if (number.startsWith("91") && number.length == 12) {
+                number = number.substring(2)
+            }
+
+            number =
+                number.filter {
+                    it.isDigit()
+                }
+
+            if (number.length == 10) {
+                return "91$number"
+            }
+        }
+
+        return ""
+    }
+
+    private fun selectedContacts(): List<Contact> {
+
+        val selectedPhones =
+            adapter.getSelectedPhones()
+
+        return contacts.filter {
+            selectedPhones.contains(it.phone)
+        }
+    }
+
+    private fun personaliseMessage(
+        contact: Contact
+    ): String {
+
+        var message =
+            edtMessage.text.toString()
+
+        val replacements =
+            linkedMapOf<String, String>()
+
+        replacements["{{name}}"] =
+            contact.name
+
+        replacements["{{Name}}"] =
+            contact.name
+
+        replacements["{{MobileNumber}}"] =
+            contact.phone
+
+        replacements["{{Mobile}}"] =
+            contact.phone
+
+        replacements["{{Phone}}"] =
+            contact.phone
+
+        contact.fields.forEach { (key, value) ->
+
+            replacements["{{$key}}"] =
+                value
+        }
+
+        replacements.forEach { (key, value) ->
+
+            message =
+                message.replace(
+                    key,
+                    value,
+                    ignoreCase = true
+                )
+        }
+
+        return message
+    }
+
+    private fun showPreview() {
+
+        val selected =
+            selectedContacts()
+
+        if (selected.isEmpty()) {
+
+            showAlert(
+                "Preview",
+                "No contacts are selected."
+            )
+
+            return
+        }
+
+        val builder =
+            StringBuilder()
+
+        builder.append(
+            "Selected contacts: ${selected.size}\n\n"
+        )
+
+        selected.forEachIndexed { index, contact ->
+
+            builder.append(
+                "${index + 1}. ${contact.name}\n"
+            )
+
+            builder.append(
+                "Mobile: ${contact.phone}\n"
+            )
+
+            builder.append(
+                "Status: ${statusText(contact.smsStatus)}\n"
+            )
+
+            builder.append(
+                "Message:\n"
+            )
+
+            builder.append(
+                personaliseMessage(contact)
+            )
+
+            builder.append(
+                "\n\n------------------------------\n\n"
+            )
+        }
+
+        val textView =
+            TextView(this).apply {
+
+                text = builder.toString()
+
+                textSize = 15f
+
+                setPadding(
+                    35,
+                    20,
+                    35,
+                    20
+                )
+            }
+
+        val scroll =
+            ScrollView(this).apply {
+
+                addView(textView)
+            }
 
         AlertDialog.Builder(this)
             .setTitle(
-                "Remove contacts?"
+                "Message Preview"
             )
-            .setMessage(
-                "This will remove the stored CSV contacts."
-            )
-            .setNegativeButton(
-                "Cancel",
+            .setView(scroll)
+            .setPositiveButton(
+                "Close",
                 null
             )
-            .setPositiveButton(
-                "Remove"
-            ) { _, _ ->
-
-                contacts.clear()
-
-                getSharedPreferences(
-                    "contacts",
-                    0
-                )
-                    .edit()
-                    .clear()
-                    .apply()
-
-                adapter.setContacts(
-                    emptyList()
-                )
-
-                adapter.clearSelection()
-
-                findViewById<TextView>(
-                    R.id.txtFile
-                ).text =
-                    "No CSV selected"
-
-                updateStats()
-                updateSelectedCount()
-
-                whatsappIndex = 0
-
-                status.text =
-                    "Contacts removed."
-            }
             .show()
     }
 
-
-    private fun ensureSmsPermission(
-        action: () -> Unit
-    ) {
+    private fun checkSmsPermissionAndStart() {
 
         if (
             ContextCompat.checkSelfPermission(
@@ -413,803 +890,433 @@ Thank you- Mohit Arora, 9518804747
             ) != PackageManager.PERMISSION_GRANTED
         ) {
 
-            pendingSmsAction =
-                action
-
-            smsPermission.launch(
+            smsPermissionLauncher.launch(
                 Manifest.permission.SEND_SMS
             )
 
         } else {
 
-            action()
+            startSmsConfirmation()
         }
     }
 
+    private fun startSmsConfirmation() {
 
-    private fun toast(
-        text: String
-    ) {
-
-        Toast.makeText(
-            this,
-            text,
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-
-    private fun normalize(
-        value: String
-    ): String {
-
-        var s =
-            value
-                .trim()
-                .replace(
-                    Regex("[^0-9+]"),
-                    ""
-                )
-
-
-        if (s.startsWith("+")) {
-            s = s.drop(1)
-        }
-
-
-        if (s.startsWith("00")) {
-            s = s.drop(2)
-        }
-
-
-        if (
-            s.matches(
-                Regex("[6-9][0-9]{9}")
-            )
-        ) {
-            s = "91$s"
-        }
-
-
-        return s
-    }
-
-
-    private fun splitNumbers(
-        value: String
-    ): List<String> {
-
-        return value
-            .split(
-                Regex(
-                    "[,;|/\\n]+|\\s{2,}"
-                )
-            )
-            .map(::normalize)
-            .filter {
-                it.length >= 10
-            }
-            .distinct()
-    }
-
-
-    private fun findHeader(
-        headers: List<String>,
-        vararg names: String
-    ): Int {
-
-        val normalized =
-            headers.map {
-                it.trim()
-                    .lowercase(
-                        Locale.ROOT
-                    )
-            }
-
-
-        for (name in names) {
-
-            val index =
-                normalized.indexOf(
-                    name.lowercase(
-                        Locale.ROOT
-                    )
-                )
-
-
-            if (index >= 0) {
-                return index
-            }
-        }
-
-
-        return -1
-    }
-
-
-    private fun addContact(
-        name: String,
-        rawPhones: String,
-        row: Int,
-        headers: List<String>,
-        values: List<String>,
-        seen: MutableSet<String>
-    ) {
-
-        for (
-            phone in splitNumbers(
-                rawPhones
-            )
-        ) {
-
-            if (seen.add(phone)) {
-
-                val fields =
-                    mutableMapOf<String, String>()
-
-
-                headers.forEachIndexed {
-                        index,
-                        header ->
-
-                    fields[
-                        header.trim()
-                    ] =
-                        values
-                            .getOrNull(index)
-                            ?.trim()
-                            .orEmpty()
-                }
-
-
-                contacts.add(
-                    Contact(
-                        name = name.trim(),
-                        phone = phone,
-                        fields = fields,
-                        row = row
-                    )
-                )
-            }
-        }
-    }
-
-
-    private fun loadCsv(
-        uri: Uri
-    ) {
-
-        try {
-
-            contacts.clear()
-
-
-            val displayName =
-                contentResolver
-                    .query(
-                        uri,
-                        null,
-                        null,
-                        null,
-                        null
-                    )
-                    ?.use { q ->
-
-                        val index =
-                            q.getColumnIndex(
-                                OpenableColumns.DISPLAY_NAME
-                            )
-
-
-                        if (
-                            q.moveToFirst() &&
-                            index >= 0
-                        ) {
-
-                            q.getString(index)
-
-                        } else {
-
-                            "Selected CSV"
-                        }
-                    }
-                    ?: "Selected CSV"
-
-
-            findViewById<TextView>(
-                R.id.txtFile
-            ).text =
-                displayName
-
-
-            contentResolver
-                .openInputStream(uri)
-                ?.use { input ->
-
-                    val lines =
-                        BufferedReader(
-                            InputStreamReader(
-                                input
-                            )
-                        ).readLines()
-
-
-                    require(
-                        lines.isNotEmpty()
-                    ) {
-                        "CSV is empty."
-                    }
-
-
-                    val headers =
-                        parseCsvLine(
-                            lines.first()
-                        )
-
-
-                    val nameIndex =
-                        findHeader(
-                            headers,
-                            "OriginalName",
-                            "Original Name",
-                            "Name"
-                        )
-
-
-                    val phoneIndex =
-                        findHeader(
-                            headers,
-                            "MobileNumber",
-                            "Mobile Number",
-                            "Mobile",
-                            "M.No.",
-                            "Phone",
-                            "PhoneNumber"
-                        )
-
-
-                    require(
-                        nameIndex >= 0 &&
-                        phoneIndex >= 0
-                    ) {
-
-                        "Required columns OriginalName and MobileNumber were not found."
-                    }
-
-
-                    val seen =
-                        hashSetOf<String>()
-
-
-                    lines
-                        .drop(1)
-                        .forEachIndexed {
-                                index,
-                                line ->
-
-                            if (
-                                line.isBlank()
-                            ) {
-                                return@forEachIndexed
-                            }
-
-
-                            val row =
-                                parseCsvLine(
-                                    line
-                                )
-
-
-                            addContact(
-                                name =
-                                    row.getOrNull(
-                                        nameIndex
-                                    ).orEmpty(),
-
-                                rawPhones =
-                                    row.getOrNull(
-                                        phoneIndex
-                                    ).orEmpty(),
-
-                                row =
-                                    index + 2,
-
-                                headers =
-                                    headers,
-
-                                values =
-                                    row,
-
-                                seen =
-                                    seen
-                            )
-                        }
-                }
-
-
-            saveContacts()
-
-            updateStats()
-
-
-            adapter.setContacts(
-                contacts.toList()
-            )
-
-
-            adapter.clearSelection()
-
-            whatsappIndex = 0
-
-            updateSelectedCount()
-
-
-            status.text =
-                "Loaded ${contacts.size} individual numbers. Select contacts below."
-
-
-        } catch (e: Exception) {
-
-            status.text =
-                "CSV error: ${e.message}"
-
-            toast(
-                e.message
-                    ?: "Could not read CSV"
-            )
-        }
-    }
-
-
-    private fun parseCsvLine(
-        line: String
-    ): List<String> {
-
-        val result =
-            mutableListOf<String>()
-
-
-        val buffer =
-            StringBuilder()
-
-
-        var quoted = false
-        var i = 0
-
-
-        while (
-            i < line.length
-        ) {
-
-            val c =
-                line[i]
-
-
-            when {
-
-                c == '"' -> {
-
-                    if (
-                        quoted &&
-                        i + 1 < line.length &&
-                        line[i + 1] == '"'
-                    ) {
-
-                        buffer.append('"')
-                        i++
-
-                    } else {
-
-                        quoted =
-                            !quoted
-                    }
-                }
-
-
-                c == ',' &&
-                !quoted -> {
-
-                    result.add(
-                        buffer.toString()
-                    )
-
-                    buffer.setLength(0)
-                }
-
-
-                else -> {
-
-                    buffer.append(c)
-                }
-            }
-
-
-            i++
-        }
-
-
-        result.add(
-            buffer.toString()
-        )
-
-
-        return result
-    }
-
-
-    private fun saveContacts() {
-
-        val prefs =
-            getSharedPreferences(
-                "contacts",
-                0
-            )
-
-
-        val edit =
-            prefs.edit()
-                .clear()
-
-
-        edit.putInt(
-            "count",
-            contacts.size
-        )
-
-
-        contacts.forEachIndexed {
-                index,
-                contact ->
-
-            edit.putString(
-                "name_$index",
-                contact.name
-            )
-
-
-            edit.putString(
-                "phone_$index",
-                contact.phone
-            )
-
-
-            edit.putInt(
-                "row_$index",
-                contact.row
-            )
-
-
-            edit.putInt(
-                "fieldCount_$index",
-                contact.fields.size
-            )
-
-
-            contact.fields.entries
-                .forEachIndexed {
-                        fieldIndex,
-                        entry ->
-
-                    edit.putString(
-                        "fieldKey_${index}_$fieldIndex",
-                        entry.key
-                    )
-
-
-                    edit.putString(
-                        "fieldValue_${index}_$fieldIndex",
-                        entry.value
-                    )
-                }
-        }
-
-
-        edit.apply()
-    }
-
-
-    private fun restoreContacts() {
-
-        val prefs =
-            getSharedPreferences(
-                "contacts",
-                0
-            )
-
-
-        val count =
-            prefs.getInt(
-                "count",
-                0
-            )
-
-
-        repeat(count) {
-                index ->
-
-            val fields =
-                mutableMapOf<String, String>()
-
-
-            val fieldCount =
-                prefs.getInt(
-                    "fieldCount_$index",
-                    0
-                )
-
-
-            repeat(fieldCount) {
-                    fieldIndex ->
-
-                val key =
-                    prefs.getString(
-                        "fieldKey_${index}_$fieldIndex",
-                        null
-                    )
-
-
-                val value =
-                    prefs.getString(
-                        "fieldValue_${index}_$fieldIndex",
-                        ""
-                    )
-
-
-                if (key != null) {
-                    fields[key] =
-                        value ?: ""
-                }
-            }
-
-
-            contacts.add(
-                Contact(
-                    name =
-                        prefs.getString(
-                            "name_$index",
-                            ""
-                        ) ?: "",
-
-                    phone =
-                        prefs.getString(
-                            "phone_$index",
-                            ""
-                        ) ?: "",
-
-                    fields =
-                        fields,
-
-                    row =
-                        prefs.getInt(
-                            "row_$index",
-                            0
-                        )
-                )
-            )
-        }
-
-
-        updateStats()
-
-
-        adapter.setContacts(
-            contacts.toList()
-        )
-
-
-        updateSelectedCount()
-    }
-
-
-    private fun updateStats() {
-
-        stats.text =
-            "People: ${
-                contacts
-                    .map {
-                        it.name
-                    }
-                    .distinct()
-                    .size
-            } | Individual numbers: ${
-                contacts.size
-            }"
-    }
-
-
-    private fun updateSelectedCount() {
-
-        selectedText.text =
-            "Selected: ${
-                adapter.getSelectedCount()
-            } / ${contacts.size}"
-    }
-
-
-    private fun refreshList() {
-
-        val query =
-            search.text
-                .toString()
-                .trim()
-                .lowercase(
-                    Locale.ROOT
-                )
-
-
-        val filtered =
-            if (query.isBlank()) {
-
-                contacts
-
-            } else {
-
-                contacts.filter { contact ->
-
-                    contact.name
-                        .lowercase(
-                            Locale.ROOT
-                        )
-                        .contains(query) ||
-
-                    contact.phone
-                        .contains(query) ||
-
-                    contact.fields.any {
-                        it.value
-                            .lowercase(
-                                Locale.ROOT
-                            )
-                            .contains(query)
-                    }
-                }
-            }
-
-
-        adapter.setContacts(
-            filtered
-        )
-
-
-        updateSelectedCount()
-    }
-
-
-    private fun selectedContacts():
-            List<Contact> {
-
-        return adapter.getSelectedContacts()
-    }
-
-
-    private fun personalize(
-        contact: Contact
-    ): String {
-
-        var text =
-            message.text
-                .toString()
-
-
-        /*
-         * Name
-         */
-        text =
-            text.replace(
-                "{{name}}",
-                contact.name,
-                ignoreCase = true
-            )
-
-
-        /*
-         * Mobile number
-         */
-        text =
-            text.replace(
-                "{{MobileNumber}}",
-                contact.phone,
-                ignoreCase = true
-            )
-
-
-        text =
-            text.replace(
-                "{{Mobile}}",
-                contact.phone,
-                ignoreCase = true
-            )
-
-
-        text =
-            text.replace(
-                "{{Phone}}",
-                contact.phone,
-                ignoreCase = true
-            )
-
-
-        /*
-         * Replace every CSV column dynamically.
-         *
-         * Example:
-         * {{Village}}
-         * {{FatherName}}
-         * {{District}}
-         */
-        contact.fields.forEach {
-                (header, value) ->
-
-            text =
-                text.replace(
-                    "{{$header}}",
-                    value,
-                    ignoreCase = true
-                )
-        }
-
-
-        return text
-    }
-
-
-    private fun preview() {
-
-        val list =
+        val selected =
             selectedContacts()
 
+        val alreadySent =
+            selected.count {
+                it.smsStatus == SmsStatus.SENT
+            }
 
-        if (list.isEmpty()) {
+        val willSend =
+            selected.count {
+                it.smsStatus != SmsStatus.SENT
+            }
 
-            toast(
-                "Select at least one contact."
+        val message =
+            """
+Selected: ${selected.size}
+Already sent: $alreadySent
+Will send now: $willSend
+
+Each selected mobile number will receive its own personalized SMS.
+
+Do you want to continue?
+            """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("Confirm SMS Sending")
+            .setMessage(message)
+            .setNegativeButton(
+                "Cancel",
+                null
             )
+            .setPositiveButton(
+                "Send SMS"
+            ) { _, _ ->
+
+                startSmsOperation(selected)
+            }
+            .show()
+    }
+
+    private fun startSmsOperation(
+        selected: List<Contact>
+    ) {
+
+        if (smsOperationActive) return
+
+        if (selected.isEmpty()) return
+
+        operationResults.clear()
+
+        // Already sent contacts are skipped.
+        selected.forEach { contact ->
+
+            if (contact.smsStatus == SmsStatus.SENT) {
+
+                operationResults[contact.phone] =
+                    SmsResult(
+                        contact,
+                        "SKIPPED",
+                        "Already sent earlier in this session."
+                    )
+            }
+        }
+
+        sendQueue =
+            selected.filter {
+                it.smsStatus != SmsStatus.SENT
+            }
+
+        if (sendQueue.isEmpty()) {
+
+            showSmsResultAlert(selected)
 
             return
         }
 
+        smsOperationActive = true
 
-        val previewText =
-            buildString {
+        queueIndex = 0
 
-                append(
-                    "Selected: ${list.size} contacts\n\n"
-                )
+        pendingSms.clear()
+        requestToPhone.clear()
 
+        btnSendSms.isEnabled = false
 
-                list.forEachIndexed {
-                        index,
-                        contact ->
+        txtStatus.text =
+            "Starting SMS sending for ${sendQueue.size} contacts..."
 
-                    append(
-                        "${index + 1}. ${contact.name}\n"
+        updateCounts()
+
+        dispatchNextSms()
+    }
+
+    private fun dispatchNextSms() {
+
+        if (!smsOperationActive) return
+
+        if (queueIndex >= sendQueue.size) {
+
+            checkSmsOperationFinished()
+
+            return
+        }
+
+        val contact =
+            sendQueue[queueIndex]
+
+        queueIndex++
+
+        contact.smsStatus =
+            SmsStatus.SENDING
+
+        adapter.notifyContactStatusChanged(
+            contact.phone
+        )
+
+        updateCounts()
+
+        val message =
+            personaliseMessage(contact)
+
+        try {
+
+            sendSmsForContact(
+                contact,
+                message
+            )
+
+        } catch (e: Exception) {
+
+            completeSms(
+                contact,
+                false,
+                e.message ?: "SMS sending error."
+            )
+        }
+
+        handler.postDelayed(
+            {
+                dispatchNextSms()
+            },
+            SEND_DELAY_MS
+        )
+    }
+
+    private fun sendSmsForContact(
+        contact: Contact,
+        message: String
+    ) {
+
+        val smsManager =
+            SmsManager.getDefault()
+
+        val parts =
+            smsManager.divideMessage(message)
+
+        val progress =
+            SmsProgress(
+                contact = contact,
+                totalParts = parts.size
+            )
+
+        pendingSms[contact.phone] =
+            progress
+
+        val sentIntents =
+            ArrayList<PendingIntent>()
+
+        parts.forEach {
+
+            val requestId =
+                requestIdCounter++
+
+            requestToPhone[requestId] =
+                contact.phone
+
+            val intent =
+                Intent(SMS_SENT_ACTION).apply {
+
+                    setPackage(packageName)
+
+                    putExtra(
+                        EXTRA_REQUEST_ID,
+                        requestId
                     )
 
-
-                    append(
-                        "📱 ${contact.phone}\n\n"
-                    )
-
-
-                    append(
-                        personalize(contact)
-                    )
-
-
-                    append(
-                        "\n\n────────────────────\n\n"
+                    putExtra(
+                        EXTRA_PHONE,
+                        contact.phone
                     )
                 }
+
+            val pendingIntent =
+                PendingIntent.getBroadcast(
+                    this,
+                    requestId,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or
+                            PendingIntent.FLAG_IMMUTABLE
+                )
+
+            sentIntents.add(
+                pendingIntent
+            )
+        }
+
+        if (parts.size == 1) {
+
+            smsManager.sendTextMessage(
+                contact.phone,
+                null,
+                message,
+                sentIntents[0],
+                null
+            )
+
+        } else {
+
+            smsManager.sendMultipartTextMessage(
+                contact.phone,
+                null,
+                parts,
+                sentIntents,
+                null
+            )
+        }
+    }
+
+    private fun completeSms(
+        contact: Contact,
+        success: Boolean,
+        detail: String
+    ) {
+
+        if (
+            operationResults.containsKey(
+                contact.phone
+            )
+        ) {
+            return
+        }
+
+        contact.smsStatus =
+            if (success) {
+                SmsStatus.SENT
+            } else {
+                SmsStatus.FAILED
             }
 
+        operationResults[contact.phone] =
+            SmsResult(
+                contact = contact,
+                status =
+                    if (success) "SENT"
+                    else "FAILED",
+                detail = detail
+            )
+
+        adapter.notifyContactStatusChanged(
+            contact.phone
+        )
+
+        updateCounts()
+
+        txtStatus.text =
+            "SMS progress: " +
+                    "${sentCount()} sent, " +
+                    "${failedCount()} failed."
+    }
+
+    private fun checkSmsOperationFinished() {
+
+        if (!smsOperationActive) return
+
+        if (
+            queueIndex >= sendQueue.size &&
+            pendingSms.isEmpty() &&
+            operationResults.size >=
+            selectedOperationCount()
+        ) {
+
+            smsOperationActive = false
+
+            btnSendSms.isEnabled = true
+
+            updateCounts()
+
+            txtStatus.text =
+                "SMS sending completed."
+
+            showSmsResultAlert(
+                selectedContactsForResult()
+            )
+        }
+    }
+
+    private fun selectedOperationCount(): Int {
+
+        return operationResults.size +
+                pendingSms.size +
+                sendQueue.size -
+                queueIndex
+    }
+
+    private fun selectedContactsForResult(): List<Contact> {
+
+        val resultPhones =
+            operationResults.keys
+
+        return contacts.filter {
+            resultPhones.contains(it.phone)
+        }
+    }
+
+    private fun showSmsResultAlert(
+        contactsForResult: List<Contact>
+    ) {
+
+        val results =
+            contactsForResult.mapNotNull {
+                operationResults[it.phone]
+            }
+
+        val sent =
+            results.count {
+                it.status == "SENT"
+            }
+
+        val failed =
+            results.count {
+                it.status == "FAILED"
+            }
+
+        val skipped =
+            results.count {
+                it.status == "SKIPPED"
+            }
+
+        val text =
+            StringBuilder()
+
+        text.append(
+            "SMS Sending Result\n\n"
+        )
+
+        text.append(
+            "Selected: ${results.size}\n"
+        )
+
+        text.append(
+            "Sent: $sent\n"
+        )
+
+        text.append(
+            "Failed: $failed\n"
+        )
+
+        text.append(
+            "Skipped: $skipped\n\n"
+        )
+
+        text.append(
+            "Individual Details:\n\n"
+        )
+
+        results.forEachIndexed { index, result ->
+
+            val symbol =
+                when (result.status) {
+                    "SENT" -> "✓"
+                    "FAILED" -> "✕"
+                    else -> "↷"
+                }
+
+            text.append(
+                "$symbol ${index + 1}. " +
+                        "${result.contact.name}\n"
+            )
+
+            text.append(
+                "   ${result.contact.phone}\n"
+            )
+
+            text.append(
+                "   ${result.status}: " +
+                        "${result.detail}\n\n"
+            )
+        }
+
+        val textView =
+            TextView(this).apply {
+
+                text = text.toString()
+
+                textSize = 15f
+
+                setPadding(
+                    35,
+                    20,
+                    35,
+                    20
+                )
+            }
+
+        val scroll =
+            ScrollView(this).apply {
+
+                addView(textView)
+            }
 
         AlertDialog.Builder(this)
             .setTitle(
-                "Selected Recipients"
+                "SMS Send Result"
             )
-            .setMessage(
-                previewText
-            )
+            .setView(scroll)
             .setPositiveButton(
                 "OK",
                 null
@@ -1217,512 +1324,298 @@ Thank you- Mohit Arora, 9518804747
             .show()
     }
 
-
     private fun testSms() {
 
+        val selected =
+            selectedContacts()
+
+        if (selected.isEmpty()) {
+
+            showAlert(
+                "Test SMS",
+                "Select at least one contact."
+            )
+
+            return
+        }
+
         val contact =
-            selectedContacts()
-                .firstOrNull()
+            selected.first()
 
+        val message =
+            personaliseMessage(contact)
 
-        if (contact == null) {
-
-            toast(
-                "Select at least one contact."
+        AlertDialog.Builder(this)
+            .setTitle("Test SMS")
+            .setMessage(
+                "A test SMS will be sent to:\n\n" +
+                        "${contact.name}\n" +
+                        "${contact.phone}\n\n" +
+                        message
             )
-
-            return
-        }
-
-
-        if (
-            message.text
-                .toString()
-                .isBlank()
-        ) {
-
-            toast(
-                "Enter a message."
+            .setNegativeButton(
+                "Cancel",
+                null
             )
+            .setPositiveButton(
+                "Send Test"
+            ) { _, _ ->
 
-            return
-        }
+                if (
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.SEND_SMS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
 
+                    smsPermissionLauncher.launch(
+                        Manifest.permission.SEND_SMS
+                    )
 
-        try {
-
-            SmsManager
-                .getDefault()
-                .sendTextMessage(
-                    contact.phone,
-                    null,
-                    personalize(contact),
-                    null,
-                    null
-                )
-
-
-            status.text =
-                "Test SMS requested for ${contact.name} (${contact.phone})"
-
-
-        } catch (e: Exception) {
-
-            status.text =
-                "Test SMS failed: ${e.message}"
-        }
-    }
-
-
-    private fun sendNow() {
-
-        val list =
-            selectedContacts()
-
-
-        if (list.isEmpty()) {
-
-            toast(
-                "Select at least one contact."
-            )
-
-            return
-        }
-
-
-        if (
-            message.text
-                .toString()
-                .isBlank()
-        ) {
-
-            toast(
-                "Enter a message."
-            )
-
-            return
-        }
-
-
-        /*
-         * One Send action.
-         * Every selected Contact has its own
-         * name + phone + CSV fields.
-         */
-        Thread {
-
-            var requested = 0
-            var failed = 0
-
-
-            for (contact in list) {
+                    return@setPositiveButton
+                }
 
                 try {
 
-                    val personalizedMessage =
-                        personalize(contact)
-
-
-                    SmsManager
-                        .getDefault()
-                        .sendTextMessage(
-                            contact.phone,
-                            null,
-                            personalizedMessage,
-                            null,
-                            null
-                        )
-
-
-                    requested++
-
-
-                    runOnUiThread {
-
-                        status.text =
-                            "SMS requested: $requested / ${list.size}"
-                    }
-
-
-                    Thread.sleep(700)
-
-
-                } catch (_: Exception) {
-
-                    failed++
-                }
-            }
-
-
-            runOnUiThread {
-
-                status.text =
-                    "SMS run finished: $requested / ${list.size}" +
-                    if (failed > 0) {
-                        " | Failed: $failed"
-                    } else {
-                        ""
-                    }
-            }
-
-        }.start()
-    }
-
-
-    private fun schedule() {
-
-        val list =
-            selectedContacts()
-
-
-        if (list.isEmpty()) {
-
-            toast(
-                "Select at least one contact."
-            )
-
-            return
-        }
-
-
-        if (
-            message.text
-                .toString()
-                .isBlank()
-        ) {
-
-            toast(
-                "Enter a message."
-            )
-
-            return
-        }
-
-
-        val calendar =
-            Calendar.getInstance()
-
-
-        DatePickerDialog(
-            this,
-
-            { _, year, month, day ->
-
-                TimePickerDialog(
-
-                    this,
-
-                    { _, hour, minute ->
-
-                        calendar.set(
-                            year,
-                            month,
-                            day,
-                            hour,
-                            minute,
-                            0
-                        )
-
-
-                        calendar.set(
-                            Calendar.MILLISECOND,
-                            0
-                        )
-
-
-                        val delay =
-                            calendar.timeInMillis -
-                            System.currentTimeMillis()
-
-
-                        if (delay <= 0) {
-
-                            toast(
-                                "Choose a future time."
-                            )
-
-                            return@TimePickerDialog
-                        }
-
-
-                        /*
-                         * Scheduled SMS currently keeps
-                         * name + number, which is enough
-                         * for the default {{name}} message.
-                         */
-                        val packed =
-                            list.joinToString(
-                                "\u0001"
-                            ) {
-
-                                "${it.name}\u0002${it.phone}"
-                            }
-
-
-                        val data =
-                            workDataOf(
-
-                                "message" to
-                                    message.text
-                                        .toString(),
-
-                                "contacts" to
-                                    packed
-                            )
-
-
-                        val request =
-                            OneTimeWorkRequestBuilder<SmsWorker>()
-                                .setInitialDelay(
-                                    delay,
-                                    TimeUnit.MILLISECONDS
-                                )
-                                .setInputData(
-                                    data
-                                )
-                                .build()
-
-
-                        WorkManager
-                            .getInstance(this)
-                            .enqueueUniqueWork(
-
-                                "kba_sms_schedule",
-
-                                ExistingWorkPolicy.REPLACE,
-
-                                request
-                            )
-
-
-                        status.text =
-                            "SMS scheduled for ${
-                                SimpleDateFormat(
-                                    "dd MMM yyyy, hh:mm a",
-                                    Locale.getDefault()
-                                ).format(
-                                    calendar.time
-                                )
-                            } (${list.size} numbers)"
-
-                    },
-
-                    calendar.get(
-                        Calendar.HOUR_OF_DAY
-                    ),
-
-                    calendar.get(
-                        Calendar.MINUTE
-                    ),
-
-                    false
-
-                ).show()
-
-            },
-
-            calendar.get(
-                Calendar.YEAR
-            ),
-
-            calendar.get(
-                Calendar.MONTH
-            ),
-
-            calendar.get(
-                Calendar.DAY_OF_MONTH
-            )
-
-        ).show()
-    }
-
-
-    private fun nextWhatsApp() {
-
-        val list =
-            selectedContacts()
-
-
-        if (list.isEmpty()) {
-
-            toast(
-                "Select at least one contact."
-            )
-
-            return
-        }
-
-
-        if (
-            whatsappIndex >= list.size
-        ) {
-
-            whatsappIndex = 0
-        }
-
-
-        val contact =
-            list[whatsappIndex++]
-
-
-        status.text =
-            "WhatsApp ${whatsappIndex}/${list.size}: ${contact.name}"
-
-
-        try {
-
-            startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-
-                    Uri.parse(
-                        "https://wa.me/${contact.phone}?text=${
-                            Uri.encode(
-                                personalize(contact)
-                            )
-                        }"
-                    )
-                )
-            )
-
-
-        } catch (e: Exception) {
-
-            toast(
-                "Could not open WhatsApp."
-            )
-        }
-    }
-}
-
-
-/*
- * Scheduled SMS worker
- */
-class SmsWorker(
-    context: Context,
-    params: WorkerParameters
-) : Worker(
-    context,
-    params
-) {
-
-    override fun doWork(): Result {
-
-        val template =
-            inputData.getString(
-                "message"
-            )
-                ?: return Result.failure()
-
-
-        val raw =
-            inputData.getString(
-                "contacts"
-            )
-                ?: return Result.failure()
-
-
-        var sent = 0
-
-
-        return try {
-
-            for (
-                item in raw.split(
-                    "\u0001"
-                )
-            ) {
-
-                val parts =
-                    item.split(
-                        "\u0002",
-                        limit = 2
-                    )
-
-
-                if (
-                    parts.size < 2
-                ) {
-                    continue
-                }
-
-
-                val name =
-                    parts[0]
-
-
-                val phone =
-                    parts[1]
-
-
-                val text =
-                    template
-                        .replace(
-                            "{{name}}",
-                            name,
-                            ignoreCase = true
-                        )
-                        .replace(
-                            "{{MobileNumber}}",
-                            phone,
-                            ignoreCase = true
-                        )
-                        .replace(
-                            "{{Mobile}}",
-                            phone,
-                            ignoreCase = true
-                        )
-                        .replace(
-                            "{{Phone}}",
-                            phone,
-                            ignoreCase = true
-                        )
-
-
-                SmsManager
-                    .getDefault()
-                    .sendTextMessage(
-                        phone,
+                    val smsManager =
+                        SmsManager.getDefault()
+
+                    smsManager.sendTextMessage(
+                        contact.phone,
                         null,
-                        text,
+                        message,
                         null,
                         null
                     )
 
+                    showAlert(
+                        "Test SMS",
+                        "SMS request submitted to Android SMS service.\n\n" +
+                                "Name: ${contact.name}\n" +
+                                "Number: ${contact.phone}"
+                    )
 
-                sent++
+                } catch (e: Exception) {
 
-
-                Thread.sleep(700)
+                    showAlert(
+                        "Test SMS Failed",
+                        e.message ?: "Unable to send SMS."
+                    )
+                }
             }
+            .show()
+    }
 
+    private fun sendWhatsApp() {
 
-            Result.success(
-                workDataOf(
-                    "requested" to sent
-                )
+        val selected =
+            selectedContacts()
+
+        if (selected.isEmpty()) {
+
+            showAlert(
+                "WhatsApp",
+                "Please select at least one contact."
             )
 
+            return
+        }
+
+        val contact =
+            selected.first()
+
+        val message =
+            personaliseMessage(contact)
+
+        try {
+
+            val uri =
+                Uri.parse(
+                    "https://wa.me/${contact.phone}" +
+                            "?text=${Uri.encode(message)}"
+                )
+
+            val intent =
+                Intent(
+                    Intent.ACTION_VIEW,
+                    uri
+                )
+
+            startActivity(intent)
+
+            showAlert(
+                "WhatsApp",
+                "WhatsApp opened for:\n\n" +
+                        "${contact.name}\n" +
+                        contact.phone +
+                        "\n\n" +
+                        "WhatsApp does not allow this app to silently bulk-send messages to all selected contacts."
+            )
 
         } catch (e: Exception) {
 
-            if (sent > 0) {
+            showAlert(
+                "WhatsApp",
+                "Unable to open WhatsApp."
+            )
+        }
+    }
 
-                Result.failure(
-                    workDataOf(
-                        "requested" to sent,
-                        "error" to (
-                            e.message
-                                ?: "SMS error"
-                        )
-                    )
+    private fun updateCounts() {
+
+        val selected =
+            adapter.getSelectedPhones().size
+
+        val sent =
+            contacts.count {
+                it.smsStatus == SmsStatus.SENT
+            }
+
+        val failed =
+            contacts.count {
+                it.smsStatus == SmsStatus.FAILED
+            }
+
+        val sending =
+            contacts.count {
+                it.smsStatus == SmsStatus.SENDING
+            }
+
+        txtSelected.text =
+            "Selected: $selected"
+
+        txtStats.text =
+            "Total: ${contacts.size}  |  " +
+                    "Sent: $sent  |  " +
+                    "Failed: $failed  |  " +
+                    "Pending/Sending: $sending"
+    }
+
+    private fun sentCount(): Int {
+
+        return contacts.count {
+            it.smsStatus == SmsStatus.SENT
+        }
+    }
+
+    private fun failedCount(): Int {
+
+        return contacts.count {
+            it.smsStatus == SmsStatus.FAILED
+        }
+    }
+
+    private fun statusText(
+        status: SmsStatus
+    ): String {
+
+        return when (status) {
+
+            SmsStatus.NONE ->
+                "Not sent"
+
+            SmsStatus.SENDING ->
+                "Sending..."
+
+            SmsStatus.SENT ->
+                "SENT"
+
+            SmsStatus.FAILED ->
+                "FAILED"
+        }
+    }
+
+    private fun smsErrorMessage(
+        code: Int
+    ): String {
+
+        return when (code) {
+
+            SmsManager.RESULT_ERROR_GENERIC_FAILURE ->
+                "Generic SMS failure."
+
+            SmsManager.RESULT_ERROR_RADIO_OFF ->
+                "Mobile radio is off."
+
+            SmsManager.RESULT_ERROR_NULL_PDU ->
+                "Invalid SMS data."
+
+            SmsManager.RESULT_ERROR_NO_SERVICE ->
+                "No mobile service."
+
+            SmsManager.RESULT_ERROR_LIMIT_EXCEEDED ->
+                "SMS limit exceeded."
+
+            SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE ->
+                "Fixed Dialing Number check failed."
+
+            SmsManager.RESULT_ERROR_SHORT_CODE_NOT_ALLOWED ->
+                "Short code SMS not allowed."
+
+            SmsManager.RESULT_ERROR_SHORT_CODE_NEVER_ALLOWED ->
+                "Short code SMS is not allowed."
+
+            else ->
+                "SMS service returned error code $code."
+        }
+    }
+
+    private fun getFileName(
+        uri: Uri
+    ): String {
+
+        var result: String? = null
+
+        contentResolver.query(
+            uri,
+            null,
+            null,
+            null,
+            null
+        )?.use { cursor ->
+
+            val index =
+                cursor.getColumnIndex(
+                    OpenableColumns.DISPLAY_NAME
                 )
 
-            } else {
-
-                Result.retry()
+            if (cursor.moveToFirst() && index >= 0) {
+                result =
+                    cursor.getString(index)
             }
         }
+
+        return result ?: "CSV file"
+    }
+
+    private fun showAlert(
+        title: String,
+        message: String
+    ) {
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(
+                "OK",
+                null
+            )
+            .show()
+    }
+
+    override fun onDestroy() {
+
+        handler.removeCallbacksAndMessages(null)
+
+        if (smsReceiverRegistered) {
+
+            unregisterReceiver(
+                smsSentReceiver
+            )
+
+            smsReceiverRegistered = false
+        }
+
+        super.onDestroy()
     }
 }
