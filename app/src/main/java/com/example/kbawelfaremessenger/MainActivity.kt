@@ -18,6 +18,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.telephony.SmsManager
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -126,23 +128,23 @@ Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal electio
 
 Thank you- Mohit Arora, 9518804747"""
 
-    // =========================================================
+    // ---------------------------------------------------------
     // CSV picker
-    // =========================================================
+    // ---------------------------------------------------------
 
     private val pickCsvLauncher =
         registerForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
 
-            uri?.let {
-                loadCsv(it)
+            if (uri != null) {
+                loadCsv(uri)
             }
         }
 
-    // =========================================================
+    // ---------------------------------------------------------
     // SMS permission
-    // =========================================================
+    // ---------------------------------------------------------
 
     private val smsPermissionLauncher =
         registerForActivityResult(
@@ -150,11 +152,8 @@ Thank you- Mohit Arora, 9518804747"""
         ) { granted ->
 
             if (granted) {
-
                 startSmsConfirmation()
-
             } else {
-
                 showAlert(
                     "SMS Permission",
                     "SMS permission is required to send messages."
@@ -162,9 +161,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    // =========================================================
+    // ---------------------------------------------------------
     // SMS sent receiver
-    // =========================================================
+    // ---------------------------------------------------------
 
     private val smsSentReceiver =
         object : BroadcastReceiver() {
@@ -174,9 +173,7 @@ Thank you- Mohit Arora, 9518804747"""
                 intent: Intent?
             ) {
 
-                if (
-                    intent?.action != SMS_SENT_ACTION
-                ) {
+                if (intent?.action != SMS_SENT_ACTION) {
                     return
                 }
 
@@ -191,9 +188,8 @@ Thank you- Mohit Arora, 9518804747"""
                 }
 
                 val phone =
-                    requestToPhone.remove(
-                        requestId
-                    ) ?: return
+                    requestToPhone.remove(requestId)
+                        ?: return
 
                 val progress =
                     pendingSms[phone]
@@ -223,9 +219,7 @@ Thank you- Mohit Arora, 9518804747"""
                     progress.totalParts
                 ) {
 
-                    pendingSms.remove(
-                        phone
-                    )
+                    pendingSms.remove(phone)
 
                     if (progress.failed) {
 
@@ -260,9 +254,7 @@ Thank you- Mohit Arora, 9518804747"""
         savedInstanceState: Bundle?
     ) {
 
-        super.onCreate(
-            savedInstanceState
-        )
+        super.onCreate(savedInstanceState)
 
         setContentView(
             R.layout.activity_main
@@ -389,9 +381,7 @@ Thank you- Mohit Arora, 9518804747"""
                 return@setOnClickListener
             }
 
-            adapter.selectAll(
-                contacts
-            )
+            adapter.selectAll(contacts)
 
             updateCounts()
         }
@@ -483,7 +473,6 @@ Thank you- Mohit Arora, 9518804747"""
             }
 
             updateCounts()
-
             adapter.notifyDataSetChanged()
 
             txtStatus.text =
@@ -544,13 +533,37 @@ Thank you- Mohit Arora, 9518804747"""
 
     private fun setupSearch() {
 
-        edtSearch.addTextChangedListener {
+        edtSearch.addTextChangedListener(
+            object : TextWatcher {
 
-            adapter.filter(
-                it?.toString()
-                    .orEmpty()
-            )
-        }
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
+                ) {
+                    // Nothing required.
+                }
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
+                ) {
+
+                    adapter.filter(
+                        s?.toString().orEmpty()
+                    )
+                }
+
+                override fun afterTextChanged(
+                    s: Editable?
+                ) {
+                    // Nothing required.
+                }
+            }
+        )
     }
 
     // =========================================================
@@ -673,7 +686,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Load CSV
+    // CSV loading
     // =========================================================
 
     private fun loadCsv(
@@ -785,9 +798,7 @@ Thank you- Mohit Arora, 9518804747"""
                 }
 
                 val values =
-                    parseCsvLine(
-                        line
-                    )
+                    parseCsvLine(line)
 
                 val rawPhone =
                     values
@@ -817,7 +828,6 @@ Thank you- Mohit Arora, 9518804747"""
                             .orEmpty()
 
                     } else {
-
                         ""
                     }
 
@@ -889,7 +899,6 @@ Thank you- Mohit Arora, 9518804747"""
         val result =
             mutableListOf<String>()
 
-        // MUST be var because it is reassigned.
         var current =
             StringBuilder()
 
@@ -936,9 +945,7 @@ Thank you- Mohit Arora, 9518804747"""
 
                 else -> {
 
-                    current.append(
-                        char
-                    )
+                    current.append(char)
                 }
             }
 
@@ -974,7 +981,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Clean name
+    // Name cleanup
     // =========================================================
 
     private fun cleanName(
@@ -989,7 +996,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Normalize phone
+    // Phone normalization
     // =========================================================
 
     private fun normalizePhone(
@@ -1069,7 +1076,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Personalize message
+    // Personalized message
     // =========================================================
 
     private fun personaliseMessage(
@@ -1165,9 +1172,7 @@ Thank you- Mohit Arora, 9518804747"""
             )
 
             builder.append(
-                personaliseMessage(
-                    contact
-                )
+                personaliseMessage(contact)
             )
 
             builder.append(
@@ -1210,7 +1215,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Check SMS permission
+    // SMS permission
     // =========================================================
 
     private fun checkSmsPermissionAndStart() {
@@ -1234,7 +1239,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Confirmation
+    // SMS confirmation
     // =========================================================
 
     private fun startSmsConfirmation() {
@@ -1432,7 +1437,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Send SMS to one contact
+    // Send one SMS
     // =========================================================
 
     private fun sendSmsForContact(
@@ -1530,7 +1535,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Complete one SMS
+    // Complete individual SMS
     // =========================================================
 
     private fun completeSms(
@@ -1581,7 +1586,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Check completion
+    // Check SMS operation completion
     // =========================================================
 
     private fun checkSmsOperationFinished() {
@@ -1620,7 +1625,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Result alert
+    // SMS result alert
     // =========================================================
 
     private fun showSmsResultAlert(
@@ -1956,7 +1961,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Status
+    // Status text
     // =========================================================
 
     private fun statusText(
@@ -1980,7 +1985,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // SMS error message
+    // SMS error
     // =========================================================
 
     private fun smsErrorMessage(
@@ -2019,7 +2024,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Get file name
+    // File name
     // =========================================================
 
     private fun getFileName(
