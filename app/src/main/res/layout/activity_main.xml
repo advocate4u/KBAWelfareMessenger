@@ -1,1 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
+        <TextView
+            android:text="KBA Welfare Messenger"
+            android:textSize="25sp"
+            android:textStyle="bold"
+            android:textColor="#163968"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:text="CSV • Multiple numbers • SMS scheduling • WhatsApp"
+            android:textSize="13sp"
+            android:textColor="#657184"
+            android:paddingBottom="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btnUpload"
+            android:text="Upload CSV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/txtFile"
+            android:text="No file selected"
+            android:padding="7dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/txtStats"
+            android:text="People: 0 | Individual numbers: 0"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/edtSearch"
+            android:hint="Search name or number"
+            android:singleLine="true"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <EditText
+                android:id="@+id/edtFrom"
+                android:hint="From"
+                android:text="1"
+                android:inputType="number"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"/>
+            <EditText
+                android:id="@+id/edtTo"
+                android:hint="To"
+                android:text="100"
+                android:inputType="number"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <TextView
+            android:text="Message Draft"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/edtMessage"
+            android:gravity="top|start"
+            android:minHeight="150dp"
+            android:inputType="textMultiLine"
+            android:hint="Dear {{Name}},&#10;&#10;Your message..."
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:text="Placeholders: {{Name}}  {{MobileNumber}}"
+            android:textSize="12sp"
+            android:textColor="#657184"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button android:id="@+id/btnSaveDraft" android:text="Save Draft"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnPreview" android:text="Preview First 5"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnTestSms" android:text="Test SMS (first number)"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnSendSms" android:text="Send SMS Now"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnSchedule" android:text="Schedule SMS"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnCancelSchedule" android:text="Cancel Scheduled SMS"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnWhatsApp" android:text="Open WhatsApp — Next Contact"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <TextView
+            android:text="Actions / Filters"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button android:id="@+id/btnReset" android:text="Reset Actions / Filters"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btnClearData" android:text="Remove CSV / Clear Stored Contacts"
+            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/txtStatus"
+            android:text="Ready"
+            android:paddingTop="12dp"
+            android:textSize="14sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:text="CSV columns required: OriginalName and MobileNumber. Multiple numbers are split into individual contacts and duplicates are removed. SMS delivery depends on Android/SIM/carrier restrictions."
+            android:textSize="12sp"
+            android:textColor="#657184"
+            android:paddingTop="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</ScrollView>
