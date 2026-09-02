@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit
 data class Contact(
     val name: String,
     val phone: String,
+    val fields: Map<String, String> = emptyMap(),
     val row: Int
 )
 
@@ -55,6 +56,15 @@ class MainActivity : AppCompatActivity() {
 
     private var whatsappIndex = 0
 
+    private val defaultMessage = """
+R/m {{name}} ji,
+
+Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal election. Your blessings mean a lot.
+
+Thank you- Mohit Arora, 9518804747
+""".trimIndent()
+
+
     private val picker =
         registerForActivityResult(
             ActivityResultContracts.OpenDocument()
@@ -64,7 +74,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
     private var pendingSmsAction: (() -> Unit)? = null
+
 
     private val smsPermission =
         registerForActivityResult(
@@ -91,25 +103,30 @@ class MainActivity : AppCompatActivity() {
             R.layout.activity_main
         )
 
+
         message =
             findViewById(
                 R.id.edtMessage
             )
+
 
         search =
             findViewById(
                 R.id.edtSearch
             )
 
+
         status =
             findViewById(
                 R.id.txtStatus
             )
 
+
         stats =
             findViewById(
                 R.id.txtStats
             )
+
 
         selectedText =
             findViewById(
@@ -121,6 +138,7 @@ class MainActivity : AppCompatActivity() {
             findViewById<RecyclerView>(
                 R.id.recyclerContacts
             )
+
 
         recycler.layoutManager =
             LinearLayoutManager(this)
@@ -134,15 +152,25 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-        recycler.adapter = adapter
+        recycler.adapter =
+            adapter
 
 
-        message.setText(
+        /*
+         * Load saved draft.
+         * If no draft exists, load the default message.
+         */
+        val savedDraft =
             getPreferences(0)
                 .getString(
                     "draft",
-                    ""
+                    null
                 )
+
+
+        message.setText(
+            savedDraft
+                ?: defaultMessage
         )
 
 
@@ -169,6 +197,8 @@ class MainActivity : AppCompatActivity() {
 
             adapter.selectAll()
 
+            updateSelectedCount()
+
             status.text =
                 "All visible contacts selected."
         }
@@ -181,6 +211,8 @@ class MainActivity : AppCompatActivity() {
             adapter.unselectAll()
 
             whatsappIndex = 0
+
+            updateSelectedCount()
 
             status.text =
                 "All contacts unselected."
@@ -198,6 +230,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                 }
 
+
                 override fun onTextChanged(
                     s: CharSequence?,
                     start: Int,
@@ -206,6 +239,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     refreshList()
                 }
+
 
                 override fun afterTextChanged(
                     s: android.text.Editable?
@@ -236,6 +270,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(
             R.id.btnPreview
         ).setOnClickListener {
+
             preview()
         }
 
@@ -263,6 +298,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(
             R.id.btnSchedule
         ).setOnClickListener {
+
             schedule()
         }
 
@@ -285,6 +321,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(
             R.id.btnWhatsApp
         ).setOnClickListener {
+
             nextWhatsApp()
         }
 
@@ -298,6 +335,8 @@ class MainActivity : AppCompatActivity() {
             adapter.clearSelection()
 
             whatsappIndex = 0
+
+            updateSelectedCount()
 
             status.text =
                 "Selection and search reset."
@@ -374,7 +413,8 @@ class MainActivity : AppCompatActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
 
-            pendingSmsAction = action
+            pendingSmsAction =
+                action
 
             smsPermission.launch(
                 Manifest.permission.SEND_SMS
@@ -411,13 +451,16 @@ class MainActivity : AppCompatActivity() {
                     ""
                 )
 
+
         if (s.startsWith("+")) {
             s = s.drop(1)
         }
 
+
         if (s.startsWith("00")) {
             s = s.drop(2)
         }
+
 
         if (
             s.matches(
@@ -426,6 +469,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             s = "91$s"
         }
+
 
         return s
     }
@@ -462,6 +506,7 @@ class MainActivity : AppCompatActivity() {
                     )
             }
 
+
         for (name in names) {
 
             val index =
@@ -471,10 +516,12 @@ class MainActivity : AppCompatActivity() {
                     )
                 )
 
+
             if (index >= 0) {
                 return index
             }
         }
+
 
         return -1
     }
@@ -484,6 +531,8 @@ class MainActivity : AppCompatActivity() {
         name: String,
         rawPhones: String,
         row: Int,
+        headers: List<String>,
+        values: List<String>,
         seen: MutableSet<String>
     ) {
 
@@ -495,11 +544,30 @@ class MainActivity : AppCompatActivity() {
 
             if (seen.add(phone)) {
 
+                val fields =
+                    mutableMapOf<String, String>()
+
+
+                headers.forEachIndexed {
+                        index,
+                        header ->
+
+                    fields[
+                        header.trim()
+                    ] =
+                        values
+                            .getOrNull(index)
+                            ?.trim()
+                            .orEmpty()
+                }
+
+
                 contacts.add(
                     Contact(
-                        name.trim(),
-                        phone,
-                        row
+                        name = name.trim(),
+                        phone = phone,
+                        fields = fields,
+                        row = row
                     )
                 )
             }
@@ -514,6 +582,7 @@ class MainActivity : AppCompatActivity() {
         try {
 
             contacts.clear()
+
 
             val displayName =
                 contentResolver
@@ -530,6 +599,7 @@ class MainActivity : AppCompatActivity() {
                             q.getColumnIndex(
                                 OpenableColumns.DISPLAY_NAME
                             )
+
 
                         if (
                             q.moveToFirst() &&
@@ -592,7 +662,9 @@ class MainActivity : AppCompatActivity() {
                             "MobileNumber",
                             "Mobile Number",
                             "Mobile",
-                            "M.No."
+                            "M.No.",
+                            "Phone",
+                            "PhoneNumber"
                         )
 
 
@@ -629,17 +701,27 @@ class MainActivity : AppCompatActivity() {
 
 
                             addContact(
-                                row.getOrNull(
-                                    nameIndex
-                                ).orEmpty(),
+                                name =
+                                    row.getOrNull(
+                                        nameIndex
+                                    ).orEmpty(),
 
-                                row.getOrNull(
-                                    phoneIndex
-                                ).orEmpty(),
+                                rawPhones =
+                                    row.getOrNull(
+                                        phoneIndex
+                                    ).orEmpty(),
 
-                                index + 2,
+                                row =
+                                    index + 2,
 
-                                seen
+                                headers =
+                                    headers,
+
+                                values =
+                                    row,
+
+                                seen =
+                                    seen
                             )
                         }
                 }
@@ -649,13 +731,18 @@ class MainActivity : AppCompatActivity() {
 
             updateStats()
 
+
             adapter.setContacts(
                 contacts.toList()
             )
 
+
             adapter.clearSelection()
 
             whatsappIndex = 0
+
+            updateSelectedCount()
+
 
             status.text =
                 "Loaded ${contacts.size} individual numbers. Select contacts below."
@@ -681,8 +768,10 @@ class MainActivity : AppCompatActivity() {
         val result =
             mutableListOf<String>()
 
+
         val buffer =
             StringBuilder()
+
 
         var quoted = false
         var i = 0
@@ -734,6 +823,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+
             i++
         }
 
@@ -741,6 +831,7 @@ class MainActivity : AppCompatActivity() {
         result.add(
             buffer.toString()
         )
+
 
         return result
     }
@@ -775,15 +866,41 @@ class MainActivity : AppCompatActivity() {
                 contact.name
             )
 
+
             edit.putString(
                 "phone_$index",
                 contact.phone
             )
 
+
             edit.putInt(
                 "row_$index",
                 contact.row
             )
+
+
+            edit.putInt(
+                "fieldCount_$index",
+                contact.fields.size
+            )
+
+
+            contact.fields.entries
+                .forEachIndexed {
+                        fieldIndex,
+                        entry ->
+
+                    edit.putString(
+                        "fieldKey_${index}_$fieldIndex",
+                        entry.key
+                    )
+
+
+                    edit.putString(
+                        "fieldValue_${index}_$fieldIndex",
+                        entry.value
+                    )
+                }
         }
 
 
@@ -808,24 +925,65 @@ class MainActivity : AppCompatActivity() {
 
 
         repeat(count) {
-            index ->
+                index ->
+
+            val fields =
+                mutableMapOf<String, String>()
+
+
+            val fieldCount =
+                prefs.getInt(
+                    "fieldCount_$index",
+                    0
+                )
+
+
+            repeat(fieldCount) {
+                    fieldIndex ->
+
+                val key =
+                    prefs.getString(
+                        "fieldKey_${index}_$fieldIndex",
+                        null
+                    )
+
+
+                val value =
+                    prefs.getString(
+                        "fieldValue_${index}_$fieldIndex",
+                        ""
+                    )
+
+
+                if (key != null) {
+                    fields[key] =
+                        value ?: ""
+                }
+            }
+
 
             contacts.add(
                 Contact(
-                    prefs.getString(
-                        "name_$index",
-                        ""
-                    ) ?: "",
+                    name =
+                        prefs.getString(
+                            "name_$index",
+                            ""
+                        ) ?: "",
 
-                    prefs.getString(
-                        "phone_$index",
-                        ""
-                    ) ?: "",
+                    phone =
+                        prefs.getString(
+                            "phone_$index",
+                            ""
+                        ) ?: "",
 
-                    prefs.getInt(
-                        "row_$index",
-                        0
-                    )
+                    fields =
+                        fields,
+
+                    row =
+                        prefs.getInt(
+                            "row_$index",
+                            0
+                        )
                 )
             )
         }
@@ -833,9 +991,11 @@ class MainActivity : AppCompatActivity() {
 
         updateStats()
 
+
         adapter.setContacts(
             contacts.toList()
         )
+
 
         updateSelectedCount()
     }
@@ -884,17 +1044,24 @@ class MainActivity : AppCompatActivity() {
 
             } else {
 
-                contacts.filter {
+                contacts.filter { contact ->
 
-                    it.name
+                    contact.name
                         .lowercase(
                             Locale.ROOT
                         )
                         .contains(query) ||
 
-                    it.phone.contains(
-                        query
-                    )
+                    contact.phone
+                        .contains(query) ||
+
+                    contact.fields.any {
+                        it.value
+                            .lowercase(
+                                Locale.ROOT
+                            )
+                            .contains(query)
+                    }
                 }
             }
 
@@ -902,6 +1069,7 @@ class MainActivity : AppCompatActivity() {
         adapter.setContacts(
             filtered
         )
+
 
         updateSelectedCount()
     }
@@ -918,17 +1086,70 @@ class MainActivity : AppCompatActivity() {
         contact: Contact
     ): String {
 
-        return message
-            .text
-            .toString()
-            .replace(
-                "{{Name}}",
-                contact.name
+        var text =
+            message.text
+                .toString()
+
+
+        /*
+         * Name
+         */
+        text =
+            text.replace(
+                "{{name}}",
+                contact.name,
+                ignoreCase = true
             )
-            .replace(
+
+
+        /*
+         * Mobile number
+         */
+        text =
+            text.replace(
                 "{{MobileNumber}}",
-                contact.phone
+                contact.phone,
+                ignoreCase = true
             )
+
+
+        text =
+            text.replace(
+                "{{Mobile}}",
+                contact.phone,
+                ignoreCase = true
+            )
+
+
+        text =
+            text.replace(
+                "{{Phone}}",
+                contact.phone,
+                ignoreCase = true
+            )
+
+
+        /*
+         * Replace every CSV column dynamically.
+         *
+         * Example:
+         * {{Village}}
+         * {{FatherName}}
+         * {{District}}
+         */
+        contact.fields.forEach {
+                (header, value) ->
+
+            text =
+                text.replace(
+                    "{{$header}}",
+                    value,
+                    ignoreCase = true
+                )
+        }
+
+
+        return text
     }
 
 
@@ -936,7 +1157,6 @@ class MainActivity : AppCompatActivity() {
 
         val list =
             selectedContacts()
-                .take(5)
 
 
         if (list.isEmpty()) {
@@ -949,22 +1169,46 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        AlertDialog.Builder(this)
-            .setTitle(
-                "Preview — First 5 Selected"
-            )
-            .setMessage(
+        val previewText =
+            buildString {
 
-                list.mapIndexed {
+                append(
+                    "Selected: ${list.size} contacts\n\n"
+                )
+
+
+                list.forEachIndexed {
                         index,
                         contact ->
 
-                    "${index + 1}. ${contact.name} — ${contact.phone}\n\n" +
-                    personalize(contact)
+                    append(
+                        "${index + 1}. ${contact.name}\n"
+                    )
 
-                }.joinToString(
-                    "\n\n"
-                )
+
+                    append(
+                        "📱 ${contact.phone}\n\n"
+                    )
+
+
+                    append(
+                        personalize(contact)
+                    )
+
+
+                    append(
+                        "\n\n────────────────────\n\n"
+                    )
+                }
+            }
+
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "Selected Recipients"
+            )
+            .setMessage(
+                previewText
             )
             .setPositiveButton(
                 "OK",
@@ -1021,6 +1265,7 @@ class MainActivity : AppCompatActivity() {
             status.text =
                 "Test SMS requested for ${contact.name} (${contact.phone})"
 
+
         } catch (e: Exception) {
 
             status.text =
@@ -1059,41 +1304,52 @@ class MainActivity : AppCompatActivity() {
         }
 
 
+        /*
+         * One Send action.
+         * Every selected Contact has its own
+         * name + phone + CSV fields.
+         */
         Thread {
 
-            var sent = 0
+            var requested = 0
+            var failed = 0
 
 
             for (contact in list) {
 
                 try {
 
+                    val personalizedMessage =
+                        personalize(contact)
+
+
                     SmsManager
                         .getDefault()
                         .sendTextMessage(
                             contact.phone,
                             null,
-                            personalize(contact),
+                            personalizedMessage,
                             null,
                             null
                         )
 
 
-                    sent++
+                    requested++
 
 
                     runOnUiThread {
 
                         status.text =
-                            "SMS requested: $sent / ${list.size}"
+                            "SMS requested: $requested / ${list.size}"
                     }
 
 
                     Thread.sleep(700)
 
+
                 } catch (_: Exception) {
 
-                    // Continue with the next contact.
+                    failed++
                 }
             }
 
@@ -1101,7 +1357,12 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
 
                 status.text =
-                    "SMS run finished: $sent / ${list.size}"
+                    "SMS run finished: $requested / ${list.size}" +
+                    if (failed > 0) {
+                        " | Failed: $failed"
+                    } else {
+                        ""
+                    }
             }
 
         }.start()
@@ -1184,6 +1445,11 @@ class MainActivity : AppCompatActivity() {
                         }
 
 
+                        /*
+                         * Scheduled SMS currently keeps
+                         * name + number, which is enough
+                         * for the default {{name}} message.
+                         */
                         val packed =
                             list.joinToString(
                                 "\u0001"
@@ -1211,7 +1477,9 @@ class MainActivity : AppCompatActivity() {
                                     delay,
                                     TimeUnit.MILLISECONDS
                                 )
-                                .setInputData(data)
+                                .setInputData(
+                                    data
+                                )
                                 .build()
 
 
@@ -1317,6 +1585,7 @@ class MainActivity : AppCompatActivity() {
                 )
             )
 
+
         } catch (e: Exception) {
 
             toast(
@@ -1327,6 +1596,9 @@ class MainActivity : AppCompatActivity() {
 }
 
 
+/*
+ * Scheduled SMS worker
+ */
 class SmsWorker(
     context: Context,
     params: WorkerParameters
@@ -1340,13 +1612,15 @@ class SmsWorker(
         val template =
             inputData.getString(
                 "message"
-            ) ?: return Result.failure()
+            )
+                ?: return Result.failure()
 
 
         val raw =
             inputData.getString(
                 "contacts"
-            ) ?: return Result.failure()
+            )
+                ?: return Result.failure()
 
 
         var sent = 0
@@ -1374,22 +1648,42 @@ class SmsWorker(
                 }
 
 
+                val name =
+                    parts[0]
+
+
+                val phone =
+                    parts[1]
+
+
                 val text =
                     template
                         .replace(
-                            "{{Name}}",
-                            parts[0]
+                            "{{name}}",
+                            name,
+                            ignoreCase = true
                         )
                         .replace(
                             "{{MobileNumber}}",
-                            parts[1]
+                            phone,
+                            ignoreCase = true
+                        )
+                        .replace(
+                            "{{Mobile}}",
+                            phone,
+                            ignoreCase = true
+                        )
+                        .replace(
+                            "{{Phone}}",
+                            phone,
+                            ignoreCase = true
                         )
 
 
                 SmsManager
                     .getDefault()
                     .sendTextMessage(
-                        parts[1],
+                        phone,
                         null,
                         text,
                         null,
@@ -1409,6 +1703,7 @@ class SmsWorker(
                     "requested" to sent
                 )
             )
+
 
         } catch (e: Exception) {
 
