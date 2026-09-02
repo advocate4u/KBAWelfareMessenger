@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.kbawelfaremessenger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
     }
 
     compileOptions {
@@ -30,4 +30,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.work:work-runtime-ktx:2.10.1")
+
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
 }
