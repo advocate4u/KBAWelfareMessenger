@@ -12,21 +12,24 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.telephony.SmsManager
-import android.widget.*
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.util.Locale
 
 enum class SmsStatus {
     NONE,
@@ -64,16 +67,18 @@ class MainActivity : AppCompatActivity() {
             "com.example.kbawelfaremessenger.SMS_SENT"
 
         private const val EXTRA_REQUEST_ID = "request_id"
-        private const val EXTRA_PHONE = "phone"
 
         private const val SEND_DELAY_MS = 500L
     }
 
     private lateinit var edtMessage: EditText
     private lateinit var edtSearch: EditText
+
     private lateinit var txtStatus: TextView
     private lateinit var txtStats: TextView
     private lateinit var txtSelected: TextView
+    private lateinit var txtFile: TextView
+
     private lateinit var recyclerContacts: RecyclerView
 
     private lateinit var btnUpload: Button
@@ -86,24 +91,31 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnReset: Button
     private lateinit var btnClearData: Button
 
-    private lateinit var txtFile: TextView
-
     private lateinit var adapter: ContactAdapter
 
-    private val contacts = mutableListOf<Contact>()
+    private val contacts =
+        mutableListOf<Contact>()
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler =
+        Handler(Looper.getMainLooper())
+
+    private val requestToPhone =
+        mutableMapOf<Int, String>()
+
+    private val pendingSms =
+        mutableMapOf<String, SmsProgress>()
+
+    private val operationResults =
+        linkedMapOf<String, SmsResult>()
 
     private var requestIdCounter = 1000
 
-    private val requestToPhone = mutableMapOf<Int, String>()
-    private val pendingSms = mutableMapOf<String, SmsProgress>()
-
     private var smsOperationActive = false
-    private var sendQueue: List<Contact> = emptyList()
-    private var queueIndex = 0
 
-    private val operationResults = linkedMapOf<String, SmsResult>()
+    private var sendQueue =
+        emptyList<Contact>()
+
+    private var queueIndex = 0
 
     private var smsReceiverRegistered = false
 
@@ -113,20 +125,33 @@ Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal electio
 
 Thank you- Mohit Arora, 9518804747"""
 
+    // ---------------------------------------------------------
+    // CSV picker
+    // ---------------------------------------------------------
+
     private val pickCsvLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+
             uri?.let {
                 loadCsv(it)
             }
         }
 
+    // ---------------------------------------------------------
+    // SMS permission
+    // ---------------------------------------------------------
+
     private val smsPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { granted ->
+
             if (granted) {
                 startSmsConfirmation()
             } else {
+
                 showAlert(
                     "SMS Permission",
                     "SMS permission is required to send messages."
@@ -134,67 +159,106 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    private val smsSentReceiver = object : BroadcastReceiver() {
+    // ---------------------------------------------------------
+    // SMS sent receiver
+    // ---------------------------------------------------------
 
-        override fun onReceive(context: Context, intent: Intent) {
+    private val smsSentReceiver =
+        object : BroadcastReceiver() {
 
-            if (intent.action != SMS_SENT_ACTION) return
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
 
-            val requestId =
-                intent.getIntExtra(EXTRA_REQUEST_ID, -1)
+                if (
+                    intent?.action != SMS_SENT_ACTION
+                ) {
+                    return
+                }
 
-            val phone =
-                requestToPhone.remove(requestId)
-                    ?: return
-
-            val progress =
-                pendingSms[phone]
-                    ?: return
-
-            val resultCode = resultCode
-
-            if (resultCode == Activity.RESULT_OK) {
-
-                progress.completedParts++
-
-            } else {
-
-                progress.failed = true
-                progress.errorCode = resultCode
-                progress.completedParts++
-            }
-
-            if (progress.completedParts >= progress.totalParts) {
-
-                pendingSms.remove(phone)
-
-                if (progress.failed) {
-
-                    completeSms(
-                        progress.contact,
-                        false,
-                        smsErrorMessage(progress.errorCode)
+                val requestId =
+                    intent.getIntExtra(
+                        EXTRA_REQUEST_ID,
+                        -1
                     )
+
+                if (requestId == -1) {
+                    return
+                }
+
+                val phone =
+                    requestToPhone.remove(
+                        requestId
+                    ) ?: return
+
+                val progress =
+                    pendingSms[phone]
+                        ?: return
+
+                val resultCode =
+                    resultCode
+
+                if (
+                    resultCode == Activity.RESULT_OK
+                ) {
+
+                    progress.completedParts++
 
                 } else {
 
-                    completeSms(
-                        progress.contact,
-                        true,
-                        "SMS submitted successfully to Android SMS service."
-                    )
+                    progress.failed = true
+                    progress.errorCode = resultCode
+                    progress.completedParts++
                 }
+
+                if (
+                    progress.completedParts >=
+                    progress.totalParts
+                ) {
+
+                    pendingSms.remove(phone)
+
+                    if (progress.failed) {
+
+                        completeSms(
+                            progress.contact,
+                            false,
+                            smsErrorMessage(
+                                progress.errorCode
+                            )
+                        )
+
+                    } else {
+
+                        completeSms(
+                            progress.contact,
+                            true,
+                            "SMS submitted successfully."
+                        )
+                    }
+                }
+
+                updateCounts()
+                checkSmsOperationFinished()
             }
-
-            updateCounts()
-            checkSmsOperationFinished()
         }
-    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    // =========================================================
+    // onCreate
+    // =========================================================
 
-        setContentView(R.layout.activity_main)
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+
+        super.onCreate(
+            savedInstanceState
+        )
+
+        setContentView(
+            R.layout.activity_main
+        )
 
         initialiseViews()
         setupRecycler()
@@ -207,52 +271,95 @@ Thank you- Mohit Arora, 9518804747"""
         updateCounts()
     }
 
+    // =========================================================
+    // Views
+    // =========================================================
+
     private fun initialiseViews() {
 
-        edtMessage = findViewById(R.id.edtMessage)
-        edtSearch = findViewById(R.id.edtSearch)
+        edtMessage =
+            findViewById(R.id.edtMessage)
 
-        txtStatus = findViewById(R.id.txtStatus)
-        txtStats = findViewById(R.id.txtStats)
-        txtSelected = findViewById(R.id.txtSelected)
+        edtSearch =
+            findViewById(R.id.edtSearch)
 
-        recyclerContacts = findViewById(R.id.recyclerContacts)
+        txtStatus =
+            findViewById(R.id.txtStatus)
 
-        btnUpload = findViewById(R.id.btnUpload)
-        btnSelectAll = findViewById(R.id.btnSelectAll)
-        btnUnselectAll = findViewById(R.id.btnUnselectAll)
-        btnPreview = findViewById(R.id.btnPreview)
-        btnTestSms = findViewById(R.id.btnTestSms)
-        btnSendSms = findViewById(R.id.btnSendSms)
-        btnWhatsApp = findViewById(R.id.btnWhatsApp)
-        btnReset = findViewById(R.id.btnReset)
-        btnClearData = findViewById(R.id.btnClearData)
+        txtStats =
+            findViewById(R.id.txtStats)
 
-        txtFile = findViewById(R.id.txtFile)
+        txtSelected =
+            findViewById(R.id.txtSelected)
 
-        // Remove old Draft/Schedule controls if they still exist
+        txtFile =
+            findViewById(R.id.txtFile)
+
+        recyclerContacts =
+            findViewById(R.id.recyclerContacts)
+
+        btnUpload =
+            findViewById(R.id.btnUpload)
+
+        btnSelectAll =
+            findViewById(R.id.btnSelectAll)
+
+        btnUnselectAll =
+            findViewById(R.id.btnUnselectAll)
+
+        btnPreview =
+            findViewById(R.id.btnPreview)
+
+        btnTestSms =
+            findViewById(R.id.btnTestSms)
+
+        btnSendSms =
+            findViewById(R.id.btnSendSms)
+
+        btnWhatsApp =
+            findViewById(R.id.btnWhatsApp)
+
+        btnReset =
+            findViewById(R.id.btnReset)
+
+        btnClearData =
+            findViewById(R.id.btnClearData)
+
+        // Hide old Draft / Schedule buttons if they
+        // are still present in the existing layout.
         hideOldButton("btnSaveDraft")
         hideOldButton("btnSchedule")
         hideOldButton("btnCancelSchedule")
     }
 
+    // =========================================================
+    // RecyclerView
+    // =========================================================
+
     private fun setupRecycler() {
 
-        adapter = ContactAdapter(
-            contacts
-        ) {
-            updateCounts()
-        }
+        adapter =
+            ContactAdapter(
+                contacts
+            ) {
+                updateCounts()
+            }
 
         recyclerContacts.layoutManager =
             LinearLayoutManager(this)
 
-        recyclerContacts.adapter = adapter
+        recyclerContacts.adapter =
+            adapter
     }
+
+    // =========================================================
+    // Buttons
+    // =========================================================
 
     private fun setupButtons() {
 
         btnUpload.setOnClickListener {
+
             pickCsvLauncher.launch(
                 arrayOf(
                     "text/csv",
@@ -267,28 +374,36 @@ Thank you- Mohit Arora, 9518804747"""
         btnSelectAll.setOnClickListener {
 
             if (contacts.isEmpty()) {
+
                 showAlert(
                     "Select All",
                     "Please upload a CSV file first."
                 )
+
                 return@setOnClickListener
             }
 
-            adapter.selectAll(contacts)
+            adapter.selectAll(
+                contacts
+            )
+
             updateCounts()
         }
 
         btnUnselectAll.setOnClickListener {
 
             adapter.unselectAll()
+
             updateCounts()
         }
 
         btnPreview.setOnClickListener {
+
             showPreview()
         }
 
         btnTestSms.setOnClickListener {
+
             testSms()
         }
 
@@ -306,7 +421,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
 
             val message =
-                edtMessage.text.toString().trim()
+                edtMessage.text
+                    .toString()
+                    .trim()
 
             if (message.isEmpty()) {
 
@@ -318,7 +435,8 @@ Thank you- Mohit Arora, 9518804747"""
                 return@setOnClickListener
             }
 
-            val selected = selectedContacts()
+            val selected =
+                selectedContacts()
 
             if (selected.isEmpty()) {
 
@@ -334,15 +452,28 @@ Thank you- Mohit Arora, 9518804747"""
         }
 
         btnWhatsApp.setOnClickListener {
+
             sendWhatsApp()
         }
 
         btnReset.setOnClickListener {
 
+            if (smsOperationActive) {
+
+                Toast.makeText(
+                    this,
+                    "Please wait until SMS sending is completed.",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return@setOnClickListener
+            }
+
             adapter.unselectAll()
 
             contacts.forEach {
-                it.smsStatus = SmsStatus.NONE
+                it.smsStatus =
+                    SmsStatus.NONE
             }
 
             updateCounts()
@@ -368,68 +499,104 @@ Thank you- Mohit Arora, 9518804747"""
 
             contacts.clear()
 
-            adapter.replaceContacts(emptyList())
+            adapter.replaceContacts(
+                emptyList()
+            )
 
-            txtFile.text = "No CSV selected"
+            txtFile.text =
+                "No CSV selected"
+
+            txtStatus.text =
+                "All contact data cleared."
 
             updateCounts()
-
-            txtStatus.text = "All contact data cleared."
         }
     }
+
+    // =========================================================
+    // Default message
+    // =========================================================
 
     private fun setupMessage() {
 
-        if (edtMessage.text.toString().trim().isEmpty()) {
-            edtMessage.setText(defaultMessage)
+        if (
+            edtMessage.text
+                .toString()
+                .trim()
+                .isEmpty()
+        ) {
+
+            edtMessage.setText(
+                defaultMessage
+            )
         }
     }
+
+    // =========================================================
+    // Search
+    // =========================================================
 
     private fun setupSearch() {
 
         edtSearch.addTextChangedListener {
 
             adapter.filter(
-                it?.toString().orEmpty()
+                it?.toString()
+                    .orEmpty()
             )
         }
     }
 
-    private fun setupSmsReceiver() {
-
-        val filter =
-            IntentFilter(SMS_SENT_ACTION)
-
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-
-            registerReceiver(
-                smsSentReceiver,
-                filter,
-                Context.RECEIVER_NOT_EXPORTED
-            )
-
-        } else {
-
-            registerReceiver(
-                smsSentReceiver,
-                filter
-            )
-        }
-
-        smsReceiverRegistered = true
-    }
+    // =========================================================
+    // Button colors
+    // =========================================================
 
     private fun setupButtonColors() {
 
-        setButtonColor(btnUpload, "#1976D2")
-        setButtonColor(btnSelectAll, "#455A64")
-        setButtonColor(btnUnselectAll, "#757575")
-        setButtonColor(btnPreview, "#7B1FA2")
-        setButtonColor(btnTestSms, "#F9A825")
-        setButtonColor(btnSendSms, "#2E7D32")
-        setButtonColor(btnWhatsApp, "#00897B")
-        setButtonColor(btnReset, "#EF6C00")
-        setButtonColor(btnClearData, "#C62828")
+        setButtonColor(
+            btnUpload,
+            "#1976D2"
+        )
+
+        setButtonColor(
+            btnSelectAll,
+            "#455A64"
+        )
+
+        setButtonColor(
+            btnUnselectAll,
+            "#757575"
+        )
+
+        setButtonColor(
+            btnPreview,
+            "#7B1FA2"
+        )
+
+        setButtonColor(
+            btnTestSms,
+            "#F9A825"
+        )
+
+        setButtonColor(
+            btnSendSms,
+            "#2E7D32"
+        )
+
+        setButtonColor(
+            btnWhatsApp,
+            "#00897B"
+        )
+
+        setButtonColor(
+            btnReset,
+            "#EF6C00"
+        )
+
+        setButtonColor(
+            btnClearData,
+            "#C62828"
+        )
     }
 
     private fun setButtonColor(
@@ -443,7 +610,9 @@ Thank you- Mohit Arora, 9518804747"""
             )
     }
 
-    private fun hideOldButton(name: String) {
+    private fun hideOldButton(
+        name: String
+    ) {
 
         val id =
             resources.getIdentifier(
@@ -454,22 +623,35 @@ Thank you- Mohit Arora, 9518804747"""
 
         if (id != 0) {
 
-            findViewById<android.view.View>(id)
-                ?.visibility = android.view.View.GONE
+            findViewById<View>(id)
+                ?.visibility = View.GONE
         }
     }
 
-    private fun loadCsv(uri: Uri) {
+    // =========================================================
+    // CSV
+    // =========================================================
+
+    private fun loadCsv(
+        uri: Uri
+    ) {
 
         try {
 
             val inputStream =
-                contentResolver.openInputStream(uri)
-                    ?: throw Exception("Unable to open CSV.")
+                contentResolver.openInputStream(
+                    uri
+                )
+                    ?: throw Exception(
+                        "Unable to open CSV file."
+                    )
 
             val reader =
-                BufferedReader(
-                    InputStreamReader(inputStream, Charsets.UTF_8)
+                java.io.BufferedReader(
+                    java.io.InputStreamReader(
+                        inputStream,
+                        Charsets.UTF_8
+                    )
                 )
 
             val lines =
@@ -490,11 +672,20 @@ Thank you- Mohit Arora, 9518804747"""
             val headers =
                 parseCsvLine(
                     lines[0]
-                ).mapIndexed { index, value ->
+                ).mapIndexed {
+                        index,
+                        value ->
 
                     if (index == 0) {
-                        value.trim().removePrefix("\uFEFF")
+
+                        value
+                            .trim()
+                            .removePrefix(
+                                "\uFEFF"
+                            )
+
                     } else {
+
                         value.trim()
                     }
                 }
@@ -537,53 +728,76 @@ Thank you- Mohit Arora, 9518804747"""
             val usedPhones =
                 mutableSetOf<String>()
 
-            for (lineIndex in 1 until lines.size) {
+            for (
+                lineIndex in
+                1 until lines.size
+            ) {
 
-                val line = lines[lineIndex]
+                val line =
+                    lines[lineIndex]
 
-                if (line.isBlank()) continue
+                if (line.isBlank()) {
+                    continue
+                }
 
                 val values =
-                    parseCsvLine(line)
+                    parseCsvLine(
+                        line
+                    )
 
                 val rawPhone =
-                    values.getOrNull(phoneIndex)
+                    values
+                        .getOrNull(phoneIndex)
                         ?.trim()
                         .orEmpty()
 
                 val phone =
-                    normalizePhone(rawPhone)
+                    normalizePhone(
+                        rawPhone
+                    )
 
-                if (phone.isEmpty()) continue
+                if (phone.isEmpty()) {
+                    continue
+                }
 
+                // Do not add duplicate mobile numbers.
                 if (!usedPhones.add(phone)) {
                     continue
                 }
 
                 val rawName =
                     if (nameIndex >= 0) {
-                        values.getOrNull(nameIndex)
+
+                        values
+                            .getOrNull(nameIndex)
                             ?.trim()
                             .orEmpty()
+
                     } else {
+
                         ""
                     }
 
                 val displayName =
-                    cleanName(rawName)
-                        .ifBlank {
-                            "Contact ${contacts.size + 1}"
-                        }
+                    cleanName(
+                        rawName
+                    ).ifBlank {
+
+                        "Contact ${contacts.size + 1}"
+                    }
 
                 val fields =
                     linkedMapOf<String, String>()
 
-                headers.forEachIndexed { index, header ->
+                headers.forEachIndexed {
+                        index,
+                        header ->
 
                     if (header.isNotBlank()) {
 
                         fields[header] =
-                            values.getOrNull(index)
+                            values
+                                .getOrNull(index)
                                 ?.trim()
                                 .orEmpty()
                     }
@@ -599,7 +813,9 @@ Thank you- Mohit Arora, 9518804747"""
                 )
             }
 
-            adapter.replaceContacts(contacts)
+            adapter.replaceContacts(
+                contacts
+            )
 
             txtFile.text =
                 getFileName(uri)
@@ -613,10 +829,92 @@ Thank you- Mohit Arora, 9518804747"""
 
             showAlert(
                 "CSV Error",
-                e.message ?: "Unable to read CSV file."
+                e.message
+                    ?: "Unable to read CSV file."
             )
         }
     }
+
+    // =========================================================
+    // CSV parser
+    // =========================================================
+
+    private fun parseCsvLine(
+        line: String
+    ): List<String> {
+
+        val result =
+            mutableListOf<String>()
+
+        // IMPORTANT:
+        // This MUST be var because it is replaced
+        // with a new StringBuilder after each comma.
+        var current =
+            StringBuilder()
+
+        var insideQuotes =
+            false
+
+        var index = 0
+
+        while (index < line.length) {
+
+            val char =
+                line[index]
+
+            when {
+
+                char == '"' -> {
+
+                    if (
+                        insideQuotes &&
+                        index + 1 < line.length &&
+                        line[index + 1] == '"'
+                    ) {
+
+                        current.append('"')
+
+                        index++
+
+                    } else {
+
+                        insideQuotes =
+                            !insideQuotes
+                    }
+                }
+
+                char == ',' &&
+                        !insideQuotes -> {
+
+                    result.add(
+                        current.toString()
+                    )
+
+                    current =
+                        StringBuilder()
+                }
+
+                else -> {
+
+                    current.append(
+                        char
+                    )
+                }
+            }
+
+            index++
+        }
+
+        result.add(
+            current.toString()
+        )
+
+        return result
+    }
+
+    // =========================================================
+    // Header lookup
+    // =========================================================
 
     private fun findHeaderIndex(
         headers: List<String>,
@@ -635,64 +933,9 @@ Thank you- Mohit Arora, 9518804747"""
         }
     }
 
-    private fun parseCsvLine(
-        line: String
-    ): List<String> {
-
-        val result = mutableListOf<String>()
-
-        var current = StringBuilder()
-        var insideQuotes = false
-
-        var index = 0
-
-        while (index < line.length) {
-
-            val char = line[index]
-
-            when {
-
-                char == '"' -> {
-
-                    if (
-                        insideQuotes &&
-                        index + 1 < line.length &&
-                        line[index + 1] == '"'
-                    ) {
-
-                        current.append('"')
-                        index++
-
-                    } else {
-
-                        insideQuotes =
-                            !insideQuotes
-                    }
-                }
-
-                char == ',' && !insideQuotes -> {
-
-                    result.add(
-                        current.toString()
-                    )
-
-                    current = StringBuilder()
-                }
-
-                else -> {
-                    current.append(char)
-                }
-            }
-
-            index++
-        }
-
-        result.add(
-            current.toString()
-        )
-
-        return result
-    }
+    // =========================================================
+    // Name cleanup
+    // =========================================================
 
     private fun cleanName(
         value: String
@@ -705,31 +948,50 @@ Thank you- Mohit Arora, 9518804747"""
             .trim()
     }
 
+    // =========================================================
+    // Phone normalization
+    // =========================================================
+
     private fun normalizePhone(
         value: String
     ): String {
 
-        var raw =
+        val candidates =
             value
                 .trim()
-                .replace(".0", "")
+                .replace(
+                    ".0",
+                    ""
+                )
+                .split(
+                    Regex("[,;/\\s]+")
+                )
 
-        // If several values are present, try each one.
-        val candidates =
-            raw.split(
-                Regex("[,;/\\s]+")
-            )
-
-        for (candidate in candidates) {
+        for (
+            candidate in candidates
+        ) {
 
             var number =
                 candidate
-                    .replace(Regex("[^0-9+]"), "")
+                    .replace(
+                        Regex("[^0-9+]"),
+                        ""
+                    )
 
-            if (number.startsWith("+91")) {
-                number = number.substring(3)
-            } else if (number.startsWith("91") && number.length == 12) {
-                number = number.substring(2)
+            if (
+                number.startsWith("+91")
+            ) {
+
+                number =
+                    number.substring(3)
+
+            } else if (
+                number.startsWith("91") &&
+                number.length == 12
+            ) {
+
+                number =
+                    number.substring(2)
             }
 
             number =
@@ -737,7 +999,10 @@ Thank you- Mohit Arora, 9518804747"""
                     it.isDigit()
                 }
 
-            if (number.length == 10) {
+            if (
+                number.length == 10
+            ) {
+
                 return "91$number"
             }
         }
@@ -745,15 +1010,27 @@ Thank you- Mohit Arora, 9518804747"""
         return ""
     }
 
-    private fun selectedContacts(): List<Contact> {
+    // =========================================================
+    // Selected contacts
+    // =========================================================
+
+    private fun selectedContacts():
+            List<Contact> {
 
         val selectedPhones =
             adapter.getSelectedPhones()
 
         return contacts.filter {
-            selectedPhones.contains(it.phone)
+
+            selectedPhones.contains(
+                it.phone
+            )
         }
     }
+
+    // =========================================================
+    // Personalized message
+    // =========================================================
 
     private fun personaliseMessage(
         contact: Contact
@@ -780,13 +1057,15 @@ Thank you- Mohit Arora, 9518804747"""
         replacements["{{Phone}}"] =
             contact.phone
 
-        contact.fields.forEach { (key, value) ->
+        contact.fields.forEach {
+                (key, value) ->
 
             replacements["{{$key}}"] =
                 value
         }
 
-        replacements.forEach { (key, value) ->
+        replacements.forEach {
+                (key, value) ->
 
             message =
                 message.replace(
@@ -798,6 +1077,10 @@ Thank you- Mohit Arora, 9518804747"""
 
         return message
     }
+
+    // =========================================================
+    // Preview
+    // =========================================================
 
     private fun showPreview() {
 
@@ -821,7 +1104,9 @@ Thank you- Mohit Arora, 9518804747"""
             "Selected contacts: ${selected.size}\n\n"
         )
 
-        selected.forEachIndexed { index, contact ->
+        selected.forEachIndexed {
+                index,
+                contact ->
 
             builder.append(
                 "${index + 1}. ${contact.name}\n"
@@ -832,7 +1117,7 @@ Thank you- Mohit Arora, 9518804747"""
             )
 
             builder.append(
-                "Status: ${statusText(contact.smsStatus)}\n"
+                "Status: ${statusText(contact.smsStatus)}\n\n"
             )
 
             builder.append(
@@ -851,7 +1136,8 @@ Thank you- Mohit Arora, 9518804747"""
         val textView =
             TextView(this).apply {
 
-                text = builder.toString()
+                text =
+                    builder.toString()
 
                 textSize = 15f
 
@@ -881,6 +1167,10 @@ Thank you- Mohit Arora, 9518804747"""
             .show()
     }
 
+    // =========================================================
+    // SMS permission
+    // =========================================================
+
     private fun checkSmsPermissionAndStart() {
 
         if (
@@ -900,6 +1190,10 @@ Thank you- Mohit Arora, 9518804747"""
         }
     }
 
+    // =========================================================
+    // SMS confirmation
+    // =========================================================
+
     private fun startSmsConfirmation() {
 
         val selected =
@@ -907,28 +1201,38 @@ Thank you- Mohit Arora, 9518804747"""
 
         val alreadySent =
             selected.count {
-                it.smsStatus == SmsStatus.SENT
+                it.smsStatus ==
+                        SmsStatus.SENT
             }
 
         val willSend =
             selected.count {
-                it.smsStatus != SmsStatus.SENT
+                it.smsStatus !=
+                        SmsStatus.SENT
             }
 
-        val message =
+        val confirmation =
             """
 Selected: ${selected.size}
+
 Already sent: $alreadySent
+
 Will send now: $willSend
 
-Each selected mobile number will receive its own personalized SMS.
+Each selected contact will receive one personalized SMS.
+
+Contacts already marked SENT will be skipped automatically.
 
 Do you want to continue?
             """.trimIndent()
 
         AlertDialog.Builder(this)
-            .setTitle("Confirm SMS Sending")
-            .setMessage(message)
+            .setTitle(
+                "Confirm SMS Sending"
+            )
+            .setMessage(
+                confirmation
+            )
             .setNegativeButton(
                 "Cancel",
                 null
@@ -937,69 +1241,104 @@ Do you want to continue?
                 "Send SMS"
             ) { _, _ ->
 
-                startSmsOperation(selected)
+                startSmsOperation(
+                    selected
+                )
             }
             .show()
     }
+
+    // =========================================================
+    // Start SMS operation
+    // =========================================================
 
     private fun startSmsOperation(
         selected: List<Contact>
     ) {
 
-        if (smsOperationActive) return
+        if (smsOperationActive) {
+            return
+        }
 
-        if (selected.isEmpty()) return
+        if (selected.isEmpty()) {
+            return
+        }
 
         operationResults.clear()
 
-        // Already sent contacts are skipped.
+        // Already SENT contacts are recorded as SKIPPED.
         selected.forEach { contact ->
 
-            if (contact.smsStatus == SmsStatus.SENT) {
+            if (
+                contact.smsStatus ==
+                SmsStatus.SENT
+            ) {
 
-                operationResults[contact.phone] =
+                operationResults[
+                    contact.phone
+                ] =
                     SmsResult(
-                        contact,
-                        "SKIPPED",
-                        "Already sent earlier in this session."
+                        contact = contact,
+                        status = "SKIPPED",
+                        detail =
+                            "Already sent earlier in this session."
                     )
             }
         }
 
         sendQueue =
             selected.filter {
-                it.smsStatus != SmsStatus.SENT
+
+                it.smsStatus !=
+                        SmsStatus.SENT
             }
 
         if (sendQueue.isEmpty()) {
 
-            showSmsResultAlert(selected)
+            txtStatus.text =
+                "All selected contacts were already sent."
+
+            showSmsResultAlert(
+                selected
+            )
 
             return
         }
 
-        smsOperationActive = true
+        smsOperationActive =
+            true
 
-        queueIndex = 0
+        queueIndex =
+            0
 
         pendingSms.clear()
         requestToPhone.clear()
 
-        btnSendSms.isEnabled = false
+        btnSendSms.isEnabled =
+            false
 
         txtStatus.text =
-            "Starting SMS sending for ${sendQueue.size} contacts..."
+            "Sending SMS to ${sendQueue.size} contacts..."
 
         updateCounts()
 
         dispatchNextSms()
     }
 
+    // =========================================================
+    // Process selected list
+    // =========================================================
+
     private fun dispatchNextSms() {
 
-        if (!smsOperationActive) return
+        if (!smsOperationActive) {
+            return
+        }
 
-        if (queueIndex >= sendQueue.size) {
+        if (
+            queueIndex >=
+            sendQueue.size
+        ) {
 
             checkSmsOperationFinished()
 
@@ -1011,6 +1350,8 @@ Do you want to continue?
 
         queueIndex++
 
+        // IMPORTANT:
+        // Exactly one contact is processed here.
         contact.smsStatus =
             SmsStatus.SENDING
 
@@ -1021,7 +1362,9 @@ Do you want to continue?
         updateCounts()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         try {
 
@@ -1035,10 +1378,12 @@ Do you want to continue?
             completeSms(
                 contact,
                 false,
-                e.message ?: "SMS sending error."
+                e.message
+                    ?: "SMS sending error."
             )
         }
 
+        // Process the next selected number.
         handler.postDelayed(
             {
                 dispatchNextSms()
@@ -1046,6 +1391,10 @@ Do you want to continue?
             SEND_DELAY_MS
         )
     }
+
+    // =========================================================
+    // Send one SMS
+    // =========================================================
 
     private fun sendSmsForContact(
         contact: Contact,
@@ -1056,7 +1405,9 @@ Do you want to continue?
             SmsManager.getDefault()
 
         val parts =
-            smsManager.divideMessage(message)
+            smsManager.divideMessage(
+                message
+            )
 
         val progress =
             SmsProgress(
@@ -1064,8 +1415,9 @@ Do you want to continue?
                 totalParts = parts.size
             )
 
-        pendingSms[contact.phone] =
-            progress
+        pendingSms[
+            contact.phone
+        ] = progress
 
         val sentIntents =
             ArrayList<PendingIntent>()
@@ -1075,22 +1427,23 @@ Do you want to continue?
             val requestId =
                 requestIdCounter++
 
-            requestToPhone[requestId] =
+            requestToPhone[
+                requestId
+            ] =
                 contact.phone
 
             val intent =
-                Intent(SMS_SENT_ACTION).apply {
+                Intent(
+                    SMS_SENT_ACTION
+                ).apply {
 
-                    setPackage(packageName)
+                    setPackage(
+                        packageName
+                    )
 
                     putExtra(
                         EXTRA_REQUEST_ID,
                         requestId
-                    )
-
-                    putExtra(
-                        EXTRA_PHONE,
-                        contact.phone
                     )
                 }
 
@@ -1130,6 +1483,10 @@ Do you want to continue?
         }
     }
 
+    // =========================================================
+    // Complete individual SMS
+    // =========================================================
+
     private fun completeSms(
         contact: Contact,
         success: Boolean,
@@ -1151,12 +1508,17 @@ Do you want to continue?
                 SmsStatus.FAILED
             }
 
-        operationResults[contact.phone] =
+        operationResults[
+            contact.phone
+        ] =
             SmsResult(
                 contact = contact,
                 status =
-                    if (success) "SENT"
-                    else "FAILED",
+                    if (success) {
+                        "SENT"
+                    } else {
+                        "FAILED"
+                    },
                 detail = detail
             )
 
@@ -1172,49 +1534,47 @@ Do you want to continue?
                     "${failedCount()} failed."
     }
 
+    // =========================================================
+    // Check operation completion
+    // =========================================================
+
     private fun checkSmsOperationFinished() {
 
-        if (!smsOperationActive) return
+        if (!smsOperationActive) {
+            return
+        }
 
         if (
             queueIndex >= sendQueue.size &&
-            pendingSms.isEmpty() &&
-            operationResults.size >=
-            selectedOperationCount()
+            pendingSms.isEmpty()
         ) {
 
-            smsOperationActive = false
+            smsOperationActive =
+                false
 
-            btnSendSms.isEnabled = true
+            btnSendSms.isEnabled =
+                true
 
             updateCounts()
 
             txtStatus.text =
                 "SMS sending completed."
 
+            val resultContacts =
+                operationResults.values
+                    .map {
+                        it.contact
+                    }
+
             showSmsResultAlert(
-                selectedContactsForResult()
+                resultContacts
             )
         }
     }
 
-    private fun selectedOperationCount(): Int {
-
-        return operationResults.size +
-                pendingSms.size +
-                sendQueue.size -
-                queueIndex
-    }
-
-    private fun selectedContactsForResult(): List<Contact> {
-
-        val resultPhones =
-            operationResults.keys
-
-        return contacts.filter {
-            resultPhones.contains(it.phone)
-        }
-    }
+    // =========================================================
+    // SMS result alert
+    // =========================================================
 
     private fun showSmsResultAlert(
         contactsForResult: List<Contact>
@@ -1222,7 +1582,10 @@ Do you want to continue?
 
         val results =
             contactsForResult.mapNotNull {
-                operationResults[it.phone]
+
+                operationResults[
+                    it.phone
+                ]
             }
 
         val sent =
@@ -1240,61 +1603,75 @@ Do you want to continue?
                 it.status == "SKIPPED"
             }
 
-        val text =
+        val builder =
             StringBuilder()
 
-        text.append(
-            "SMS Sending Result\n\n"
-        )
-
-        text.append(
+        builder.append(
             "Selected: ${results.size}\n"
         )
 
-        text.append(
+        builder.append(
             "Sent: $sent\n"
         )
 
-        text.append(
+        builder.append(
             "Failed: $failed\n"
         )
 
-        text.append(
+        builder.append(
             "Skipped: $skipped\n\n"
         )
 
-        text.append(
-            "Individual Details:\n\n"
+        builder.append(
+            "Individual Details\n"
         )
 
-        results.forEachIndexed { index, result ->
+        builder.append(
+            "============================\n\n"
+        )
+
+        results.forEachIndexed {
+                index,
+                result ->
 
             val symbol =
                 when (result.status) {
-                    "SENT" -> "✓"
-                    "FAILED" -> "✕"
-                    else -> "↷"
+
+                    "SENT" ->
+                        "✓"
+
+                    "FAILED" ->
+                        "✕"
+
+                    else ->
+                        "↷"
                 }
 
-            text.append(
+            builder.append(
                 "$symbol ${index + 1}. " +
                         "${result.contact.name}\n"
             )
 
-            text.append(
-                "   ${result.contact.phone}\n"
+            builder.append(
+                "   Mobile: " +
+                        "${result.contact.phone}\n"
             )
 
-            text.append(
-                "   ${result.status}: " +
-                        "${result.detail}\n\n"
+            builder.append(
+                "   Status: " +
+                        "${result.status}\n"
+            )
+
+            builder.append(
+                "   ${result.detail}\n\n"
             )
         }
 
         val textView =
             TextView(this).apply {
 
-                text = text.toString()
+                text =
+                    builder.toString()
 
                 textSize = 15f
 
@@ -1324,6 +1701,10 @@ Do you want to continue?
             .show()
     }
 
+    // =========================================================
+    // Test SMS
+    // =========================================================
+
     private fun testSms() {
 
         val selected =
@@ -1343,12 +1724,16 @@ Do you want to continue?
             selected.first()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         AlertDialog.Builder(this)
-            .setTitle("Test SMS")
+            .setTitle(
+                "Test SMS"
+            )
             .setMessage(
-                "A test SMS will be sent to:\n\n" +
+                "Test SMS will be sent to:\n\n" +
                         "${contact.name}\n" +
                         "${contact.phone}\n\n" +
                         message
@@ -1390,7 +1775,7 @@ Do you want to continue?
 
                     showAlert(
                         "Test SMS",
-                        "SMS request submitted to Android SMS service.\n\n" +
+                        "SMS request submitted.\n\n" +
                                 "Name: ${contact.name}\n" +
                                 "Number: ${contact.phone}"
                     )
@@ -1399,12 +1784,17 @@ Do you want to continue?
 
                     showAlert(
                         "Test SMS Failed",
-                        e.message ?: "Unable to send SMS."
+                        e.message
+                            ?: "Unable to send SMS."
                     )
                 }
             }
             .show()
     }
+
+    // =========================================================
+    // WhatsApp
+    // =========================================================
 
     private fun sendWhatsApp() {
 
@@ -1425,14 +1815,18 @@ Do you want to continue?
             selected.first()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         try {
 
             val uri =
                 Uri.parse(
-                    "https://wa.me/${contact.phone}" +
-                            "?text=${Uri.encode(message)}"
+                    "https://wa.me/" +
+                            "${contact.phone}" +
+                            "?text=" +
+                            Uri.encode(message)
                 )
 
             val intent =
@@ -1443,15 +1837,6 @@ Do you want to continue?
 
             startActivity(intent)
 
-            showAlert(
-                "WhatsApp",
-                "WhatsApp opened for:\n\n" +
-                        "${contact.name}\n" +
-                        contact.phone +
-                        "\n\n" +
-                        "WhatsApp does not allow this app to silently bulk-send messages to all selected contacts."
-            )
-
         } catch (e: Exception) {
 
             showAlert(
@@ -1461,24 +1846,33 @@ Do you want to continue?
         }
     }
 
+    // =========================================================
+    // Counts
+    // =========================================================
+
     private fun updateCounts() {
 
         val selected =
-            adapter.getSelectedPhones().size
+            adapter
+                .getSelectedPhones()
+                .size
 
         val sent =
             contacts.count {
-                it.smsStatus == SmsStatus.SENT
+                it.smsStatus ==
+                        SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
-                it.smsStatus == SmsStatus.FAILED
+                it.smsStatus ==
+                        SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
-                it.smsStatus == SmsStatus.SENDING
+                it.smsStatus ==
+                        SmsStatus.SENDING
             }
 
         txtSelected.text =
@@ -1494,16 +1888,22 @@ Do you want to continue?
     private fun sentCount(): Int {
 
         return contacts.count {
-            it.smsStatus == SmsStatus.SENT
+            it.smsStatus ==
+                    SmsStatus.SENT
         }
     }
 
     private fun failedCount(): Int {
 
         return contacts.count {
-            it.smsStatus == SmsStatus.FAILED
+            it.smsStatus ==
+                    SmsStatus.FAILED
         }
     }
+
+    // =========================================================
+    // Status text
+    // =========================================================
 
     private fun statusText(
         status: SmsStatus
@@ -1524,6 +1924,10 @@ Do you want to continue?
                 "FAILED"
         }
     }
+
+    // =========================================================
+    // SMS error
+    // =========================================================
 
     private fun smsErrorMessage(
         code: Int
@@ -1560,6 +1964,10 @@ Do you want to continue?
         }
     }
 
+    // =========================================================
+    // File name
+    // =========================================================
+
     private fun getFileName(
         uri: Uri
     ): String {
@@ -1579,14 +1987,23 @@ Do you want to continue?
                     OpenableColumns.DISPLAY_NAME
                 )
 
-            if (cursor.moveToFirst() && index >= 0) {
+            if (
+                cursor.moveToFirst() &&
+                index >= 0
+            ) {
+
                 result =
                     cursor.getString(index)
             }
         }
 
-        return result ?: "CSV file"
+        return result
+            ?: "CSV file"
     }
+
+    // =========================================================
+    // Generic alert
+    // =========================================================
 
     private fun showAlert(
         title: String,
@@ -1603,9 +2020,15 @@ Do you want to continue?
             .show()
     }
 
+    // =========================================================
+    // Destroy
+    // =========================================================
+
     override fun onDestroy() {
 
-        handler.removeCallbacksAndMessages(null)
+        handler.removeCallbacksAndMessages(
+            null
+        )
 
         if (smsReceiverRegistered) {
 
@@ -1613,7 +2036,8 @@ Do you want to continue?
                 smsSentReceiver
             )
 
-            smsReceiverRegistered = false
+            smsReceiverRegistered =
+                false
         }
 
         super.onDestroy()
