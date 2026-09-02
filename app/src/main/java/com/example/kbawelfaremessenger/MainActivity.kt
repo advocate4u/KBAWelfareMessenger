@@ -27,7 +27,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -66,9 +65,11 @@ class MainActivity : AppCompatActivity() {
         private const val SMS_SENT_ACTION =
             "com.example.kbawelfaremessenger.SMS_SENT"
 
-        private const val EXTRA_REQUEST_ID = "request_id"
+        private const val EXTRA_REQUEST_ID =
+            "request_id"
 
-        private const val SEND_DELAY_MS = 500L
+        private const val SEND_DELAY_MS =
+            500L
     }
 
     private lateinit var edtMessage: EditText
@@ -125,9 +126,9 @@ Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal electio
 
 Thank you- Mohit Arora, 9518804747"""
 
-    // ---------------------------------------------------------
+    // =========================================================
     // CSV picker
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val pickCsvLauncher =
         registerForActivityResult(
@@ -139,9 +140,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // SMS permission
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val smsPermissionLauncher =
         registerForActivityResult(
@@ -149,7 +150,9 @@ Thank you- Mohit Arora, 9518804747"""
         ) { granted ->
 
             if (granted) {
+
                 startSmsConfirmation()
+
             } else {
 
                 showAlert(
@@ -159,9 +162,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // SMS sent receiver
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val smsSentReceiver =
         object : BroadcastReceiver() {
@@ -196,11 +199,12 @@ Thank you- Mohit Arora, 9518804747"""
                     pendingSms[phone]
                         ?: return
 
-                val resultCode =
-                    resultCode
+                val smsResultCode =
+                    getResultCode()
 
                 if (
-                    resultCode == Activity.RESULT_OK
+                    smsResultCode ==
+                    Activity.RESULT_OK
                 ) {
 
                     progress.completedParts++
@@ -208,7 +212,9 @@ Thank you- Mohit Arora, 9518804747"""
                 } else {
 
                     progress.failed = true
-                    progress.errorCode = resultCode
+                    progress.errorCode =
+                        smsResultCode
+
                     progress.completedParts++
                 }
 
@@ -217,7 +223,9 @@ Thank you- Mohit Arora, 9518804747"""
                     progress.totalParts
                 ) {
 
-                    pendingSms.remove(phone)
+                    pendingSms.remove(
+                        phone
+                    )
 
                     if (progress.failed) {
 
@@ -272,7 +280,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Views
+    // Initialise views
     // =========================================================
 
     private fun initialiseViews() {
@@ -325,8 +333,6 @@ Thank you- Mohit Arora, 9518804747"""
         btnClearData =
             findViewById(R.id.btnClearData)
 
-        // Hide old Draft / Schedule buttons if they
-        // are still present in the existing layout.
         hideOldButton("btnSaveDraft")
         hideOldButton("btnSchedule")
         hideOldButton("btnCancelSchedule")
@@ -548,6 +554,43 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
+    // SMS receiver registration
+    // =========================================================
+
+    private fun setupSmsReceiver() {
+
+        val filter =
+            IntentFilter(
+                SMS_SENT_ACTION
+            )
+
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+
+            registerReceiver(
+                smsSentReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+        } else {
+
+            @Suppress(
+                "UnspecifiedRegisterReceiverFlag"
+            )
+
+            registerReceiver(
+                smsSentReceiver,
+                filter
+            )
+        }
+
+        smsReceiverRegistered = true
+    }
+
+    // =========================================================
     // Button colors
     // =========================================================
 
@@ -624,12 +667,13 @@ Thank you- Mohit Arora, 9518804747"""
         if (id != 0) {
 
             findViewById<View>(id)
-                ?.visibility = View.GONE
+                ?.visibility =
+                View.GONE
         }
     }
 
     // =========================================================
-    // CSV
+    // Load CSV
     // =========================================================
 
     private fun loadCsv(
@@ -760,7 +804,6 @@ Thank you- Mohit Arora, 9518804747"""
                     continue
                 }
 
-                // Do not add duplicate mobile numbers.
                 if (!usedPhones.add(phone)) {
                     continue
                 }
@@ -846,9 +889,7 @@ Thank you- Mohit Arora, 9518804747"""
         val result =
             mutableListOf<String>()
 
-        // IMPORTANT:
-        // This MUST be var because it is replaced
-        // with a new StringBuilder after each comma.
+        // MUST be var because it is reassigned.
         var current =
             StringBuilder()
 
@@ -873,7 +914,6 @@ Thank you- Mohit Arora, 9518804747"""
                     ) {
 
                         current.append('"')
-
                         index++
 
                     } else {
@@ -934,7 +974,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Name cleanup
+    // Clean name
     // =========================================================
 
     private fun cleanName(
@@ -949,7 +989,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Phone normalization
+    // Normalize phone
     // =========================================================
 
     private fun normalizePhone(
@@ -1029,7 +1069,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // Personalized message
+    // Personalize message
     // =========================================================
 
     private fun personaliseMessage(
@@ -1125,7 +1165,9 @@ Thank you- Mohit Arora, 9518804747"""
             )
 
             builder.append(
-                personaliseMessage(contact)
+                personaliseMessage(
+                    contact
+                )
             )
 
             builder.append(
@@ -1168,7 +1210,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // SMS permission
+    // Check SMS permission
     // =========================================================
 
     private fun checkSmsPermissionAndStart() {
@@ -1177,7 +1219,8 @@ Thank you- Mohit Arora, 9518804747"""
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.SEND_SMS
-            ) != PackageManager.PERMISSION_GRANTED
+            ) !=
+            PackageManager.PERMISSION_GRANTED
         ) {
 
             smsPermissionLauncher.launch(
@@ -1191,7 +1234,7 @@ Thank you- Mohit Arora, 9518804747"""
     }
 
     // =========================================================
-    // SMS confirmation
+    // Confirmation
     // =========================================================
 
     private fun startSmsConfirmation() {
@@ -1266,7 +1309,6 @@ Do you want to continue?
 
         operationResults.clear()
 
-        // Already SENT contacts are recorded as SKIPPED.
         selected.forEach { contact ->
 
             if (
@@ -1281,7 +1323,7 @@ Do you want to continue?
                         contact = contact,
                         status = "SKIPPED",
                         detail =
-                            "Already sent earlier in this session."
+                            "Already sent earlier."
                     )
             }
         }
@@ -1326,7 +1368,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Process selected list
+    // Dispatch next SMS
     // =========================================================
 
     private fun dispatchNextSms() {
@@ -1350,8 +1392,6 @@ Do you want to continue?
 
         queueIndex++
 
-        // IMPORTANT:
-        // Exactly one contact is processed here.
         contact.smsStatus =
             SmsStatus.SENDING
 
@@ -1383,7 +1423,6 @@ Do you want to continue?
             )
         }
 
-        // Process the next selected number.
         handler.postDelayed(
             {
                 dispatchNextSms()
@@ -1393,7 +1432,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Send one SMS
+    // Send SMS to one contact
     // =========================================================
 
     private fun sendSmsForContact(
@@ -1408,6 +1447,13 @@ Do you want to continue?
             smsManager.divideMessage(
                 message
             )
+
+        if (parts.isEmpty()) {
+
+            throw IllegalArgumentException(
+                "Message is empty."
+            )
+        }
 
         val progress =
             SmsProgress(
@@ -1484,7 +1530,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Complete individual SMS
+    // Complete one SMS
     // =========================================================
 
     private fun completeSms(
@@ -1535,7 +1581,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Check operation completion
+    // Check completion
     // =========================================================
 
     private fun checkSmsOperationFinished() {
@@ -1545,7 +1591,8 @@ Do you want to continue?
         }
 
         if (
-            queueIndex >= sendQueue.size &&
+            queueIndex >=
+            sendQueue.size &&
             pendingSms.isEmpty()
         ) {
 
@@ -1573,7 +1620,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // SMS result alert
+    // Result alert
     // =========================================================
 
     private fun showSmsResultAlert(
@@ -1750,8 +1797,15 @@ Do you want to continue?
                     ContextCompat.checkSelfPermission(
                         this,
                         Manifest.permission.SEND_SMS
-                    ) != PackageManager.PERMISSION_GRANTED
+                    ) !=
+                    PackageManager.PERMISSION_GRANTED
                 ) {
+
+                    Toast.makeText(
+                        this,
+                        "Please grant SMS permission and tap Test SMS again.",
+                        Toast.LENGTH_LONG
+                    ).show()
 
                     smsPermissionLauncher.launch(
                         Manifest.permission.SEND_SMS
@@ -1824,7 +1878,7 @@ Do you want to continue?
             val uri =
                 Uri.parse(
                     "https://wa.me/" +
-                            "${contact.phone}" +
+                            contact.phone +
                             "?text=" +
                             Uri.encode(message)
                 )
@@ -1902,7 +1956,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Status text
+    // Status
     // =========================================================
 
     private fun statusText(
@@ -1926,7 +1980,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // SMS error
+    // SMS error message
     // =========================================================
 
     private fun smsErrorMessage(
@@ -1965,7 +2019,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // File name
+    // Get file name
     // =========================================================
 
     private fun getFileName(
@@ -2002,7 +2056,7 @@ Do you want to continue?
     }
 
     // =========================================================
-    // Generic alert
+    // Alert
     // =========================================================
 
     private fun showAlert(
