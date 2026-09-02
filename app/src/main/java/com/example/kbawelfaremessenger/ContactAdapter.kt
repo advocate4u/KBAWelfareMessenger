@@ -1,5 +1,6 @@
 package com.example.kbawelfaremessenger
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -7,48 +8,36 @@ import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-
 class ContactAdapter(
-    private var contacts: List<Contact>,
+    private var allContacts: List<Contact>,
     private val onSelectionChanged: () -> Unit
 ) : RecyclerView.Adapter<ContactAdapter.ContactViewHolder>() {
 
+    private var filteredContacts =
+        allContacts.toList()
 
-    /*
-     * Store selection by phone number.
-     *
-     * This is important because the RecyclerView list
-     * can be filtered by search.
-     */
     private val selectedPhones =
         LinkedHashSet<String>()
 
-
-    inner class ContactViewHolder(
+    class ContactViewHolder(
         itemView: View
     ) : RecyclerView.ViewHolder(itemView) {
 
-        val checkbox: CheckBox =
-            itemView.findViewById(
-                R.id.chkContact
-            )
+        val checkBox: CheckBox =
+            itemView.findViewById(R.id.chkContact)
 
         val txtName: TextView =
-            itemView.findViewById(
-                R.id.txtContactName
-            )
+            itemView.findViewById(R.id.txtContactName)
 
         val txtPhone: TextView =
-            itemView.findViewById(
-                R.id.txtContactPhone
-            )
+            itemView.findViewById(R.id.txtContactPhone)
 
-        val txtFields: TextView =
-            itemView.findViewById(
-                R.id.txtContactFields
-            )
+        val txtOtherFields: TextView =
+            itemView.findViewById(R.id.txtOtherFields)
+
+        val txtStatus: TextView =
+            itemView.findViewById(R.id.txtContactStatus)
     }
-
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -56,20 +45,16 @@ class ContactAdapter(
     ): ContactViewHolder {
 
         val view =
-            LayoutInflater
-                .from(parent.context)
-                .inflate(
-                    R.layout.item_contact,
-                    parent,
-                    false
-                )
+            LayoutInflater.from(
+                parent.context
+            ).inflate(
+                R.layout.item_contact,
+                parent,
+                false
+            )
 
-
-        return ContactViewHolder(
-            view
-        )
+        return ContactViewHolder(view)
     }
-
 
     override fun onBindViewHolder(
         holder: ContactViewHolder,
@@ -77,119 +62,79 @@ class ContactAdapter(
     ) {
 
         val contact =
-            contacts[position]
-
-
-        /*
-         * Important:
-         * Remove listener before setting checked state.
-         * Otherwise RecyclerView can trigger the listener
-         * while recycling rows.
-         */
-        holder.checkbox.setOnCheckedChangeListener(
-            null
-        )
-
-
-        holder.checkbox.isChecked =
-            selectedPhones.contains(
-                contact.phone
-            )
-
+            filteredContacts[position]
 
         holder.txtName.text =
-            contact.name.ifBlank {
-                "Unnamed"
-            }
-
+            contact.name
 
         holder.txtPhone.text =
             contact.phone
 
+        holder.checkBox.setOnCheckedChangeListener(
+            null
+        )
 
-        /*
-         * Display all other CSV fields.
-         *
-         * OriginalName and MobileNumber are omitted
-         * because they are already displayed above.
-         */
-        val otherFields =
-            contact.fields
-                .filter { (key, _) ->
+        holder.checkBox.isChecked =
+            selectedPhones.contains(
+                contact.phone
+            )
 
-                    !key.equals(
-                        "OriginalName",
-                        ignoreCase = true
-                    ) &&
+        holder.txtOtherFields.text =
+            buildOtherFields(contact)
 
-                    !key.equals(
-                        "Original Name",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "Name",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "MobileNumber",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "Mobile Number",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "Mobile",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "Phone",
-                        ignoreCase = true
-                    ) &&
-
-                    !key.equals(
-                        "PhoneNumber",
-                        ignoreCase = true
-                    )
-                }
-                .filter {
-                    it.value.isNotBlank()
-                }
-
-
-        if (otherFields.isEmpty()) {
-
-            holder.txtFields.visibility =
+        if (holder.txtOtherFields.text.isBlank()) {
+            holder.txtOtherFields.visibility =
                 View.GONE
-
-            holder.txtFields.text =
-                ""
-
         } else {
-
-            holder.txtFields.visibility =
+            holder.txtOtherFields.visibility =
                 View.VISIBLE
-
-
-            holder.txtFields.text =
-                otherFields
-                    .entries
-                    .joinToString(
-                        separator = "\n"
-                    ) {
-                        "${it.key}: ${it.value}"
-                    }
         }
 
+        when (contact.smsStatus) {
 
-        holder.checkbox.setOnCheckedChangeListener {
-                _,
-                checked ->
+            SmsStatus.NONE -> {
+
+                holder.txtStatus.text =
+                    "Not sent"
+
+                holder.txtStatus.setTextColor(
+                    Color.DKGRAY
+                )
+            }
+
+            SmsStatus.SENDING -> {
+
+                holder.txtStatus.text =
+                    "⏳ SENDING"
+
+                holder.txtStatus.setTextColor(
+                    Color.rgb(245, 124, 0)
+                )
+            }
+
+            SmsStatus.SENT -> {
+
+                holder.txtStatus.text =
+                    "✓ SENT"
+
+                holder.txtStatus.setTextColor(
+                    Color.rgb(46, 125, 50)
+                )
+            }
+
+            SmsStatus.FAILED -> {
+
+                holder.txtStatus.text =
+                    "✕ FAILED"
+
+                holder.txtStatus.setTextColor(
+                    Color.rgb(198, 40, 40)
+                )
+            }
+        }
+
+        holder.checkBox.setOnCheckedChangeListener {
+                _, checked ->
 
             if (checked) {
 
@@ -204,54 +149,123 @@ class ContactAdapter(
                 )
             }
 
-
             onSelectionChanged()
         }
 
-
-        /*
-         * Allow tapping the row itself to toggle
-         * the checkbox.
-         */
         holder.itemView.setOnClickListener {
 
-            holder.checkbox.isChecked =
-                !holder.checkbox.isChecked
+            holder.checkBox.performClick()
         }
     }
 
+    private fun buildOtherFields(
+        contact: Contact
+    ): String {
+
+        val ignored =
+            setOf(
+                "name",
+                "original name",
+                "given name",
+                "phone 1 - value",
+                "mobile",
+                "mobile number",
+                "phone",
+                "phone number",
+                "m.no."
+            )
+
+        return contact.fields
+            .filter { (key, value) ->
+
+                value.isNotBlank() &&
+                        !ignored.contains(
+                            key.trim()
+                                .lowercase()
+                        )
+            }
+            .map { (key, value) ->
+                "$key: $value"
+            }
+            .joinToString("  |  ")
+    }
 
     override fun getItemCount(): Int =
-        contacts.size
+        filteredContacts.size
 
-
-    fun setContacts(
-        newContacts: List<Contact>
+    fun filter(
+        query: String
     ) {
 
-        contacts =
-            newContacts
+        val q =
+            query.trim().lowercase()
 
+        filteredContacts =
+            if (q.isEmpty()) {
+
+                allContacts.toList()
+
+            } else {
+
+                allContacts.filter { contact ->
+
+                    contact.name
+                        .lowercase()
+                        .contains(q) ||
+
+                    contact.phone
+                        .contains(q) ||
+
+                    contact.fields.any { (key, value) ->
+
+                        key.lowercase()
+                            .contains(q) ||
+
+                                value.lowercase()
+                                    .contains(q)
+                    }
+                }
+            }
 
         notifyDataSetChanged()
     }
 
+    fun replaceContacts(
+        contacts: List<Contact>
+    ) {
 
-    fun selectAll() {
+        allContacts = contacts
 
-        contacts.forEach {
-
-            selectedPhones.add(
+        selectedPhones.retainAll(
+            contacts.map {
                 it.phone
-            )
-        }
+            }.toSet()
+        )
 
+        filteredContacts =
+            contacts.toList()
 
         notifyDataSetChanged()
 
         onSelectionChanged()
     }
 
+    fun selectAll(
+        contacts: List<Contact>
+    ) {
+
+        selectedPhones.clear()
+
+        selectedPhones.addAll(
+            contacts.map {
+                it.phone
+            }
+        )
+
+        notifyDataSetChanged()
+
+        onSelectionChanged()
+    }
 
     fun unselectAll() {
 
@@ -262,35 +276,20 @@ class ContactAdapter(
         onSelectionChanged()
     }
 
+    fun getSelectedPhones(): Set<String> =
+        selectedPhones.toSet()
 
-    fun clearSelection() {
+    fun notifyContactStatusChanged(
+        phone: String
+    ) {
 
-        selectedPhones.clear()
+        val index =
+            filteredContacts.indexOfFirst {
+                it.phone == phone
+            }
 
-        notifyDataSetChanged()
-
-        onSelectionChanged()
-    }
-
-
-    fun getSelectedCount(): Int =
-        selectedPhones.size
-
-
-    fun getSelectedContacts():
-            List<Contact> {
-
-        /*
-         * Return contacts in the original CSV order.
-         *
-         * This ensures the name and number always belong
-         * to the same Contact object.
-         */
-        return contacts.filter {
-
-            selectedPhones.contains(
-                it.phone
-            )
+        if (index >= 0) {
+            notifyItemChanged(index)
         }
     }
 }
