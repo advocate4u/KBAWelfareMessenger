@@ -70,6 +70,8 @@ class ContactAdapter(
         holder.txtPhone.text =
             contact.phone
 
+        // Important:
+        // Remove previous listener before setting the checkbox.
         holder.checkBox.setOnCheckedChangeListener(
             null
         )
@@ -82,10 +84,17 @@ class ContactAdapter(
         holder.txtOtherFields.text =
             buildOtherFields(contact)
 
-        if (holder.txtOtherFields.text.isBlank()) {
+        if (
+            holder.txtOtherFields.text
+                .toString()
+                .isBlank()
+        ) {
+
             holder.txtOtherFields.visibility =
                 View.GONE
+
         } else {
+
             holder.txtOtherFields.visibility =
                 View.VISIBLE
         }
@@ -108,7 +117,11 @@ class ContactAdapter(
                     "⏳ SENDING"
 
                 holder.txtStatus.setTextColor(
-                    Color.rgb(245, 124, 0)
+                    Color.rgb(
+                        245,
+                        124,
+                        0
+                    )
                 )
             }
 
@@ -118,7 +131,11 @@ class ContactAdapter(
                     "✓ SENT"
 
                 holder.txtStatus.setTextColor(
-                    Color.rgb(46, 125, 50)
+                    Color.rgb(
+                        46,
+                        125,
+                        50
+                    )
                 )
             }
 
@@ -128,7 +145,11 @@ class ContactAdapter(
                     "✕ FAILED"
 
                 holder.txtStatus.setTextColor(
-                    Color.rgb(198, 40, 40)
+                    Color.rgb(
+                        198,
+                        40,
+                        40
+                    )
                 )
             }
         }
@@ -172,7 +193,12 @@ class ContactAdapter(
                 "mobile number",
                 "phone",
                 "phone number",
-                "m.no."
+                "m.no.",
+                "m.no",
+                "mobile no",
+                "mobile no.",
+                "contact",
+                "contact number"
             )
 
         return contact.fields
@@ -185,20 +211,30 @@ class ContactAdapter(
                         )
             }
             .map { (key, value) ->
+
                 "$key: $value"
             }
-            .joinToString("  |  ")
+            .joinToString(
+                "  |  "
+            )
     }
 
     override fun getItemCount(): Int =
         filteredContacts.size
 
+    /**
+     * Search/filter contacts.
+     *
+     * Selection is NOT cleared when filtering.
+     * Therefore selections remain when the search is cleared.
+     */
     fun filter(
         query: String
     ) {
 
         val q =
-            query.trim().lowercase()
+            query.trim()
+                .lowercase()
 
         filteredContacts =
             if (q.isEmpty()) {
@@ -213,33 +249,44 @@ class ContactAdapter(
                         .lowercase()
                         .contains(q) ||
 
-                    contact.phone
-                        .contains(q) ||
+                            contact.phone
+                                .contains(q) ||
 
-                    contact.fields.any { (key, value) ->
+                            contact.fields.any {
+                                    (key, value) ->
 
-                        key.lowercase()
-                            .contains(q) ||
+                                key.lowercase()
+                                    .contains(q) ||
 
-                                value.lowercase()
-                                    .contains(q)
-                    }
+                                        value.lowercase()
+                                            .contains(q)
+                            }
                 }
             }
 
         notifyDataSetChanged()
+
+        onSelectionChanged()
     }
 
+    /**
+     * Replace the complete CSV contact list.
+     */
     fun replaceContacts(
         contacts: List<Contact>
     ) {
 
-        allContacts = contacts
+        allContacts =
+            contacts
 
+        // Remove selections for contacts
+        // which no longer exist.
         selectedPhones.retainAll(
-            contacts.map {
-                it.phone
-            }.toSet()
+            contacts
+                .map {
+                    it.phone
+                }
+                .toSet()
         )
 
         filteredContacts =
@@ -250,14 +297,23 @@ class ContactAdapter(
         onSelectionChanged()
     }
 
-    fun selectAll(
-        contacts: List<Contact>
-    ) {
-
-        selectedPhones.clear()
+    /**
+     * SELECT ALL
+     *
+     * IMPORTANT:
+     * This selects only the currently visible/filtered
+     * contacts.
+     *
+     * If no search is active:
+     *     selects all contacts.
+     *
+     * If search is active:
+     *     selects only search results.
+     */
+    fun selectAll() {
 
         selectedPhones.addAll(
-            contacts.map {
+            filteredContacts.map {
                 it.phone
             }
         )
@@ -267,18 +323,192 @@ class ContactAdapter(
         onSelectionChanged()
     }
 
+    /**
+     * Backward-compatible version.
+     *
+     * If MainActivity still calls:
+     *
+     * adapter.selectAll(contacts)
+     *
+     * we intentionally ignore the supplied full list
+     * and select only the currently visible list.
+     */
+    fun selectAll(
+        contacts: List<Contact>
+    ) {
+
+        selectAll()
+    }
+
+    /**
+     * UNSELECT ALL
+     *
+     * Only currently visible/filtered contacts
+     * are unselected.
+     *
+     * Contacts hidden by search remain selected.
+     */
     fun unselectAll() {
 
-        selectedPhones.clear()
+        val visiblePhones =
+            filteredContacts.map {
+                it.phone
+            }.toSet()
+
+        selectedPhones.removeAll(
+            visiblePhones
+        )
 
         notifyDataSetChanged()
 
         onSelectionChanged()
     }
 
+    /**
+     * SELECT RANGE
+     *
+     * fromPosition and toPosition are 1-based positions
+     * in the currently displayed list.
+     *
+     * Example:
+     *
+     * 10 to 25
+     *
+     * selects displayed contacts 10 through 25.
+     */
+    fun selectRange(
+        fromPosition: Int,
+        toPosition: Int
+    ): Boolean {
+
+        if (filteredContacts.isEmpty()) {
+            return false
+        }
+
+        if (fromPosition < 1 ||
+            toPosition < 1
+        ) {
+            return false
+        }
+
+        if (fromPosition > filteredContacts.size ||
+            toPosition > filteredContacts.size
+        ) {
+            return false
+        }
+
+        val start =
+            minOf(
+                fromPosition,
+                toPosition
+            ) - 1
+
+        val end =
+            maxOf(
+                fromPosition,
+                toPosition
+            ) - 1
+
+        for (
+            index in start..end
+        ) {
+
+            selectedPhones.add(
+                filteredContacts[index].phone
+            )
+        }
+
+        notifyDataSetChanged()
+
+        onSelectionChanged()
+
+        return true
+    }
+
+    /**
+     * UNSELECT RANGE
+     *
+     * Removes selection only from the specified
+     * range in the currently displayed list.
+     */
+    fun unselectRange(
+        fromPosition: Int,
+        toPosition: Int
+    ): Boolean {
+
+        if (filteredContacts.isEmpty()) {
+            return false
+        }
+
+        if (fromPosition < 1 ||
+            toPosition < 1
+        ) {
+            return false
+        }
+
+        if (fromPosition > filteredContacts.size ||
+            toPosition > filteredContacts.size
+        ) {
+            return false
+        }
+
+        val start =
+            minOf(
+                fromPosition,
+                toPosition
+            ) - 1
+
+        val end =
+            maxOf(
+                fromPosition,
+                toPosition
+            ) - 1
+
+        for (
+            index in start..end
+        ) {
+
+            selectedPhones.remove(
+                filteredContacts[index].phone
+            )
+        }
+
+        notifyDataSetChanged()
+
+        onSelectionChanged()
+
+        return true
+    }
+
+    /**
+     * Returns the currently selected phone numbers.
+     */
     fun getSelectedPhones(): Set<String> =
         selectedPhones.toSet()
 
+    /**
+     * Returns the currently visible/filtered contacts.
+     */
+    fun getVisibleContacts(): List<Contact> =
+        filteredContacts.toList()
+
+    /**
+     * Returns number of currently visible contacts.
+     */
+    fun getVisibleCount(): Int =
+        filteredContacts.size
+
+    /**
+     * Returns whether a phone number is selected.
+     */
+    fun isSelected(
+        phone: String
+    ): Boolean =
+        selectedPhones.contains(phone)
+
+    /**
+     * Refresh one contact's SMS status.
+     */
     fun notifyContactStatusChanged(
         phone: String
     ) {
@@ -289,7 +519,10 @@ class ContactAdapter(
             }
 
         if (index >= 0) {
-            notifyItemChanged(index)
+
+            notifyItemChanged(
+                index
+            )
         }
     }
 }
