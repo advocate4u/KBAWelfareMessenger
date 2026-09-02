@@ -74,8 +74,15 @@ class MainActivity : AppCompatActivity() {
             500L
     }
 
+    // =========================================================
+    // Views
+    // =========================================================
+
     private lateinit var edtMessage: EditText
     private lateinit var edtSearch: EditText
+
+    private lateinit var edtRangeFrom: EditText
+    private lateinit var edtRangeTo: EditText
 
     private lateinit var txtStatus: TextView
     private lateinit var txtStats: TextView
@@ -87,6 +94,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnUpload: Button
     private lateinit var btnSelectAll: Button
     private lateinit var btnUnselectAll: Button
+
+    private lateinit var btnSelectRange: Button
+    private lateinit var btnUnselectRange: Button
+
     private lateinit var btnPreview: Button
     private lateinit var btnTestSms: Button
     private lateinit var btnSendSms: Button
@@ -95,6 +106,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnClearData: Button
 
     private lateinit var adapter: ContactAdapter
+
+    // =========================================================
+    // Data
+    // =========================================================
 
     private val contacts =
         mutableListOf<Contact>()
@@ -128,9 +143,9 @@ Kindly support & vote for Mohit Arora (Ch.547) for Treasurer, DBA Karnal electio
 
 Thank you- Mohit Arora, 9518804747"""
 
-    // ---------------------------------------------------------
+    // =========================================================
     // CSV picker
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val pickCsvLauncher =
         registerForActivityResult(
@@ -142,9 +157,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // SMS permission
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val smsPermissionLauncher =
         registerForActivityResult(
@@ -152,8 +167,11 @@ Thank you- Mohit Arora, 9518804747"""
         ) { granted ->
 
             if (granted) {
+
                 startSmsConfirmation()
+
             } else {
+
                 showAlert(
                     "SMS Permission",
                     "SMS permission is required to send messages."
@@ -161,9 +179,9 @@ Thank you- Mohit Arora, 9518804747"""
             }
         }
 
-    // ---------------------------------------------------------
+    // =========================================================
     // SMS sent receiver
-    // ---------------------------------------------------------
+    // =========================================================
 
     private val smsSentReceiver =
         object : BroadcastReceiver() {
@@ -208,6 +226,7 @@ Thank you- Mohit Arora, 9518804747"""
                 } else {
 
                     progress.failed = true
+
                     progress.errorCode =
                         smsResultCode
 
@@ -283,6 +302,12 @@ Thank you- Mohit Arora, 9518804747"""
         edtSearch =
             findViewById(R.id.edtSearch)
 
+        edtRangeFrom =
+            findViewById(R.id.edtRangeFrom)
+
+        edtRangeTo =
+            findViewById(R.id.edtRangeTo)
+
         txtStatus =
             findViewById(R.id.txtStatus)
 
@@ -306,6 +331,12 @@ Thank you- Mohit Arora, 9518804747"""
 
         btnUnselectAll =
             findViewById(R.id.btnUnselectAll)
+
+        btnSelectRange =
+            findViewById(R.id.btnSelectRange)
+
+        btnUnselectRange =
+            findViewById(R.id.btnUnselectRange)
 
         btnPreview =
             findViewById(R.id.btnPreview)
@@ -356,6 +387,10 @@ Thank you- Mohit Arora, 9518804747"""
 
     private fun setupButtons() {
 
+        // -----------------------------------------------------
+        // Upload CSV
+        // -----------------------------------------------------
+
         btnUpload.setOnClickListener {
 
             pickCsvLauncher.launch(
@@ -369,6 +404,16 @@ Thank you- Mohit Arora, 9518804747"""
             )
         }
 
+        // -----------------------------------------------------
+        // SELECT ALL
+        //
+        // ContactAdapter now selects ONLY the visible list.
+        //
+        // Therefore:
+        // Search = Amit
+        // Select All = only Amit search results
+        // -----------------------------------------------------
+
         btnSelectAll.setOnClickListener {
 
             if (contacts.isEmpty()) {
@@ -381,27 +426,83 @@ Thank you- Mohit Arora, 9518804747"""
                 return@setOnClickListener
             }
 
-            adapter.selectAll(contacts)
+            if (
+                adapter.getVisibleCount() == 0
+            ) {
+
+                showAlert(
+                    "Select All",
+                    "No contacts match the current search."
+                )
+
+                return@setOnClickListener
+            }
+
+            adapter.selectAll()
 
             updateCounts()
         }
 
+        // -----------------------------------------------------
+        // UNSELECT ALL
+        //
+        // ContactAdapter now unselects ONLY visible contacts.
+        // -----------------------------------------------------
+
         btnUnselectAll.setOnClickListener {
+
+            if (contacts.isEmpty()) {
+                return@setOnClickListener
+            }
 
             adapter.unselectAll()
 
             updateCounts()
         }
 
+        // -----------------------------------------------------
+        // SELECT RANGE
+        // -----------------------------------------------------
+
+        btnSelectRange.setOnClickListener {
+
+            selectRange(
+                select = true
+            )
+        }
+
+        // -----------------------------------------------------
+        // UNSELECT RANGE
+        // -----------------------------------------------------
+
+        btnUnselectRange.setOnClickListener {
+
+            selectRange(
+                select = false
+            )
+        }
+
+        // -----------------------------------------------------
+        // Preview
+        // -----------------------------------------------------
+
         btnPreview.setOnClickListener {
 
             showPreview()
         }
 
+        // -----------------------------------------------------
+        // Test SMS
+        // -----------------------------------------------------
+
         btnTestSms.setOnClickListener {
 
             testSms()
         }
+
+        // -----------------------------------------------------
+        // Send SMS
+        // -----------------------------------------------------
 
         btnSendSms.setOnClickListener {
 
@@ -447,10 +548,18 @@ Thank you- Mohit Arora, 9518804747"""
             checkSmsPermissionAndStart()
         }
 
+        // -----------------------------------------------------
+        // WhatsApp
+        // -----------------------------------------------------
+
         btnWhatsApp.setOnClickListener {
 
             sendWhatsApp()
         }
+
+        // -----------------------------------------------------
+        // Reset
+        // -----------------------------------------------------
 
         btnReset.setOnClickListener {
 
@@ -473,11 +582,16 @@ Thank you- Mohit Arora, 9518804747"""
             }
 
             updateCounts()
+
             adapter.notifyDataSetChanged()
 
             txtStatus.text =
                 "Selection and SMS status reset."
         }
+
+        // -----------------------------------------------------
+        // Clear CSV
+        // -----------------------------------------------------
 
         btnClearData.setOnClickListener {
 
@@ -505,6 +619,158 @@ Thank you- Mohit Arora, 9518804747"""
                 "All contact data cleared."
 
             updateCounts()
+        }
+    }
+
+    // =========================================================
+    // Range selection
+    // =========================================================
+
+    private fun selectRange(
+        select: Boolean
+    ) {
+
+        if (contacts.isEmpty()) {
+
+            showAlert(
+                "Range Selection",
+                "Please upload a CSV file first."
+            )
+
+            return
+        }
+
+        val fromText =
+            edtRangeFrom.text
+                .toString()
+                .trim()
+
+        val toText =
+            edtRangeTo.text
+                .toString()
+                .trim()
+
+        if (
+            fromText.isEmpty() ||
+            toText.isEmpty()
+        ) {
+
+            showAlert(
+                "Range Selection",
+                "Please enter both From and To numbers."
+            )
+
+            return
+        }
+
+        val from =
+            fromText.toIntOrNull()
+
+        val to =
+            toText.toIntOrNull()
+
+        if (
+            from == null ||
+            to == null
+        ) {
+
+            showAlert(
+                "Range Selection",
+                "Please enter valid numbers."
+            )
+
+            return
+        }
+
+        if (
+            from < 1 ||
+            to < 1
+        ) {
+
+            showAlert(
+                "Range Selection",
+                "Range numbers must be greater than zero."
+            )
+
+            return
+        }
+
+        val visibleCount =
+            adapter.getVisibleCount()
+
+        if (visibleCount == 0) {
+
+            showAlert(
+                "Range Selection",
+                "No contacts are currently displayed."
+            )
+
+            return
+        }
+
+        val start =
+            minOf(
+                from,
+                to
+            )
+
+        val end =
+            maxOf(
+                from,
+                to
+            )
+
+        if (
+            start > visibleCount ||
+            end > visibleCount
+        ) {
+
+            showAlert(
+                "Range Selection",
+                "Invalid range.\n\n" +
+                        "Currently displayed contacts: $visibleCount\n" +
+                        "Valid range: 1 to $visibleCount"
+            )
+
+            return
+        }
+
+        val success =
+            if (select) {
+
+                adapter.selectRange(
+                    from,
+                    to
+                )
+
+            } else {
+
+                adapter.unselectRange(
+                    from,
+                    to
+                )
+            }
+
+        if (success) {
+
+            updateCounts()
+
+            val action =
+                if (select) {
+                    "selected"
+                } else {
+                    "unselected"
+                }
+
+            txtStatus.text =
+                "Range $start-$end $action."
+
+        } else {
+
+            showAlert(
+                "Range Selection",
+                "Unable to apply the selected range."
+            )
         }
     }
 
@@ -622,6 +888,16 @@ Thank you- Mohit Arora, 9518804747"""
         setButtonColor(
             btnUnselectAll,
             "#757575"
+        )
+
+        setButtonColor(
+            btnSelectRange,
+            "#5E35B1"
+        )
+
+        setButtonColor(
+            btnUnselectRange,
+            "#8E24AA"
         )
 
         setButtonColor(
@@ -757,7 +1033,7 @@ Thank you- Mohit Arora, 9518804747"""
                     )
                 )
 
-            val phoneIndex =
+            var phoneIndex =
                 findHeaderIndex(
                     headers,
                     listOf(
@@ -766,15 +1042,91 @@ Thank you- Mohit Arora, 9518804747"""
                         "Mobile Number",
                         "Phone",
                         "Phone Number",
-                        "M.No."
+                        "M.No.",
+                        "M.No",
+                        "M No",
+                        "Mobile No",
+                        "Mobile No.",
+                        "Contact",
+                        "Contact Number"
                     )
                 )
+
+            // -------------------------------------------------
+            // If the phone header isn't recognised,
+            // inspect the data and detect the column containing
+            // valid Indian mobile numbers.
+            // -------------------------------------------------
+
+            if (phoneIndex == -1) {
+
+                val maxColumns =
+                    headers.size
+
+                for (
+                    columnIndex in
+                    0 until maxColumns
+                ) {
+
+                    var phoneMatches = 0
+                    var rowsChecked = 0
+
+                    for (
+                        lineIndex in
+                        1 until minOf(
+                            lines.size,
+                            21
+                        )
+                    ) {
+
+                        val values =
+                            parseCsvLine(
+                                lines[lineIndex]
+                            )
+
+                        val value =
+                            values
+                                .getOrNull(
+                                    columnIndex
+                                )
+                                ?.trim()
+                                .orEmpty()
+
+                        if (value.isNotEmpty()) {
+
+                            rowsChecked++
+
+                            if (
+                                normalizePhone(
+                                    value
+                                ).isNotEmpty()
+                            ) {
+
+                                phoneMatches++
+                            }
+                        }
+                    }
+
+                    if (
+                        rowsChecked > 0 &&
+                        phoneMatches >= 2
+                    ) {
+
+                        phoneIndex =
+                            columnIndex
+
+                        break
+                    }
+                }
+            }
 
             if (phoneIndex == -1) {
 
                 showAlert(
                     "CSV Error",
-                    "Could not find a mobile/phone column in the CSV."
+                    "Could not find a mobile/phone column.\n\n" +
+                            "CSV headers found:\n\n" +
+                            headers.joinToString("\n")
                 )
 
                 return
@@ -798,11 +1150,15 @@ Thank you- Mohit Arora, 9518804747"""
                 }
 
                 val values =
-                    parseCsvLine(line)
+                    parseCsvLine(
+                        line
+                    )
 
                 val rawPhone =
                     values
-                        .getOrNull(phoneIndex)
+                        .getOrNull(
+                            phoneIndex
+                        )
                         ?.trim()
                         .orEmpty()
 
@@ -823,11 +1179,14 @@ Thank you- Mohit Arora, 9518804747"""
                     if (nameIndex >= 0) {
 
                         values
-                            .getOrNull(nameIndex)
+                            .getOrNull(
+                                nameIndex
+                            )
                             ?.trim()
                             .orEmpty()
 
                     } else {
+
                         ""
                     }
 
@@ -923,6 +1282,7 @@ Thank you- Mohit Arora, 9518804747"""
                     ) {
 
                         current.append('"')
+
                         index++
 
                     } else {
@@ -968,15 +1328,45 @@ Thank you- Mohit Arora, 9518804747"""
         possibleNames: List<String>
     ): Int {
 
+        // Exact match first.
+        val exactIndex =
+            headers.indexOfFirst { header ->
+
+                possibleNames.any { name ->
+
+                    header.trim().equals(
+                        name.trim(),
+                        ignoreCase = true
+                    )
+                }
+            }
+
+        if (exactIndex >= 0) {
+            return exactIndex
+        }
+
+        // Flexible match.
         return headers.indexOfFirst { header ->
 
-            possibleNames.any {
+            val normalized =
+                header
+                    .trim()
+                    .lowercase()
+                    .replace(
+                        Regex("[^a-z0-9]"),
+                        ""
+                    )
 
-                header.equals(
-                    it,
-                    ignoreCase = true
-                )
-            }
+            normalized == "mobile" ||
+                    normalized == "mobilenumber" ||
+                    normalized == "mobileno" ||
+                    normalized == "mno" ||
+                    normalized == "mnumber" ||
+                    normalized == "phone" ||
+                    normalized == "phonenumber" ||
+                    normalized == "phone1value" ||
+                    normalized == "contact" ||
+                    normalized == "contactnumber"
         }
     }
 
