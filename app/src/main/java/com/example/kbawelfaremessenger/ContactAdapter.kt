@@ -1,191 +1,296 @@
 package com.example.kbawelfaremessenger
 
-import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+
 
 class ContactAdapter(
     private var contacts: List<Contact>,
     private val onSelectionChanged: () -> Unit
 ) : RecyclerView.Adapter<ContactAdapter.ContactViewHolder>() {
 
-    private val selectedPhones = mutableSetOf<String>()
 
-    class ContactViewHolder(view: View) :
-        RecyclerView.ViewHolder(view) {
+    /*
+     * Store selection by phone number.
+     *
+     * This is important because the RecyclerView list
+     * can be filtered by search.
+     */
+    private val selectedPhones =
+        LinkedHashSet<String>()
 
-        val checkBox: CheckBox =
-            view.findViewById(android.R.id.checkbox)
 
-        val name: TextView =
-            view.findViewById(android.R.id.text1)
+    inner class ContactViewHolder(
+        itemView: View
+    ) : RecyclerView.ViewHolder(itemView) {
 
-        val phone: TextView =
-            view.findViewById(android.R.id.text2)
+        val checkbox: CheckBox =
+            itemView.findViewById(
+                R.id.chkContact
+            )
+
+        val txtName: TextView =
+            itemView.findViewById(
+                R.id.txtContactName
+            )
+
+        val txtPhone: TextView =
+            itemView.findViewById(
+                R.id.txtContactPhone
+            )
+
+        val txtFields: TextView =
+            itemView.findViewById(
+                R.id.txtContactFields
+            )
     }
+
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
     ): ContactViewHolder {
 
-        val container =
-            LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(8, 6, 8, 6)
-                setBackgroundColor(0xFFFFFFFF.toInt())
-            }
+        val view =
+            LayoutInflater
+                .from(parent.context)
+                .inflate(
+                    R.layout.item_contact,
+                    parent,
+                    false
+                )
 
-        val checkBox =
-            CheckBox(parent.context).apply {
-                id = android.R.id.checkbox
-                textSize = 15f
-                setTypeface(null, Typeface.BOLD)
-            }
 
-        val name =
-            TextView(parent.context).apply {
-                id = android.R.id.text1
-                textSize = 15f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(0xFF163968.toInt())
-            }
-
-        val phone =
-            TextView(parent.context).apply {
-                id = android.R.id.text2
-                textSize = 13f
-                setTextColor(0xFF687586.toInt())
-            }
-
-        val textContainer =
-            LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(4, 0, 4, 0)
-            }
-
-        textContainer.addView(name)
-        textContainer.addView(phone)
-
-        val row =
-            LinearLayout(parent.context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-            }
-
-        row.addView(
-            checkBox,
-            LinearLayout.LayoutParams(
-                48,
-                48
-            )
+        return ContactViewHolder(
+            view
         )
-
-        row.addView(
-            textContainer,
-            LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f
-            )
-        )
-
-        container.addView(
-            row,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        return ContactViewHolder(container)
     }
+
 
     override fun onBindViewHolder(
         holder: ContactViewHolder,
         position: Int
     ) {
 
-        val contact = contacts[position]
+        val contact =
+            contacts[position]
 
-        holder.name.text =
+
+        /*
+         * Important:
+         * Remove listener before setting checked state.
+         * Otherwise RecyclerView can trigger the listener
+         * while recycling rows.
+         */
+        holder.checkbox.setOnCheckedChangeListener(
+            null
+        )
+
+
+        holder.checkbox.isChecked =
+            selectedPhones.contains(
+                contact.phone
+            )
+
+
+        holder.txtName.text =
             contact.name.ifBlank {
-                "Unknown Name"
+                "Unnamed"
             }
 
-        holder.phone.text =
+
+        holder.txtPhone.text =
             contact.phone
 
-        holder.checkBox.setOnCheckedChangeListener(null)
 
-        holder.checkBox.isChecked =
-            selectedPhones.contains(contact.phone)
+        /*
+         * Display all other CSV fields.
+         *
+         * OriginalName and MobileNumber are omitted
+         * because they are already displayed above.
+         */
+        val otherFields =
+            contact.fields
+                .filter { (key, _) ->
 
-        holder.checkBox.setOnCheckedChangeListener { _, checked ->
+                    !key.equals(
+                        "OriginalName",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "Original Name",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "Name",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "MobileNumber",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "Mobile Number",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "Mobile",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "Phone",
+                        ignoreCase = true
+                    ) &&
+
+                    !key.equals(
+                        "PhoneNumber",
+                        ignoreCase = true
+                    )
+                }
+                .filter {
+                    it.value.isNotBlank()
+                }
+
+
+        if (otherFields.isEmpty()) {
+
+            holder.txtFields.visibility =
+                View.GONE
+
+            holder.txtFields.text =
+                ""
+
+        } else {
+
+            holder.txtFields.visibility =
+                View.VISIBLE
+
+
+            holder.txtFields.text =
+                otherFields
+                    .entries
+                    .joinToString(
+                        separator = "\n"
+                    ) {
+                        "${it.key}: ${it.value}"
+                    }
+        }
+
+
+        holder.checkbox.setOnCheckedChangeListener {
+                _,
+                checked ->
 
             if (checked) {
-                selectedPhones.add(contact.phone)
+
+                selectedPhones.add(
+                    contact.phone
+                )
+
             } else {
-                selectedPhones.remove(contact.phone)
+
+                selectedPhones.remove(
+                    contact.phone
+                )
             }
+
 
             onSelectionChanged()
         }
 
+
+        /*
+         * Allow tapping the row itself to toggle
+         * the checkbox.
+         */
         holder.itemView.setOnClickListener {
-            holder.checkBox.isChecked =
-                !holder.checkBox.isChecked
+
+            holder.checkbox.isChecked =
+                !holder.checkbox.isChecked
         }
     }
+
 
     override fun getItemCount(): Int =
         contacts.size
 
-    fun setContacts(newContacts: List<Contact>) {
 
-        contacts = newContacts
+    fun setContacts(
+        newContacts: List<Contact>
+    ) {
+
+        contacts =
+            newContacts
+
 
         notifyDataSetChanged()
     }
+
 
     fun selectAll() {
 
         contacts.forEach {
-            selectedPhones.add(it.phone)
+
+            selectedPhones.add(
+                it.phone
+            )
         }
 
+
         notifyDataSetChanged()
+
         onSelectionChanged()
     }
+
 
     fun unselectAll() {
 
         selectedPhones.clear()
 
         notifyDataSetChanged()
+
         onSelectionChanged()
     }
 
-    fun getSelectedContacts(): List<Contact> {
-
-        return contacts.filter {
-            selectedPhones.contains(it.phone)
-        }
-    }
-
-    fun getSelectedCount(): Int =
-        selectedPhones.size
 
     fun clearSelection() {
 
         selectedPhones.clear()
 
         notifyDataSetChanged()
+
         onSelectionChanged()
+    }
+
+
+    fun getSelectedCount(): Int =
+        selectedPhones.size
+
+
+    fun getSelectedContacts():
+            List<Contact> {
+
+        /*
+         * Return contacts in the original CSV order.
+         *
+         * This ensures the name and number always belong
+         * to the same Contact object.
+         */
+        return contacts.filter {
+
+            selectedPhones.contains(
+                it.phone
+            )
+        }
     }
 }
