@@ -89,6 +89,7 @@ class AdvocateHelperActivity : AppCompatActivity() {
         nextDate.setOnClickListener { pick(nextDate) }
         findViewById<Button>(R.id.btnClearForm).setOnClickListener { clearForm() }
         findViewById<Button>(R.id.btnReminderSettings).setOnClickListener { openNotificationSettings() }
+        findViewById<Button>(R.id.btnBackupRestore).setOnClickListener { startActivity(Intent(this, BackupRestoreActivity::class.java)) }
         findViewById<Button>(R.id.btnSendNextDateMessage).setOnClickListener { sendNextDateMessage() }
         findViewById<Button>(R.id.btnPaymentReminder).setOnClickListener { sendPaymentReminder() }
         save.setOnClickListener { saveCase() }
@@ -129,9 +130,7 @@ class AdvocateHelperActivity : AppCompatActivity() {
 
     private fun refreshLicenseStatus() {
         val license = LicenseManager.getInstalledLicense(this)
-        licenseStatus.text = if (license == null) {
-            "License: NOT ACTIVATED"
-        } else {
+        licenseStatus.text = if (license == null) "License: NOT ACTIVATED" else {
             val valid = LicenseManager.isLicenseValid(this)
             "License: ${if (valid) "ACTIVE" else "EXPIRED"}  •  ID: ${license.licenseId}  •  Expiry: ${license.expiryDate}"
         }
@@ -246,9 +245,7 @@ class AdvocateHelperActivity : AppCompatActivity() {
                 data = Uri.parse("smsto:$cleanPhone")
                 putExtra("sms_body", message)
             })
-        } catch (_: Exception) {
-            Toast.makeText(this, "No SMS app is available.", Toast.LENGTH_SHORT).show()
-        }
+        } catch (_: Exception) { Toast.makeText(this, "No SMS app is available.", Toast.LENGTH_SHORT).show() }
     }
 
     private fun scheduleReminderWorker() {
