@@ -83,25 +83,31 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         }
     }
 
-    fun getUpcomingCases(): List<AdvocateCase> = getAllCases().filter {
-        it.nextDate.isNotBlank() && parseDate(it.nextDate) != null
-    }.sortedBy { parseDate(it.nextDate) }.filter { parseDate(it.nextDate)!! >= todayStart() }
+    fun getUpcomingCases(): List<AdvocateCase> {
+        val today = todayStart()
+        return getAllCases()
+            .mapNotNull { item -> parseDate(item.nextDate)?.let { date -> item to date } }
+            .filter { it.second >= today }
+            .sortedBy { it.second }
+            .map { it.first }
+    }
 
-    private fun parseDate(value: String): Long? = try {
-        val parts = value.split("-")
-        if (parts.size != 3) return null
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.YEAR, parts[2].toInt())
-            set(java.util.Calendar.MONTH, parts[1].toInt() - 1)
-            set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
+    private fun parseDate(value: String): Long? {
+        return try {
+            val parts = value.split("-")
+            if (parts.size != 3) return null
+            java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.YEAR, parts[2].toInt())
+                set(java.util.Calendar.MONTH, parts[1].toInt() - 1)
+                set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        } catch (_: Exception) {
+            null
         }
-        calendar.timeInMillis
-    } catch (_: Exception) {
-        null
     }
 
     private fun todayStart(): Long {
