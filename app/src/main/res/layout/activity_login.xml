@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="28dp"
+    android:background="#F5F7FA">
+
+    <!-- App Title -->
+    <TextView
+        android:id="@+id/txtLoginTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="KBA Welfare Messenger"
+        android:textAlignment="center"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#1769E0"
+        android:layout_marginBottom="30dp" />
+
+    <!-- User ID -->
+    <EditText
+        android:id="@+id/edtUserId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="User ID"
+        android:inputType="text"
+        android:singleLine="true"
+        android:padding="14dp" />
+
+    <!-- Password -->
+    <EditText
+        android:id="@+id/edtPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:singleLine="true"
+        android:padding="14dp" />
+
+    <!-- Login / Create Login -->
+    <Button
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="LOGIN"
+        android:textStyle="bold" />
+
+</LinearLayout>
