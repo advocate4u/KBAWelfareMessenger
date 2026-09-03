@@ -22,6 +22,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -147,7 +148,10 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------------
 
     private val pickCsvLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+
             if (uri != null) {
                 loadCsv(uri)
             }
@@ -189,7 +193,10 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val requestId =
-                    intent.getIntExtra(EXTRA_REQUEST_ID, -1)
+                    intent.getIntExtra(
+                        EXTRA_REQUEST_ID,
+                        -1
+                    )
 
                 if (requestId == -1) {
                     return
@@ -203,7 +210,8 @@ class MainActivity : AppCompatActivity() {
                     pendingSms[phone]
                         ?: return
 
-                val resultCode = getResultCode()
+                val resultCode =
+                    getResultCode()
 
                 if (resultCode == Activity.RESULT_OK) {
 
@@ -216,7 +224,10 @@ class MainActivity : AppCompatActivity() {
                     progress.completedParts++
                 }
 
-                if (progress.completedParts >= progress.totalParts) {
+                if (
+                    progress.completedParts >=
+                    progress.totalParts
+                ) {
 
                     pendingSms.remove(phone)
 
@@ -225,7 +236,9 @@ class MainActivity : AppCompatActivity() {
                         completeSms(
                             progress.contact,
                             false,
-                            smsErrorMessage(progress.errorCode)
+                            smsErrorMessage(
+                                progress.errorCode
+                            )
                         )
 
                     } else {
@@ -247,13 +260,18 @@ class MainActivity : AppCompatActivity() {
     // Lifecycle
     // ---------------------------------------------------------
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
 
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        setContentView(
+            R.layout.activity_main
+        )
 
-        appSettings = AppSettingsManager.load(this)
+        appSettings =
+            AppSettingsManager.load(this)
 
         initialiseViews()
         setupRecycler()
@@ -271,10 +289,8 @@ class MainActivity : AppCompatActivity() {
 
         super.onResume()
 
-        val latestSettings =
+        appSettings =
             AppSettingsManager.load(this)
-
-        appSettings = latestSettings
 
         applyMessageSetting()
 
@@ -291,43 +307,98 @@ class MainActivity : AppCompatActivity() {
 
     private fun initialiseViews() {
 
-        btnSettings = findViewById(R.id.btnSettings)
+        btnSettings =
+            findViewById(R.id.btnSettings)
 
-        txtCsvHeader = findViewById(R.id.txtCsvHeader)
-        txtRangeHeader = findViewById(R.id.txtRangeHeader)
-        txtMessageHeader = findViewById(R.id.txtMessageHeader)
-        txtSendHeader = findViewById(R.id.txtSendHeader)
-        txtOtherHeader = findViewById(R.id.txtOtherHeader)
+        txtCsvHeader =
+            findViewById(R.id.txtCsvHeader)
 
-        layoutCsvSection = findViewById(R.id.layoutCsvSection)
-        layoutRangeSection = findViewById(R.id.layoutRangeSection)
-        layoutMessageSection = findViewById(R.id.layoutMessageSection)
-        layoutSendSection = findViewById(R.id.layoutSendSection)
-        layoutOtherSection = findViewById(R.id.layoutOtherSection)
+        txtRangeHeader =
+            findViewById(R.id.txtRangeHeader)
 
-        edtMessage = findViewById(R.id.edtMessage)
-        edtSearch = findViewById(R.id.edtSearch)
-        edtRangeFrom = findViewById(R.id.edtRangeFrom)
-        edtRangeTo = findViewById(R.id.edtRangeTo)
+        txtMessageHeader =
+            findViewById(R.id.txtMessageHeader)
 
-        txtStatus = findViewById(R.id.txtStatus)
-        txtStats = findViewById(R.id.txtStats)
-        txtSelected = findViewById(R.id.txtSelected)
-        txtFile = findViewById(R.id.txtFile)
+        txtSendHeader =
+            findViewById(R.id.txtSendHeader)
 
-        recyclerContacts = findViewById(R.id.recyclerContacts)
+        txtOtherHeader =
+            findViewById(R.id.txtOtherHeader)
 
-        btnUpload = findViewById(R.id.btnUpload)
-        btnSelectAll = findViewById(R.id.btnSelectAll)
-        btnUnselectAll = findViewById(R.id.btnUnselectAll)
-        btnSelectRange = findViewById(R.id.btnSelectRange)
-        btnUnselectRange = findViewById(R.id.btnUnselectRange)
-        btnPreview = findViewById(R.id.btnPreview)
-        btnTestSms = findViewById(R.id.btnTestSms)
-        btnSendSms = findViewById(R.id.btnSendSms)
-        btnWhatsApp = findViewById(R.id.btnWhatsApp)
-        btnReset = findViewById(R.id.btnReset)
-        btnClearData = findViewById(R.id.btnClearData)
+        layoutCsvSection =
+            findViewById(R.id.layoutCsvSection)
+
+        layoutRangeSection =
+            findViewById(R.id.layoutRangeSection)
+
+        layoutMessageSection =
+            findViewById(R.id.layoutMessageSection)
+
+        layoutSendSection =
+            findViewById(R.id.layoutSendSection)
+
+        layoutOtherSection =
+            findViewById(R.id.layoutOtherSection)
+
+        edtMessage =
+            findViewById(R.id.edtMessage)
+
+        edtSearch =
+            findViewById(R.id.edtSearch)
+
+        edtRangeFrom =
+            findViewById(R.id.edtRangeFrom)
+
+        edtRangeTo =
+            findViewById(R.id.edtRangeTo)
+
+        txtStatus =
+            findViewById(R.id.txtStatus)
+
+        txtStats =
+            findViewById(R.id.txtStats)
+
+        txtSelected =
+            findViewById(R.id.txtSelected)
+
+        txtFile =
+            findViewById(R.id.txtFile)
+
+        recyclerContacts =
+            findViewById(R.id.recyclerContacts)
+
+        btnUpload =
+            findViewById(R.id.btnUpload)
+
+        btnSelectAll =
+            findViewById(R.id.btnSelectAll)
+
+        btnUnselectAll =
+            findViewById(R.id.btnUnselectAll)
+
+        btnSelectRange =
+            findViewById(R.id.btnSelectRange)
+
+        btnUnselectRange =
+            findViewById(R.id.btnUnselectRange)
+
+        btnPreview =
+            findViewById(R.id.btnPreview)
+
+        btnTestSms =
+            findViewById(R.id.btnTestSms)
+
+        btnSendSms =
+            findViewById(R.id.btnSendSms)
+
+        btnWhatsApp =
+            findViewById(R.id.btnWhatsApp)
+
+        btnReset =
+            findViewById(R.id.btnReset)
+
+        btnClearData =
+            findViewById(R.id.btnClearData)
     }
 
     // ---------------------------------------------------------
@@ -337,16 +408,29 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecycler() {
 
         adapter =
-            ContactAdapter(contacts) {
+            ContactAdapter(
+                contacts
+            ) {
                 updateCounts()
             }
 
         recyclerContacts.layoutManager =
             LinearLayoutManager(this)
 
-        recyclerContacts.adapter = adapter
+        recyclerContacts.adapter =
+            adapter
 
-        recyclerContacts.isNestedScrollingEnabled = false
+        /*
+         * RecyclerView is inside the main ScrollView.
+         * Allowing nested scrolling here gives the contact
+         * list its own proper scrolling area.
+         */
+        recyclerContacts.isNestedScrollingEnabled = true
+
+        recyclerContacts.setHasFixedSize(false)
+
+        recyclerContacts.overScrollMode =
+            View.OVER_SCROLL_IF_CONTENT_SCROLLS
     }
 
     // ---------------------------------------------------------
@@ -407,6 +491,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             adapter.selectAll()
+
             updateCounts()
         }
 
@@ -417,6 +502,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             adapter.unselectAll()
+
             updateCounts()
         }
 
@@ -527,7 +613,9 @@ class MainActivity : AppCompatActivity() {
 
             contacts.clear()
 
-            adapter.replaceContacts(emptyList())
+            adapter.replaceContacts(
+                emptyList()
+            )
 
             txtFile.text =
                 "No CSV selected"
@@ -641,7 +729,9 @@ class MainActivity : AppCompatActivity() {
     // Range selection
     // ---------------------------------------------------------
 
-    private fun selectRange(select: Boolean) {
+    private fun selectRange(
+        select: Boolean
+    ) {
 
         if (contacts.isEmpty()) {
 
@@ -704,7 +794,10 @@ class MainActivity : AppCompatActivity() {
         val end =
             maxOf(from, to)
 
-        if (start > visibleCount || end > visibleCount) {
+        if (
+            start > visibleCount ||
+            end > visibleCount
+        ) {
 
             showAlert(
                 "Range Selection",
@@ -748,7 +841,8 @@ class MainActivity : AppCompatActivity() {
 
         if (appSettings.editMessageOnScreen) {
 
-            if (edtMessage.text
+            if (
+                edtMessage.text
                     .toString()
                     .trim()
                     .isEmpty()
@@ -774,7 +868,8 @@ class MainActivity : AppCompatActivity() {
             edtMessage.visibility =
                 View.VISIBLE
 
-            if (edtMessage.text
+            if (
+                edtMessage.text
                     .toString()
                     .trim()
                     .isEmpty()
@@ -794,7 +889,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun getCurrentMessage(): String {
 
-        return if (appSettings.editMessageOnScreen) {
+        return if (
+            appSettings.editMessageOnScreen
+        ) {
 
             edtMessage.text.toString()
 
@@ -850,7 +947,10 @@ class MainActivity : AppCompatActivity() {
         val filter =
             IntentFilter(SMS_SENT_ACTION)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
 
             registerReceiver(
                 smsSentReceiver,
@@ -996,7 +1096,6 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-            // First use configured columns.
             var nameIndex =
                 findConfiguredHeaderIndex(
                     headers,
@@ -1044,20 +1143,25 @@ class MainActivity : AppCompatActivity() {
                     )
             }
 
-            // Automatic phone-column detection as fallback.
             if (phoneIndex == -1) {
 
                 val maxColumns =
                     headers.size
 
-                for (columnIndex in 0 until maxColumns) {
+                for (
+                    columnIndex in
+                    0 until maxColumns
+                ) {
 
                     var phoneMatches = 0
                     var rowsChecked = 0
 
                     for (
                         lineIndex in
-                        1 until minOf(lines.size, 21)
+                        1 until minOf(
+                            lines.size,
+                            21
+                        )
                     ) {
 
                         val values =
@@ -1067,7 +1171,9 @@ class MainActivity : AppCompatActivity() {
 
                         val value =
                             values
-                                .getOrNull(columnIndex)
+                                .getOrNull(
+                                    columnIndex
+                                )
                                 ?.trim()
                                 .orEmpty()
 
@@ -1147,12 +1253,12 @@ class MainActivity : AppCompatActivity() {
 
                 if (phone.isEmpty()) {
 
-                    if (appSettings.skipInvalidNumbers) {
+                    if (
+                        appSettings.skipInvalidNumbers
+                    ) {
                         continue
                     }
 
-                    // A Contact requires a valid normalized
-                    // number, so invalid numbers are skipped.
                     continue
                 }
 
@@ -1270,7 +1376,8 @@ class MainActivity : AppCompatActivity() {
         var current =
             StringBuilder()
 
-        var insideQuotes = false
+        var insideQuotes =
+            false
 
         var index = 0
 
@@ -1311,7 +1418,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 else -> {
-
                     current.append(char)
                 }
             }
@@ -1416,11 +1522,13 @@ class MainActivity : AppCompatActivity() {
                 )
 
             if (number.startsWith("+")) {
-                number = number.substring(1)
+                number =
+                    number.substring(1)
             }
 
             if (number.startsWith("00")) {
-                number = number.substring(2)
+                number =
+                    number.substring(2)
             }
 
             if (
@@ -1459,7 +1567,9 @@ class MainActivity : AppCompatActivity() {
             adapter.getSelectedPhones()
 
         return contacts.filter {
-            selectedPhones.contains(it.phone)
+            selectedPhones.contains(
+                it.phone
+            )
         }
     }
 
@@ -1574,7 +1684,8 @@ class MainActivity : AppCompatActivity() {
                 text =
                     builder.toString()
 
-                textSize = 15f
+                textSize =
+                    15f
 
                 setPadding(
                     35,
@@ -1600,7 +1711,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---------------------------------------------------------
-    // SMS permission / confirmation
+    // SMS permission
     // ---------------------------------------------------------
 
     private fun checkSmsPermissionAndStart() {
@@ -1656,14 +1767,18 @@ class MainActivity : AppCompatActivity() {
 
         val alreadySent =
             selected.count {
-                it.smsStatus == SmsStatus.SENT
+                it.smsStatus ==
+                        SmsStatus.SENT
             }
 
         val willSend =
-            if (appSettings.skipAlreadySent) {
+            if (
+                appSettings.skipAlreadySent
+            ) {
 
                 selected.count {
-                    it.smsStatus != SmsStatus.SENT
+                    it.smsStatus !=
+                            SmsStatus.SENT
                 }
 
             } else {
@@ -1672,7 +1787,9 @@ class MainActivity : AppCompatActivity() {
             }
 
         val skipped =
-            if (appSettings.skipAlreadySent) {
+            if (
+                appSettings.skipAlreadySent
+            ) {
                 alreadySent
             } else {
                 0
@@ -1699,8 +1816,12 @@ Do you want to continue?
             """.trimIndent()
 
         AlertDialog.Builder(this)
-            .setTitle("Confirm SMS Sending")
-            .setMessage(confirmation)
+            .setTitle(
+                "Confirm SMS Sending"
+            )
+            .setMessage(
+                confirmation
+            )
             .setNegativeButton(
                 "Cancel",
                 null
@@ -1709,7 +1830,9 @@ Do you want to continue?
                 "Send SMS"
             ) { _, _ ->
 
-                startSmsOperation(selected)
+                startSmsOperation(
+                    selected
+                )
             }
             .show()
     }
@@ -1732,10 +1855,13 @@ Do you want to continue?
         operationResults.clear()
 
         val queue =
-            if (appSettings.skipAlreadySent) {
+            if (
+                appSettings.skipAlreadySent
+            ) {
 
                 selected.filter {
-                    it.smsStatus != SmsStatus.SENT
+                    it.smsStatus !=
+                            SmsStatus.SENT
                 }
 
             } else {
@@ -1743,11 +1869,14 @@ Do you want to continue?
                 selected
             }
 
-        if (appSettings.skipAlreadySent) {
+        if (
+            appSettings.skipAlreadySent
+        ) {
 
             selected
                 .filter {
-                    it.smsStatus == SmsStatus.SENT
+                    it.smsStatus ==
+                            SmsStatus.SENT
                 }
                 .forEach { contact ->
 
@@ -1762,27 +1891,32 @@ Do you want to continue?
                 }
         }
 
-        sendQueue = queue
+        sendQueue =
+            queue
 
         if (sendQueue.isEmpty()) {
 
             txtStatus.text =
                 "All selected contacts were already sent."
 
-            showSmsResultAlert(selected)
+            showSmsResultAlert(
+                selected
+            )
 
             return
         }
 
-        smsOperationActive = true
+        smsOperationActive =
+            true
 
-        queueIndex = 0
+        queueIndex =
+            0
 
         pendingSms.clear()
-
         requestToPhone.clear()
 
-        btnSendSms.isEnabled = false
+        btnSendSms.isEnabled =
+            false
 
         txtStatus.text =
             "Sending SMS to ${sendQueue.size} contacts..."
@@ -1804,7 +1938,10 @@ Do you want to continue?
             return
         }
 
-        if (queueIndex >= sendQueue.size) {
+        if (
+            queueIndex >=
+            sendQueue.size
+        ) {
 
             checkSmsOperationFinished()
 
@@ -2011,9 +2148,11 @@ Do you want to continue?
             pendingSms.isEmpty()
         ) {
 
-            smsOperationActive = false
+            smsOperationActive =
+                false
 
-            btnSendSms.isEnabled = true
+            btnSendSms.isEnabled =
+                true
 
             updateCounts()
 
@@ -2126,7 +2265,8 @@ Do you want to continue?
                 text =
                     builder.toString()
 
-                textSize = 15f
+                textSize =
+                    15f
 
                 setPadding(
                     35,
@@ -2142,7 +2282,9 @@ Do you want to continue?
             }
 
         AlertDialog.Builder(this)
-            .setTitle("SMS Send Result")
+            .setTitle(
+                "SMS Send Result"
+            )
             .setView(scroll)
             .setPositiveButton(
                 "OK",
@@ -2177,7 +2319,9 @@ Do you want to continue?
             personaliseMessage(contact)
 
         AlertDialog.Builder(this)
-            .setTitle("Test SMS")
+            .setTitle(
+                "Test SMS"
+            )
             .setMessage(
                 "Test SMS will be sent to:\n\n" +
                         "${contact.name}\n" +
@@ -2226,7 +2370,7 @@ Do you want to continue?
                     AppLogger.success(
                         this,
                         "SMS",
-                        "Test SMS submitted to ${contact.phone}"
+                        "Test SMS submitted."
                     )
 
                     showAlert(
@@ -2312,26 +2456,32 @@ Do you want to continue?
         val selected =
             adapter.getSelectedPhones().size
 
+        val total =
+            contacts.size
+
         val sent =
             contacts.count {
-                it.smsStatus == SmsStatus.SENT
+                it.smsStatus ==
+                        SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
-                it.smsStatus == SmsStatus.FAILED
+                it.smsStatus ==
+                        SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
-                it.smsStatus == SmsStatus.SENDING
+                it.smsStatus ==
+                        SmsStatus.SENDING
             }
 
         txtSelected.text =
             "Selected: $selected"
 
         txtStats.text =
-            "Total: ${contacts.size}  |  " +
+            "Total: $total  |  " +
                     "Sent: $sent  |  " +
                     "Failed: $failed  |  " +
                     "Pending/Sending: $sending"
@@ -2339,12 +2489,14 @@ Do you want to continue?
 
     private fun sentCount() =
         contacts.count {
-            it.smsStatus == SmsStatus.SENT
+            it.smsStatus ==
+                    SmsStatus.SENT
         }
 
     private fun failedCount() =
         contacts.count {
-            it.smsStatus == SmsStatus.FAILED
+            it.smsStatus ==
+                    SmsStatus.FAILED
         }
 
     private fun statusText(
@@ -2510,10 +2662,16 @@ Do you want to continue?
             val checkBox =
                 CheckBox(root.context)
 
+            val info =
+                LinearLayout(root.context)
+
             val nameText =
                 TextView(root.context)
 
             val phoneText =
+                TextView(root.context)
+
+            val detailsText =
                 TextView(root.context)
 
             val statusText =
@@ -2525,60 +2683,104 @@ Do you want to continue?
                     LinearLayout.HORIZONTAL
 
                 root.gravity =
-                    Gravity.CENTER_VERTICAL
+                    Gravity.TOP
 
                 root.setPadding(
-                    8,
-                    8,
-                    8,
-                    8
+                    4,
+                    6,
+                    4,
+                    6
                 )
 
-                root.addView(
-                    checkBox,
+                // ---------------------------------------------
+                // Checkbox
+                // ---------------------------------------------
+
+                checkBox.layoutParams =
                     LinearLayout.LayoutParams(
                         48,
                         48
-                    )
+                    ).apply {
+                        gravity =
+                            Gravity.TOP
+                    }
+
+                root.addView(
+                    checkBox
                 )
 
-                val info =
-                    LinearLayout(
-                        root.context
-                    ).apply {
+                // ---------------------------------------------
+                // Information area
+                // ---------------------------------------------
 
-                        orientation =
-                            LinearLayout.VERTICAL
+                info.orientation =
+                    LinearLayout.VERTICAL
 
-                        setPadding(
-                            8,
-                            4,
-                            8,
-                            4
-                        )
-                    }
+                info.gravity =
+                    Gravity.START
+
+                info.setPadding(
+                    8,
+                    2,
+                    4,
+                    2
+                )
+
+                nameText.textSize =
+                    16f
+
+                nameText.setTypeface(
+                    null,
+                    android.graphics.Typeface.BOLD
+                )
+
+                phoneText.textSize =
+                    14f
+
+                detailsText.textSize =
+                    13f
+
+                detailsText.setTextColor(
+                    Color.DKGRAY
+                )
+
+                statusText.textSize =
+                    13f
+
+                statusText.setTypeface(
+                    null,
+                    android.graphics.Typeface.BOLD
+                )
 
                 info.addView(
                     nameText,
                     LinearLayout.LayoutParams(
-                        -1,
-                        -2
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
 
                 info.addView(
                     phoneText,
                     LinearLayout.LayoutParams(
-                        -1,
-                        -2
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                )
+
+                info.addView(
+                    detailsText,
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
 
                 info.addView(
                     statusText,
                     LinearLayout.LayoutParams(
-                        -1,
-                        -2
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
                     )
                 )
 
@@ -2586,7 +2788,7 @@ Do you want to continue?
                     info,
                     LinearLayout.LayoutParams(
                         0,
-                        -2,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
                         1f
                     )
                 )
@@ -2594,7 +2796,7 @@ Do you want to continue?
         }
 
         override fun onCreateViewHolder(
-            parent: android.view.ViewGroup,
+            parent: ViewGroup,
             viewType: Int
         ): ContactViewHolder {
 
@@ -2605,7 +2807,7 @@ Do you want to continue?
             )
         }
 
-        override fun getItemCount() =
+        override fun getItemCount(): Int =
             visibleContacts.size
 
         override fun onBindViewHolder(
@@ -2616,22 +2818,82 @@ Do you want to continue?
             val contact =
                 visibleContacts[position]
 
+            // ---------------------------------------------
+            // Name / row
+            // ---------------------------------------------
+
             holder.nameText.text =
                 "${position + 1}. ${contact.name}"
-
-            holder.nameText.textSize =
-                16f
-
-            holder.nameText.setTypeface(
-                null,
-                android.graphics.Typeface.BOLD
-            )
 
             holder.phoneText.text =
                 contact.phone
 
-            holder.phoneText.textSize =
-                14f
+            // ---------------------------------------------
+            // ALL OTHER CSV DETAILS
+            // ---------------------------------------------
+
+            val otherFields =
+                contact.fields
+                    .filter { (key, value) ->
+
+                        key.isNotBlank() &&
+                                value.isNotBlank() &&
+                                !key.equals(
+                                    "Name",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Original Name",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Given Name",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Phone 1 - Value",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Mobile",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Mobile Number",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Phone",
+                                    ignoreCase = true
+                                ) &&
+                                !key.equals(
+                                    "Phone Number",
+                                    ignoreCase = true
+                                )
+                    }
+
+            if (otherFields.isEmpty()) {
+
+                holder.detailsText.visibility =
+                    View.GONE
+
+            } else {
+
+                holder.detailsText.visibility =
+                    View.VISIBLE
+
+                holder.detailsText.text =
+                    otherFields.entries.joinToString(
+                        separator = "\n"
+                    ) { entry ->
+
+                        "${entry.key}: ${entry.value}"
+                    }
+            }
+
+            // ---------------------------------------------
+            // SMS status
+            // ---------------------------------------------
 
             holder.statusText.text =
                 when (contact.smsStatus) {
@@ -2649,37 +2911,42 @@ Do you want to continue?
                         "✕ FAILED"
                 }
 
-            holder.statusText.textSize =
-                13f
+            // ---------------------------------------------
+            // Checkbox
+            // ---------------------------------------------
 
-            holder.checkBox
-                .setOnCheckedChangeListener(null)
+            holder.checkBox.setOnCheckedChangeListener(
+                null
+            )
 
             holder.checkBox.isChecked =
                 selectedPhones.contains(
                     contact.phone
                 )
 
-            holder.checkBox
-                .setOnCheckedChangeListener {
-                        _,
-                        checked ->
+            holder.checkBox.setOnCheckedChangeListener {
+                    _,
+                    checked ->
 
-                    if (checked) {
+                if (checked) {
 
-                        selectedPhones.add(
-                            contact.phone
-                        )
+                    selectedPhones.add(
+                        contact.phone
+                    )
 
-                    } else {
+                } else {
 
-                        selectedPhones.remove(
-                            contact.phone
-                        )
-                    }
-
-                    onSelectionChanged()
+                    selectedPhones.remove(
+                        contact.phone
+                    )
                 }
+
+                onSelectionChanged()
+            }
+
+            // ---------------------------------------------
+            // Row click
+            // ---------------------------------------------
 
             holder.root.setOnClickListener {
 
@@ -2721,12 +2988,22 @@ Do you want to continue?
             } else {
 
                 visibleContacts.addAll(
-                    allContacts.filter {
+                    allContacts.filter { contact ->
 
-                        it.name
+                        contact.name
                             .lowercase()
                             .contains(q) ||
-                                it.phone.contains(q)
+
+                                contact.phone
+                                    .contains(q) ||
+
+                                contact.fields.any {
+                                    (_, value) ->
+
+                                    value
+                                        .lowercase()
+                                        .contains(q)
+                                }
                     }
                 )
             }
@@ -2822,7 +3099,7 @@ Do you want to continue?
             onSelectionChanged()
         }
 
-        fun getVisibleCount() =
+        fun getVisibleCount(): Int =
             visibleContacts.size
 
         fun getSelectedPhones(): Set<String> =
@@ -2839,7 +3116,9 @@ Do you want to continue?
 
             if (index >= 0) {
 
-                notifyItemChanged(index)
+                notifyItemChanged(
+                    index
+                )
             }
         }
     }
