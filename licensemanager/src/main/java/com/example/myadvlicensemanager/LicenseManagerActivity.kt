@@ -2,6 +2,7 @@ package com.example.myadvlicensemanager
 
 import android.app.Activity
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -154,7 +155,4 @@ class LicenseManagerActivity : Activity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
-    companion object {
-        private const val REQUEST_IMPORT_KEY = 100
-    }
 }
