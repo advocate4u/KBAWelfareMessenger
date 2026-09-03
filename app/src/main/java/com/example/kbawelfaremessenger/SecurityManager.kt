@@ -9,7 +9,7 @@ import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-enum class UserRole { ADMIN, USER }
+enum class UserRole { SUPER_ADMIN, ADMIN, USER }
 
 data class LocalUser(val userId: String, val role: UserRole)
 
@@ -31,6 +31,7 @@ object SecurityManager {
     fun hasUser(context: Context): Boolean = preferences(context).getBoolean(KEY_SETUP_COMPLETE, false)
     private fun normalizePhone(value: String): String = value.filter { it.isDigit() }.takeLast(10)
     fun isAdminPhoneNumber(phoneNumber: String): Boolean = normalizePhone(phoneNumber) in ADMIN_PHONE_NUMBERS
+    fun isSuperAdminPhoneNumber(phoneNumber: String): Boolean = isAdminPhoneNumber(phoneNumber)
 
     /** First account setup is always license-first. The signed license decides the role. */
     fun createUser(context: Context, userId: String, password: String): Boolean {
@@ -42,7 +43,7 @@ object SecurityManager {
         if (normalizedId.isBlank() || normalizePhone(license.phone) != normalizedId) return false
 
         val role = license.role
-        if (role == UserRole.ADMIN && !isAdminPhoneNumber(id)) return false
+        if ((role == UserRole.SUPER_ADMIN || role == UserRole.ADMIN) && !isAdminPhoneNumber(id)) return false
         if (role == UserRole.USER && isAdminPhoneNumber(id)) return false
 
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
@@ -72,15 +73,23 @@ object SecurityManager {
         return ok
     }
 
-    /** Admin-only creation of additional USER records. Admin phone numbers cannot be created as USER accounts. */
+    /**
+     * Super Admin can create ADMIN or USER accounts. A normal ADMIN can create USER accounts only.
+     * SUPER_ADMIN is intentionally not exposed as a creatable role.
+     */
     fun addUser(context: Context, userId: String, password: String, role: UserRole = UserRole.USER): Boolean {
         if (!isAdmin(context)) return false
+        if (role == UserRole.SUPER_ADMIN) return false
+
         val id = userId.trim()
-        if (id.isBlank() || password.length < 6 || findUser(context, id) != null || isAdminPhoneNumber(id)) return false
+        if (id.isBlank() || password.length < 6 || findUser(context, id) != null) return false
+        if (isAdminPhoneNumber(id)) return false
+        if (role == UserRole.ADMIN && !isSuperAdmin(context)) return false
+
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
         val users = readUsers(context)
-        users.put(JSONObject().put("userId", id).put("role", UserRole.USER.name).put("hash", encode(hash)).put("salt", encode(salt)))
+        users.put(JSONObject().put("userId", id).put("role", role.name).put("hash", encode(hash)).put("salt", encode(salt)))
         saveUsers(context, users)
         return true
     }
@@ -92,8 +101,7 @@ object SecurityManager {
             val id = o.optString("userId").trim()
             if (id.isBlank()) continue
             val storedRole = runCatching { UserRole.valueOf(o.optString("role", UserRole.USER.name)) }.getOrDefault(UserRole.USER)
-            val role = if (isAdminPhoneNumber(id) && LicenseManager.getLicenseRole(context) == UserRole.ADMIN) UserRole.ADMIN else storedRole
-            add(LocalUser(id, role))
+            add(LocalUser(id, storedRole))
         }
     }
 
@@ -111,7 +119,16 @@ object SecurityManager {
     fun currentUserId(context: Context): String? = preferences(context).getString(KEY_CURRENT_USER, null)
     fun currentUser(context: Context): LocalUser? = currentUserId(context)?.let { id -> listUsers(context).firstOrNull { it.userId == id } }
     fun currentRole(context: Context): UserRole? = currentUser(context)?.role
-    fun isAdmin(context: Context): Boolean = currentUserId(context)?.let { isAdminPhoneNumber(it) } == true && LicenseManager.getLicenseRole(context) == UserRole.ADMIN
+
+    fun isSuperAdmin(context: Context): Boolean =
+        currentUser(context)?.role == UserRole.SUPER_ADMIN &&
+            currentUserId(context)?.let { isSuperAdminPhoneNumber(it) } == true &&
+            LicenseManager.getLicenseRole(context) == UserRole.SUPER_ADMIN
+
+    fun isAdmin(context: Context): Boolean =
+        currentUser(context)?.role?.let { it == UserRole.SUPER_ADMIN || it == UserRole.ADMIN } == true &&
+            LicenseManager.getLicenseRole(context)?.let { it == UserRole.SUPER_ADMIN || it == UserRole.ADMIN } == true
+
     fun logout(context: Context) { preferences(context).edit().remove(KEY_CURRENT_USER).apply() }
 
     private fun readUsers(context: Context): JSONArray {
@@ -122,7 +139,12 @@ object SecurityManager {
         val oldHash = prefs.getString(KEY_PASSWORD_HASH, null)
         val oldSalt = prefs.getString(KEY_PASSWORD_SALT, null)
         if (!oldId.isNullOrBlank() && !oldHash.isNullOrBlank() && !oldSalt.isNullOrBlank()) {
-            val role = if (isAdminPhoneNumber(oldId) && LicenseManager.getLicenseRole(context) == UserRole.ADMIN) UserRole.ADMIN else UserRole.USER
+            val licenseRole = LicenseManager.getLicenseRole(context)
+            val role = when {
+                licenseRole == UserRole.SUPER_ADMIN && isSuperAdminPhoneNumber(oldId) -> UserRole.SUPER_ADMIN
+                licenseRole == UserRole.ADMIN && isAdminPhoneNumber(oldId) -> UserRole.ADMIN
+                else -> UserRole.USER
+            }
             val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", role.name).put("hash", oldHash).put("salt", oldSalt))
             prefs.edit().putString(KEY_USERS, migrated.toString()).putString(KEY_CURRENT_USER, oldId).apply()
             return migrated
