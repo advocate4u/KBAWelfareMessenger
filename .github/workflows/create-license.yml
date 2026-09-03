@@ -24,20 +24,15 @@ jobs:
         run: |
           set -euo pipefail
           PHONE=$(printf '%s' "$PHONE_INPUT" | tr -cd '0-9')
-          if [ "${#PHONE}" -eq 10 ]; then
-            PHONE="91$PHONE"
-          fi
+          if [ "${#PHONE}" -eq 10 ]; then PHONE="91$PHONE"; fi
           if ! printf '%s' "$PHONE" | grep -Eq '^91[0-9]{10}$'; then
-            echo "ERROR: Enter a valid Indian mobile number."
-            exit 1
+            echo "ERROR: Enter a valid Indian mobile number."; exit 1
           fi
           if ! date -u -d "$EXPIRY_INPUT" '+%Y-%m-%d' >/dev/null 2>&1; then
-            echo "ERROR: Expiry must be YYYY-MM-DD."
-            exit 1
+            echo "ERROR: Expiry must be YYYY-MM-DD."; exit 1
           fi
           if [ "$(date -u -d "$EXPIRY_INPUT" '+%Y-%m-%d')" != "$EXPIRY_INPUT" ]; then
-            echo "ERROR: Expiry must be a real date in YYYY-MM-DD format."
-            exit 1
+            echo "ERROR: Expiry must be a real date in YYYY-MM-DD format."; exit 1
           fi
           echo "PHONE=$PHONE" >> "$GITHUB_ENV"
           echo "EXPIRY=$EXPIRY_INPUT" >> "$GITHUB_ENV"
@@ -56,6 +51,8 @@ jobs:
           echo "PKCS12 signing key loaded and validated."
 
       - name: Create signed license
+        env:
+          ADMIN_LICENSE_P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
         run: |
           set -euo pipefail
 
@@ -67,39 +64,12 @@ jobs:
 
           printf 'phone=%s\nexpiry=%s\n' "$PHONE" "$EXPIRY" > license-payload.txt
 
-          keytool -importkeystore \
-            -srckeystore admin-license-private.p12 \
-            -srcstoretype PKCS12 \
-            -srcstorepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -srcalias admin-license \
-            -destkeystore admin-license-signing.p12 \
-            -deststoretype PKCS12 \
-            -deststorepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -destkeypass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -noprompt >/dev/null
-
-          keytool -exportcert \
-            -keystore admin-license-signing.p12 \
-            -storetype PKCS12 \
-            -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -alias admin-license \
-            -rfc \
-            -file admin-license-public.pem >/dev/null
-
-          openssl x509 -pubkey -noout -in admin-license-public.pem > admin-license-public-key.pem
-
-          openssl pkcs12 \
-            -in admin-license-signing.p12 \
-            -nocerts \
-            -nodes \
-            -passin pass:"$ADMIN_LICENSE_P12_PASSWORD" \
-            -out private-key.pem
+          openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes \
+            -passin pass:"$ADMIN_LICENSE_P12_PASSWORD" -out private-key.pem
           chmod 600 private-key.pem
 
-          openssl dgst -sha256 \
-            -sign private-key.pem \
-            -out license-signature.bin \
-            license-payload.txt
+          openssl dgst -sha256 -sign private-key.pem \
+            -out license-signature.bin license-payload.txt
 
           PAYLOAD_B64=$(base64 -w 0 license-payload.txt)
           SIGNATURE_B64=$(base64 -w 0 license-signature.bin)
@@ -124,7 +94,7 @@ jobs:
       - name: Remove private key material
         if: always()
         run: |
-          rm -f admin-license-private.p12 admin-license-signing.p12 private-key.pem license-signature.bin license-payload.txt admin-license-public.pem admin-license-public-key.pem
+          rm -f admin-license-private.p12 private-key.pem license-signature.bin license-payload.txt
 
       - name: Upload license package
         uses: actions/upload-artifact@v4
