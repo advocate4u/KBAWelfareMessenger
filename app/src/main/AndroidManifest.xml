@@ -20,6 +20,7 @@
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".SettingsActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".AdvocateHelperActivity" android:screenOrientation="portrait" android:exported="false" />
+        <activity android:name=".BackupRestoreActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".LicenseActivity" android:screenOrientation="portrait" android:exported="false" />
     </application>
 </manifest>
