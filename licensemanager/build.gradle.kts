@@ -42,7 +42,7 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
-            buildConfigField("String", "MYADV_SIGNING_PRIVATE_KEY_B64", ""$signingPrivateKey"")
+            buildConfigField("String", "MYADV_SIGNING_PRIVATE_KEY_B64", "\\"$signingPrivateKey\\"")
         }
     }
 
