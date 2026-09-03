@@ -9,7 +9,7 @@
         android:allowBackup="true"
         android:icon="@drawable/kba_icon"
         android:roundIcon="@drawable/kba_icon"
-        android:label="KBA Welfare Messenger"
+        android:label="MyAdv"
         android:theme="@style/AppTheme">
         <activity android:name=".LoginActivity" android:screenOrientation="portrait" android:exported="true">
             <intent-filter>
