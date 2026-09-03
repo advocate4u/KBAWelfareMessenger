@@ -17,7 +17,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Offline issuer for normal USER licenses. Initial ADMIN licenses are issued by the system-owner workflow. */
+/** Offline license issuer. SUPER_ADMIN can issue ADMIN or USER licenses; ADMIN can issue USER licenses. */
 object OfflineLicenseIssuer {
     private const val PREFS = "offline_license_issuer"
     private const val KEY_CIPHERTEXT = "encrypted_private_key"
@@ -27,12 +27,12 @@ object OfflineLicenseIssuer {
     private const val DATE_PATTERN = "yyyy-MM-dd"
     private const val ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-    data class GeneratedLicense(val licenseId: String, val signedToken: String, val phone: String, val expiry: LocalDate)
+    data class GeneratedLicense(val licenseId: String, val signedToken: String, val phone: String, val expiry: LocalDate, val role: UserRole)
 
     fun hasSigningKey(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_CIPHERTEXT)
 
     fun installSigningKey(context: Context, pem: String): Boolean {
-        if (!SecurityManager.isAdmin(context)) return false
+        if (!SecurityManager.canManageLicenses(context)) return false
         return try {
             val privateKey = parsePrivateKey(pem)
             getOrCreateWrapKey()
@@ -46,20 +46,30 @@ object OfflineLicenseIssuer {
         } catch (_: Exception) { false }
     }
 
-    /** Admins use this only for USER licenses. ADMIN licenses are created by the system-owner workflow. */
-    fun generateLicense(context: Context, phoneInput: String, expiry: LocalDate): GeneratedLicense? {
-        if (!SecurityManager.isAdmin(context) || !hasSigningKey(context)) return null
+    /**
+     * SUPER_ADMIN may generate ADMIN or USER licenses.
+     * ADMIN may generate USER licenses only.
+     */
+    fun generateLicense(context: Context, phoneInput: String, expiry: LocalDate, role: UserRole): GeneratedLicense? {
+        val currentRole = SecurityManager.currentRole(context) ?: return null
+        if (currentRole != UserRole.SUPER_ADMIN && currentRole != UserRole.ADMIN) return null
+        if (currentRole == UserRole.ADMIN && role != UserRole.USER) return null
+        if (!hasSigningKey(context)) return null
+
         val phone = normalizePhone(phoneInput) ?: return null
-        if (SecurityManager.isAdminPhoneNumber(phone)) return null
+        if (role == UserRole.ADMIN && !SecurityManager.isAdminPhoneNumber(phone)) return null
+        if (role == UserRole.SUPER_ADMIN) return null
         if (expiry.isBefore(LocalDate.now())) return null
+
         return try {
-            val payload = "phone=$phone\nexpiry=${expiry.format(java.time.format.DateTimeFormatter.ofPattern(DATE_PATTERN))}\nrole=USER"
+            val payload = "phone=$phone\nexpiry=${expiry.format(java.time.format.DateTimeFormatter.ofPattern(DATE_PATTERN))}\nrole=${role.name}"
             val payloadBytes = payload.toByteArray(StandardCharsets.UTF_8)
             val privateKey = decryptPrivateKey(context)
             val signature = Signature.getInstance("SHA256withRSA")
-            signature.initSign(privateKey); signature.update(payloadBytes)
+            signature.initSign(privateKey)
+            signature.update(payloadBytes)
             val token = Base64.encodeToString(payloadBytes, Base64.NO_WRAP) + "." + Base64.encodeToString(signature.sign(), Base64.NO_WRAP)
-            GeneratedLicense(randomLicenseId(), token, phone, expiry)
+            GeneratedLicense(randomLicenseId(), token, phone, expiry, role)
         } catch (_: Exception) { null }
     }
 
