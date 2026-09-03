@@ -13,14 +13,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup OpenSSL
+      - name: Derive public key from admin private key
         shell: bash
         env:
           ADMIN_LICENSE_PRIVATE_KEY: ${{ secrets.ADMIN_LICENSE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           umask 077
+
+          if [ -z "${ADMIN_LICENSE_PRIVATE_KEY:-}" ]; then
+            echo "ADMIN_LICENSE_PRIVATE_KEY secret is empty or unavailable."
+            exit 1
+          fi
+
           printf '%s\n' "$ADMIN_LICENSE_PRIVATE_KEY" > admin-license-private.pem
+
+          if ! openssl pkey -in admin-license-private.pem -noout 2>/dev/null; then
+            echo "ADMIN_LICENSE_PRIVATE_KEY is not a valid PEM private key."
+            echo "If the secret is a PKCS#8 PEM, it must include BEGIN PRIVATE KEY / END PRIVATE KEY."
+            exit 1
+          fi
+
           openssl pkey -in admin-license-private.pem -pubout -out admin-license-public.pem
           openssl pkey -in admin-license-private.pem -pubout -outform DER | sha256sum > public-key.sha256
           rm -f admin-license-private.pem
@@ -35,16 +48,17 @@ jobs:
           text = path.read_text(encoding="utf-8")
           public_key = Path("admin-license-public.pem").read_text(encoding="utf-8").strip()
 
-          pattern = r'private const val PUBLIC_KEY_PEM = """.*?"""\.trimIndent\(\)'
+          pattern = r'private const val PUBLIC_KEY_PEM = """.*?"""(?:\.trimIndent\(\))?'
           replacement = 'private const val PUBLIC_KEY_PEM = """\n' + public_key + '\n""".trimIndent()'
           updated, count = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)
           if count != 1:
               raise SystemExit("PUBLIC_KEY_PEM block was not found exactly once")
           path.write_text(updated, encoding="utf-8")
 
-      - name: Remove temporary public key files
+      - name: Remove temporary key files
+        if: always()
         shell: bash
-        run: rm -f admin-license-public.pem public-key.sha256
+        run: rm -f admin-license-private.pem admin-license-public.pem public-key.sha256
 
       - name: Commit updated public key
         shell: bash
