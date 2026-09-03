@@ -51,53 +51,44 @@ yn90df4QmpIDXBKWYA==
 -----END CERTIFICATE-----
 """.trimIndent()
 
-    data class License(val licenseId: String, val phone: String, val expiryDate: LocalDate)
+    data class License(val licenseId: String, val phone: String, val expiryDate: LocalDate, val role: UserRole)
     data class LicenseCheckResult(val allowed: Boolean, val message: String)
 
     fun installLicense(context: Context, licenseId: String, signedToken: String): LicenseCheckResult {
         return try {
             val cleanId = normaliseLicenseId(licenseId)
-            if (!isValidLicenseIdFormat(cleanId)) {
-                return LicenseCheckResult(false, "Invalid license key format.")
-            }
-            val license = verifySignedToken(cleanId, signedToken)
-                ?: return LicenseCheckResult(false, "License verification failed.")
-            if (LocalDate.now().isAfter(license.expiryDate)) {
-                return LicenseCheckResult(false, "This license has expired.")
-            }
+            if (!isValidLicenseIdFormat(cleanId)) return LicenseCheckResult(false, "Invalid license key format.")
+            val license = verifySignedToken(cleanId, signedToken) ?: return LicenseCheckResult(false, "License verification failed.")
+            if (LocalDate.now().isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
             context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
                 .putString(KEY_LICENSE_ID, license.licenseId)
                 .putString(KEY_LICENSE_TOKEN, signedToken.trim())
                 .apply()
             AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
-            LicenseCheckResult(true, "License activated successfully.")
+            LicenseCheckResult(true, "License activated successfully for ${license.role.name}.")
         } catch (e: Exception) {
             AppLogger.error(context, "LICENSE", "License installation failed: ${e.message}")
             LicenseCheckResult(false, "Unable to install license.")
         }
     }
 
-    fun getInstalledLicense(context: Context): License? {
-        return try {
-            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
-            val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
-            verifySignedToken(normaliseLicenseId(id), token)
-        } catch (_: Exception) {
-            null
-        }
-    }
+    fun getInstalledLicense(context: Context): License? = try {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
+        val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
+        verifySignedToken(normaliseLicenseId(id), token)
+    } catch (_: Exception) { null }
 
     fun getValidLicense(context: Context): License? = getInstalledLicense(context)?.takeIf { !LocalDate.now().isAfter(it.expiryDate) }
     fun getLicensedPhone(context: Context): String? = getValidLicense(context)?.phone
     fun getLicenseId(context: Context): String? = getInstalledLicense(context)?.licenseId
     fun getExpiryDate(context: Context): LocalDate? = getInstalledLicense(context)?.expiryDate
+    fun getLicenseRole(context: Context): UserRole? = getValidLicense(context)?.role
     fun isLicenseValid(context: Context): Boolean = getValidLicense(context) != null
 
     fun checkLicenseAndSmsPhone(context: Context, smsPhone: String?): LicenseCheckResult {
         val license = getValidLicense(context) ?: return if (getInstalledLicense(context) != null)
-            LicenseCheckResult(false, "License has expired.")
-        else LicenseCheckResult(false, "No valid KBA license is installed.")
+            LicenseCheckResult(false, "License has expired.") else LicenseCheckResult(false, "No valid KBA license is installed.")
         val actual = smsPhone?.let { normalisePhone(it) }
         if (actual.isNullOrBlank()) return LicenseCheckResult(false, "Unable to verify the phone number of the SMS SIM.\n\nSMS sending is blocked because the licensed phone number cannot be verified.")
         if (actual != license.phone) return LicenseCheckResult(false, "Licensed phone number does not match the SMS SIM.\n\nLicensed number: ${displayPhone(license.phone)}\nSMS SIM number: ${displayPhone(actual)}\n\nSMS sending is blocked.")
@@ -119,32 +110,33 @@ yn90df4QmpIDXBKWYA==
         signature.update(payloadBytes)
         if (!signature.verify(signatureBytes)) return null
         val payload = String(payloadBytes, StandardCharsets.UTF_8)
-        val values = parsePayload(payload) ?: return null
-        if (payload != createCanonicalPayload(values.first, values.second)) return null
-        return License(licenseId, values.first, values.second)
+        val parsed = parsePayload(payload) ?: return null
+        val expected = createCanonicalPayload(parsed.first, parsed.second, parsed.third)
+        if (payload != expected) return null
+        return License(licenseId, parsed.first, parsed.second, parsed.third)
     }
 
-    private fun parsePayload(payload: String): Pair<String, LocalDate>? {
+    private fun parsePayload(payload: String): Triple<String, LocalDate, UserRole>? {
         val lines = payload.split("\n")
-        if (lines.size != 2 || !lines[0].startsWith("phone=") || !lines[1].startsWith("expiry=")) return null
+        if (lines.size != 2 && lines.size != 3) return null
+        if (!lines[0].startsWith("phone=") || !lines[1].startsWith("expiry=")) return null
         val phone = normalisePhone(lines[0].removePrefix("phone="))
         if (phone.isBlank()) return null
         val expiry = runCatching { LocalDate.parse(lines[1].removePrefix("expiry="), dateFormatter) }.getOrNull() ?: return null
-        return phone to expiry
+        val role = if (lines.size == 3 && lines[2].startsWith("role=")) {
+            runCatching { UserRole.valueOf(lines[2].removePrefix("role=")) }.getOrNull() ?: return null
+        } else UserRole.USER
+        if (lines.size == 3 && !lines[2].startsWith("role=")) return null
+        return Triple(phone, expiry, role)
     }
 
-    private fun createCanonicalPayload(phone: String, expiryDate: LocalDate): String =
-        "phone=$phone\nexpiry=${expiryDate.format(dateFormatter)}"
+    private fun createCanonicalPayload(phone: String, expiryDate: LocalDate, role: UserRole): String =
+        "phone=$phone\nexpiry=${expiryDate.format(dateFormatter)}\nrole=${role.name}"
 
     private fun loadPublicKey() = run {
-        val cleaned = PUBLIC_KEY_PEM
-            .replace("-----BEGIN CERTIFICATE-----", "")
-            .replace("-----END CERTIFICATE-----", "")
-            .replace(Regex("\\s"), "")
+        val cleaned = PUBLIC_KEY_PEM.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "").replace(Regex("\\s"), "")
         val certificateBytes = Base64.decode(cleaned, Base64.DEFAULT)
-        val certificate = CertificateFactory.getInstance("X.509")
-            .generateCertificate(ByteArrayInputStream(certificateBytes))
-        certificate.publicKey
+        CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(certificateBytes)).publicKey
     }
 
     private fun normaliseLicenseId(value: String): String = value.trim().uppercase().replace(" ", "")
