@@ -61,6 +61,9 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAdvocateHelper).setOnClickListener {
             startActivity(Intent(this, AdvocateHelperActivity::class.java))
         }
+        findViewById<Button>(R.id.btnLicense).setOnClickListener {
+            startActivity(Intent(this, LicenseActivity::class.java))
+        }
 
         btnAuthentication.setOnClickListener {
             Toast.makeText(this, "Authentication settings will be connected to SecurityManager.", Toast.LENGTH_SHORT).show()
@@ -75,7 +78,6 @@ class SettingsActivity : AppCompatActivity() {
             if (defaultMessage.isEmpty()) { edtDefaultMessage.error = "Enter default message"; edtDefaultMessage.requestFocus(); return@setOnClickListener }
             val smsDelay = edtSmsDelay.text.toString().trim().toLongOrNull()
             if (smsDelay == null || smsDelay < 0) { edtSmsDelay.error = "Enter a valid delay in milliseconds"; edtSmsDelay.requestFocus(); return@setOnClickListener }
-
             settings = settings.copy(
                 nameColumn = nameColumn,
                 phoneColumn = phoneColumn,
@@ -92,18 +94,9 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        btnViewLogs.setOnClickListener {
-            Toast.makeText(this, "Log viewer", Toast.LENGTH_SHORT).show()
-        }
-
-        btnClearLogs.setOnClickListener {
-            AppLogger.clear(this)
-            Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
-        }
+        btnViewLogs.setOnClickListener { Toast.makeText(this, "Log viewer", Toast.LENGTH_SHORT).show() }
+        btnClearLogs.setOnClickListener { AppLogger.clear(this); Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show() }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
+    override fun onSupportNavigateUp(): Boolean { finish(); return true }
 }
