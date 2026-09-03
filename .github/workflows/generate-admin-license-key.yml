@@ -18,21 +18,32 @@ jobs:
           test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ADMIN_LICENSE_P12_BASE64 secret is not configured."; exit 1; }
           test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
           printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
-          keytool -list \
+          chmod 600 admin-license-private.p12
+
+          if ! keytool -list \
             -keystore admin-license-private.p12 \
             -storetype PKCS12 \
             -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -alias admin-license >/dev/null
+            > keytool-list.txt 2>&1; then
+            echo "ERROR: P12 password does not match the P12 secret, or the P12 is corrupt."
+            cat keytool-list.txt
+            exit 1
+          fi
+
+          ALIAS=$(awk -F': ' '/^Alias name: / {print $2; exit}' keytool-list.txt)
+          test -n "$ALIAS" || { echo "ERROR: No keystore alias found."; cat keytool-list.txt; exit 1; }
+
           keytool -exportcert \
             -rfc \
             -keystore admin-license-private.p12 \
             -storetype PKCS12 \
             -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -alias admin-license \
+            -alias "$ALIAS" \
             -file admin-license-public.pem >/dev/null
+
           echo "Protected admin PKCS12 key is valid."
           echo "Public certificate generated successfully."
 
       - name: Remove temporary key files
         if: always()
-        run: rm -f admin-license-private.p12 admin-license-public.pem
+        run: rm -f admin-license-private.p12 admin-license-public.pem keytool-list.txt
