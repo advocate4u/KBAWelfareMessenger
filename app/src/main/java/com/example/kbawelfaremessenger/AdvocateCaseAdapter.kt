@@ -5,18 +5,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 
 class AdvocateCaseAdapter(
-    private var items: List<AdvocateCase>,
     private val onEdit: (AdvocateCase) -> Unit,
     private val onDelete: (AdvocateCase) -> Unit
-) : RecyclerView.Adapter<AdvocateCaseAdapter.CaseViewHolder>() {
-
-    fun submitList(newItems: List<AdvocateCase>) {
-        items = newItems
-        notifyDataSetChanged()
-    }
+) : ListAdapter<AdvocateCase, AdvocateCaseAdapter.CaseViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CaseViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -25,10 +21,8 @@ class AdvocateCaseAdapter(
     }
 
     override fun onBindViewHolder(holder: CaseViewHolder, position: Int) {
-        holder.bind(items[position])
+        holder.bind(getItem(position))
     }
-
-    override fun getItemCount(): Int = items.size
 
     inner class CaseViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val txtCase = view.findViewById<TextView>(R.id.txtCase)
@@ -56,5 +50,15 @@ class AdvocateCaseAdapter(
         private fun money(value: Double): String =
             if (value == value.toLong().toDouble()) value.toLong().toString()
             else String.format("%.2f", value)
+    }
+
+    companion object {
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<AdvocateCase>() {
+            override fun areItemsTheSame(oldItem: AdvocateCase, newItem: AdvocateCase): Boolean =
+                oldItem.id == newItem.id
+
+            override fun areContentsTheSame(oldItem: AdvocateCase, newItem: AdvocateCase): Boolean =
+                oldItem == newItem
+        }
     }
 }
