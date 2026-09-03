@@ -25,23 +25,22 @@ object SecurityManager {
     private const val KEY_LENGTH = 256
     private const val SALT_LENGTH = 32
 
-    // Offline administrator phone allowlist.
-    // These numbers are treated as ADMIN accounts when used as the user ID.
     private val ADMIN_PHONE_NUMBERS = setOf("9813337779", "9104371000")
 
     private fun preferences(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+
     fun hasUser(context: Context): Boolean = preferences(context).getBoolean(KEY_SETUP_COMPLETE, false)
 
-    private fun normalizePhoneNumber(value: String): String = value.filter { it.isDigit() }.takeLast(10)
-    fun isAdminPhoneNumber(phoneNumber: String): Boolean = normalizePhoneNumber(phoneNumber) in ADMIN_PHONE_NUMBERS
+    private fun normalizePhone(value: String): String = value.filter { it.isDigit() }.takeLast(10)
 
-    /** First installation creates an account. The two approved admin phone numbers become ADMIN. */
+    fun isAdminPhoneNumber(phoneNumber: String): Boolean = normalizePhone(phoneNumber) in ADMIN_PHONE_NUMBERS
+
     fun createUser(context: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
         if (id.isBlank() || password.length < 6 || hasUser(context)) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
-        val role = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.ADMIN
+        val role = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.USER
         val record = JSONObject().put("userId", id).put("role", role.name).put("hash", encode(hash)).put("salt", encode(salt))
         preferences(context).edit()
             .putString(KEY_USERS, JSONArray().put(record).toString())
@@ -58,26 +57,29 @@ object SecurityManager {
         val id = userId.trim()
         val user = findUser(context, id) ?: return false
         val ok = try {
-            MessageDigest.isEqual(Base64.decode(user.getString("hash"), Base64.NO_WRAP), hashPassword(password, Base64.decode(user.getString("salt"), Base64.NO_WRAP)))
+            MessageDigest.isEqual(
+                Base64.decode(user.getString("hash"), Base64.NO_WRAP),
+                hashPassword(password, Base64.decode(user.getString("salt"), Base64.NO_WRAP))
+            )
         } catch (_: Exception) { false }
         if (ok) preferences(context).edit().putString(KEY_CURRENT_USER, id).apply()
         return ok
     }
 
-    /** Adds a normal USER account. Only the authenticated ADMIN may call this. */
     fun addUser(context: Context, userId: String, password: String, role: UserRole = UserRole.USER): Boolean {
         if (!isAdmin(context)) return false
         val id = userId.trim()
         if (id.isBlank() || password.length < 6 || findUser(context, id) != null) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
-        val effectiveRole = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.USER
-        val record = JSONObject().put("userId", id).put("role", effectiveRole.name).put("hash", encode(hash)).put("salt", encode(salt))
+        val effectiveRole = if (isAdminPhoneNumber(id)) UserRole.ADMIN else role.coerceNormalUser()
         val users = readUsers(context)
-        users.put(record)
+        users.put(JSONObject().put("userId", id).put("role", effectiveRole.name).put("hash", encode(hash)).put("salt", encode(salt)))
         saveUsers(context, users)
         return true
     }
+
+    private fun UserRole.coerceNormalUser(): UserRole = if (this == UserRole.ADMIN) UserRole.USER else this
 
     fun listUsers(context: Context): List<LocalUser> = buildList {
         val users = readUsers(context)
@@ -85,7 +87,8 @@ object SecurityManager {
             val o = users.optJSONObject(i) ?: continue
             val id = o.optString("userId").trim()
             if (id.isBlank()) continue
-            val role = runCatching { UserRole.valueOf(o.optString("role", UserRole.USER.name)) }.getOrDefault(UserRole.USER)
+            val storedRole = runCatching { UserRole.valueOf(o.optString("role", UserRole.USER.name)) }.getOrDefault(UserRole.USER)
+            val role = if (isAdminPhoneNumber(id)) UserRole.ADMIN else storedRole.coerceNormalUser()
             add(LocalUser(id, role))
         }
     }
@@ -104,12 +107,15 @@ object SecurityManager {
     }
 
     fun currentUserId(context: Context): String? = preferences(context).getString(KEY_CURRENT_USER, null)
+
     fun currentUser(context: Context): LocalUser? = currentUserId(context)?.let { id -> listUsers(context).firstOrNull { it.userId == id } }
+
     fun currentRole(context: Context): UserRole? = currentUser(context)?.role
-    fun isAdmin(context: Context): Boolean = currentRole(context) == UserRole.ADMIN
+
+    fun isAdmin(context: Context): Boolean = currentUserId(context)?.let { isAdminPhoneNumber(it) } == true
+
     fun logout(context: Context) { preferences(context).edit().remove(KEY_CURRENT_USER).apply() }
 
-    /** Migrates the original single-account storage into the new users list. */
     private fun readUsers(context: Context): JSONArray {
         val prefs = preferences(context)
         val stored = prefs.getString(KEY_USERS, null)
@@ -118,7 +124,8 @@ object SecurityManager {
         val oldHash = prefs.getString(KEY_PASSWORD_HASH, null)
         val oldSalt = prefs.getString(KEY_PASSWORD_SALT, null)
         if (!oldId.isNullOrBlank() && !oldHash.isNullOrBlank() && !oldSalt.isNullOrBlank()) {
-            val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", UserRole.ADMIN.name).put("hash", oldHash).put("salt", oldSalt))
+            val role = if (isAdminPhoneNumber(oldId)) UserRole.ADMIN else UserRole.USER
+            val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", role.name).put("hash", oldHash).put("salt", oldSalt))
             prefs.edit().putString(KEY_USERS, migrated.toString()).putString(KEY_CURRENT_USER, oldId).apply()
             return migrated
         }
@@ -132,9 +139,11 @@ object SecurityManager {
     }
 
     private fun saveUsers(context: Context, users: JSONArray) { preferences(context).edit().putString(KEY_USERS, users.toString()).apply() }
+
     private fun hashPassword(password: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
         return try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded } finally { spec.clearPassword() }
     }
+
     private fun encode(value: ByteArray): String = Base64.encodeToString(value, Base64.NO_WRAP)
 }
