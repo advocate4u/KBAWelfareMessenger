@@ -32,11 +32,11 @@ jobs:
       - name: Make Gradle Wrapper executable
         run: chmod +x gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleDebug
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
 
-      - name: Upload APK
+      - name: Upload MyAdv APK
         uses: actions/upload-artifact@v4
         with:
-          name: KBAWelfareMessenger-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: MyAdv-release-v2.1
+          path: app/build/outputs/apk/release/*.apk
