@@ -1,4 +1,4 @@
-name: Build APK
+name: Build MyAdv APKs
 
 on:
   workflow_dispatch:
@@ -32,69 +32,69 @@ jobs:
       - name: Make Gradle Wrapper executable
         run: chmod +x gradlew
 
-      - name: Prepare MyAdv release keystore
+      - name: Prepare release keystore
         env:
           MYADV_KEYSTORE_BASE64: ${{ secrets.MYADV_KEYSTORE_BASE64 }}
         run: |
-          if [ -z "$MYADV_KEYSTORE_BASE64" ]; then
-            echo "MYADV_KEYSTORE_BASE64 GitHub secret is missing."
+          set -euo pipefail
+          if [ -z "${MYADV_KEYSTORE_BASE64:-}" ]; then
+            echo "ERROR: MYADV_KEYSTORE_BASE64 GitHub secret is missing."
             exit 1
           fi
           printf '%s' "$MYADV_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/myadv-release.jks"
           test -s "$GITHUB_WORKSPACE/myadv-release.jks"
 
-      - name: Verify MyAdv keystore configuration
+      - name: Verify release signing configuration
         env:
           MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
         run: |
-          set -e
-          if [ -z "$MYADV_STORE_PASSWORD" ]; then
-            echo "ERROR: MYADV_STORE_PASSWORD is missing."
-            exit 1
-          fi
-          if [ -z "$MYADV_KEY_ALIAS" ]; then
-            echo "ERROR: MYADV_KEY_ALIAS is missing."
-            exit 1
-          fi
-          if [ -z "$MYADV_KEY_PASSWORD" ]; then
-            echo "ERROR: MYADV_KEY_PASSWORD is missing."
-            exit 1
-          fi
-
-          echo "Checking that the keystore can be opened..."
-          keytool -list -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" >/dev/null
-          echo "Keystore password: OK"
-
-          echo "Checking the configured key alias..."
+          set -euo pipefail
+          test -n "$MYADV_STORE_PASSWORD"
+          test -n "$MYADV_KEY_ALIAS"
+          test -n "$MYADV_KEY_PASSWORD"
           keytool -list -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" >/dev/null
-          echo "Key alias: OK"
-
-          echo "Checking that the alias is a private-key entry..."
           ENTRY_TYPE=$(keytool -list -v -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" | awk -F': ' '/Entry type:/{print $2; exit}')
-          if [ "$ENTRY_TYPE" != "PrivateKeyEntry" ]; then
-            echo "ERROR: Configured alias is not a PrivateKeyEntry."
-            exit 1
-          fi
-          echo "Entry type: PrivateKeyEntry"
-
-          echo "Testing the key password without printing any secret..."
+          test "$ENTRY_TYPE" = "PrivateKeyEntry"
           keytool -certreq -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" -keypass "$MYADV_KEY_PASSWORD" -file "$RUNNER_TEMP/myadv-signing-test.csr" >/dev/null 2>&1
-          echo "Key password: OK"
           rm -f "$RUNNER_TEMP/myadv-signing-test.csr"
+          echo "Release signing configuration: OK"
 
-      - name: Build signed release APK
+      - name: Build both signed release APKs
         env:
           MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease
 
-      - name: Upload MyAdv APK
+      - name: Verify APK outputs
+        run: |
+          set -euo pipefail
+          test -n "$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$(find licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          echo "Generated APKs:"
+          find app/build/outputs/apk/release licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print
+
+      - name: Rename APKs for distribution
+        run: |
+          set -euo pipefail
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          AM_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          cp "$APP_APK" app/build/outputs/apk/release/MyAdv-release.apk
+          cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdvAM-release.apk
+
+      - name: Upload both APKs
         uses: actions/upload-artifact@v4
         with:
-          name: MyAdv-release-v2.1
-          path: app/build/outputs/apk/release/*.apk
+          name: MyAdv-APKs
+          path: |
+            app/build/outputs/apk/release/MyAdv-release.apk
+            licensemanager/build/outputs/apk/release/MyAdvAM-release.apk
+          if-no-files-found: error
+
+      - name: Remove private build material
+        if: always()
+        run: rm -f myadv-release.jks
