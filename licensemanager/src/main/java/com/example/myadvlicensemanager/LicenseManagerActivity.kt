@@ -5,12 +5,12 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -36,61 +36,142 @@ class LicenseManagerActivity : Activity() {
         token = findViewById(R.id.signedToken)
         status = findViewById(R.id.statusText)
 
-        role.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, arrayOf("USER", "ADMIN", "SUPER_ADMIN"))
+        role.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            arrayOf("USER", "ADMIN", "SUPER_ADMIN")
+        )
+
         val today = LocalDate.now()
         issue.setText(today.format(fmt))
         expiry.setText(today.plusYears(1).format(fmt))
         issue.setOnClickListener { pickDate(issue) }
         expiry.setOnClickListener { pickDate(expiry) }
+
         findViewById<Button>(R.id.importKeyButton).setOnClickListener { importKey() }
         findViewById<Button>(R.id.generateButton).setOnClickListener { generate() }
         findViewById<Button>(R.id.shareButton).setOnClickListener { shareLicense() }
-        status.text = if (LicenseAuthority.hasKey(this)) "Signing authority: READY" else "Signing authority: NOT INSTALLED"
+
+        status.text = if (LicenseAuthority.hasKey(this)) {
+            "Signing authority: READY"
+        } else {
+            "Signing authority: NOT INSTALLED"
+        }
     }
 
     private fun pickDate(target: EditText) {
-        val d = runCatching { LocalDate.parse(target.text.toString(), fmt) }.getOrDefault(LocalDate.now())
-        DatePickerDialog(this, { _, y, m, day -> target.setText(LocalDate.of(y, m + 1, day).format(fmt)) }, d.year, d.monthValue - 1, d.dayOfMonth).show()
+        val date = runCatching { LocalDate.parse(target.text.toString(), fmt) }
+            .getOrDefault(LocalDate.now())
+        DatePickerDialog(
+            this,
+            { _, year, month, day ->
+                target.setText(LocalDate.of(year, month + 1, day).format(fmt))
+            },
+            date.year,
+            date.monthValue - 1,
+            date.dayOfMonth
+        ).show()
     }
 
     private fun importKey() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "application/x-pkcs12"; addCategory(Intent.CATEGORY_OPENABLE) }
-        startActivityForResult(intent, 100)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "application/x-pkcs12"
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        startActivityForResult(intent, REQUEST_IMPORT_KEY)
     }
 
     @Deprecated("Android activity result API retained for broad project compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != 100 || resultCode != RESULT_OK || data?.data == null) return
+        if (requestCode != REQUEST_IMPORT_KEY || resultCode != RESULT_OK || data?.data == null) return
+
         val uri = data.data!!
-        val password = EditText(this).apply { hint = "P12/PFX password"; inputType = 0x00000081 }
-        AlertDialog.Builder(this).setTitle("Signing authority")
+        val password = EditText(this).apply {
+            hint = "P12/PFX password"
+            inputType = 0x00000081
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Signing authority")
             .setMessage("Enter the signing-file password once. It is not stored by MyAdvAM.")
             .setView(password)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Import") { _, _ ->
-                val ok = contentResolver.openInputStream(uri)?.let { LicenseAuthority.installSigningKey(this, it, password.text.toString().toCharArray()) } == true
-                status.text = if (ok) "Signing authority: READY" else "Signing authority: IMPORT FAILED"
+                val ok = contentResolver.openInputStream(uri)?.use { input ->
+                    LicenseAuthority.installSigningKey(
+                        this,
+                        input,
+                        password.text.toString().toCharArray()
+                    )
+                } == true
+
+                status.text = if (ok) {
+                    "Signing authority: READY"
+                } else {
+                    "Signing authority: IMPORT FAILED"
+                }
                 toast(if (ok) "Signing authority installed." else "Unable to import signing authority.")
-            }.show()
+            }
+            .show()
     }
 
     private fun generate() {
-        if (!LicenseAuthority.hasKey(this)) { toast("Import the signing authority first."); return }
+        if (!LicenseAuthority.hasKey(this)) {
+            toast("Import the signing authority first.")
+            return
+        }
+
         val target = phone.text.toString().trim()
         val issueDate = runCatching { LocalDate.parse(issue.text.toString(), fmt) }.getOrNull()
         val expiryDate = runCatching { LocalDate.parse(expiry.text.toString(), fmt) }.getOrNull()
-        if (target.isBlank() || issueDate == null || expiryDate == null) { toast("Enter mobile number and valid dates."); return }
-        val selectedRole = when (role.selectedItem.toString()) { "ADMIN" -> UserRole.ADMIN; "SUPER_ADMIN" -> UserRole.SUPER_ADMIN; else -> UserRole.USER }
-        fun checked(id: Int) = findViewById<CheckBox>(id).isChecked
+
+        if (target.isBlank() || issueDate == null || expiryDate == null) {
+            toast("Enter mobile number and valid dates.")
+            return
+        }
+        if (expiryDate.isBefore(issueDate)) {
+            toast("Expiry date cannot be before issue date.")
+            return
+        }
+
+        val selectedRole = when (role.selectedItem?.toString()) {
+            "ADMIN" -> LicenseAuthority.ManagerRole.ADMIN
+            "SUPER_ADMIN" -> LicenseAuthority.ManagerRole.SUPER_ADMIN
+            else -> LicenseAuthority.ManagerRole.SUPER_ADMIN
+        }
+
+        fun checked(id: Int): Boolean = findViewById<CheckBox>(id).isChecked
+
         val options = LicenseAuthority.LicenseOptions(
-            validatePhone = checked(R.id.optValidatePhone), sms = checked(R.id.optSms), bulkSms = checked(R.id.optBulkSms), smsLogs = checked(R.id.optSmsLogs),
-            advocateDiary = checked(R.id.optDiary), advocateHelper = checked(R.id.optHelper), editMessageOnScreen = checked(R.id.optEditMessage),
-            skipAlreadySent = checked(R.id.optSkipSent), confirmBeforeBulkSend = checked(R.id.optConfirmBulk), loggingEnabled = checked(R.id.optLogging),
-            removeDuplicates = checked(R.id.optDuplicates), skipInvalidNumbers = checked(R.id.optInvalidNumbers)
+            validatePhone = checked(R.id.optValidatePhone),
+            sms = checked(R.id.optSms),
+            bulkSms = checked(R.id.optBulkSms),
+            smsLogs = checked(R.id.optSmsLogs),
+            advocateDiary = checked(R.id.optDiary),
+            advocateHelper = checked(R.id.optHelper),
+            editMessageOnScreen = checked(R.id.optEditMessage),
+            skipAlreadySent = checked(R.id.optSkipSent),
+            confirmBeforeBulkSend = checked(R.id.optConfirmBulk),
+            loggingEnabled = checked(R.id.optLogging),
+            removeDuplicates = checked(R.id.optDuplicates),
+            skipInvalidNumbers = checked(R.id.optInvalidNumbers)
         )
-        val license = LicenseAuthority.createLicense(this, target, selectedRole, issueDate, expiryDate, options)
-        if (license == null) { toast("Could not generate license. Check dates and mobile number."); return }
+
+        val license = LicenseAuthority.createLicense(
+            this,
+            target,
+            selectedRole,
+            issueDate,
+            expiryDate,
+            options
+        )
+
+        if (license == null) {
+            toast("Could not generate license. Check signing authority, dates and mobile number.")
+            return
+        }
+
         findViewById<TextView>(R.id.licenseId).text = license.id
         token.setText(license.token)
         status.text = "LICENSE GENERATED • ${license.role} • EXPIRES ${license.expiry.format(fmt)}"
@@ -98,11 +179,28 @@ class LicenseManagerActivity : Activity() {
     }
 
     private fun shareLicense() {
-        val id = findViewById<TextView>(R.id.licenseId).text.toString()
-        val t = token.text.toString().trim()
-        if (id.isBlank() || t.isBlank()) { toast("Generate a license first."); return }
-        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "MyAdv License\nLicense ID: $id\nSigned license token:\n$t") }, "Share MyAdv License"))
+        val id = findViewById<TextView>(R.id.licenseId).text.toString().trim()
+        val signedToken = token.text.toString().trim()
+        if (id.isBlank() || signedToken.isBlank()) {
+            toast("Generate a license first.")
+            return
+        }
+
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "MyAdv License\nLicense ID: $id\nSigned license token:\n$signedToken"
+            )
+        }
+        startActivity(Intent.createChooser(sendIntent, "Share MyAdv License"))
     }
 
-    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    private fun toast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    companion object {
+        private const val REQUEST_IMPORT_KEY = 100
+    }
 }
