@@ -1,10 +1,10 @@
-name: Generate Initial Admin License
+name: Generate Initial Super Admin License
 
 on:
   workflow_dispatch:
     inputs:
       admin_phone:
-        description: 'Approved Admin phone: 9813337779 or 9104371000'
+        description: 'Approved Super Admin phone: 9813337779 or 9104371000'
         required: true
         type: string
       expiry:
@@ -26,7 +26,7 @@ jobs:
           if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
           case "$PHONE" in
             9813337779|9104371000) ;;
-            *) echo "Only 9813337779 or 9104371000 can receive an Admin license."; exit 1 ;;
+            *) echo "Only 9813337779 or 9104371000 can receive a Super Admin license."; exit 1 ;;
           esac
           date -d "$EXPIRY" '+%Y-%m-%d' >/dev/null
           if [ "$(date -d "$EXPIRY" +%s)" -lt "$(date +%s)" ]; then echo "Expiry must not be in the past."; exit 1; fi
@@ -40,7 +40,7 @@ jobs:
           printf '%s' "$KEY_B64" | base64 -d > admin-license-private.p12
           chmod 600 admin-license-private.p12
 
-      - name: Sign Admin license
+      - name: Sign Super Admin license
         env:
           ADMIN_PHONE: ${{ inputs.admin_phone }}
           EXPIRY: ${{ inputs.expiry }}
@@ -50,7 +50,7 @@ jobs:
           PHONE="$(printf '%s' "$ADMIN_PHONE" | tr -cd '0-9')"
           if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
           PHONE="91$PHONE"
-          PAYLOAD="phone=$PHONE\nexpiry=$EXPIRY\nrole=ADMIN"
+          PAYLOAD="phone=$PHONE\nexpiry=$EXPIRY\nrole=SUPER_ADMIN"
           printf '%b' "$PAYLOAD" > payload.txt
 
           test -n "$P12_PASSWORD" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
@@ -58,25 +58,26 @@ jobs:
           chmod 600 private-key.pem
           SIGNATURE_B64="$(openssl dgst -sha256 -sign private-key.pem payload.txt | base64 -w 0)"
           PAYLOAD_B64="$(base64 -w 0 payload.txt)"
-          A="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 1 || true)"
-          B="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
-          C="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
-          D="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
+          A="$(openssl rand -hex 1 | tr 'a-f' 'A-F' | cut -c1)"
+          B="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
+          C="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
+          D="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
           RANDOM_ID="ANI${A}-${B}-${C}-${D}"
           {
-            echo "MyAdv INITIAL ADMIN LICENSE"
+            echo "MyAdv INITIAL SUPER ADMIN LICENSE"
             echo "License ID: $RANDOM_ID"
             echo "Phone: +91 ${PHONE:2}"
             echo "Expiry: $EXPIRY"
+            echo "Role: SUPER_ADMIN"
             echo
             echo "Signed Token:"
             echo "$PAYLOAD_B64.$SIGNATURE_B64"
-          } > MYADV_ADMIN_LICENSE.txt
+          } > MYADV_SUPER_ADMIN_LICENSE.txt
           rm -f admin-license-private.p12 private-key.pem payload.txt
 
-      - name: Upload Admin license artifact
+      - name: Upload Super Admin license artifact
         uses: actions/upload-artifact@v4
         with:
-          name: myadv-admin-license-${{ inputs.admin_phone }}
-          path: MYADV_ADMIN_LICENSE.txt
+          name: myadv-super-admin-license-${{ inputs.admin_phone }}
+          path: MYADV_SUPER_ADMIN_LICENSE.txt
           retention-days: 7
