@@ -1,6 +1,7 @@
 package com.example.kbawelfaremessenger
 
 import android.app.AlertDialog
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
@@ -15,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 class LicenseActivity : AppCompatActivity() {
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -102,6 +104,10 @@ class LicenseActivity : AppCompatActivity() {
                 )
             }
 
+            generateExpiry.setOnClickListener {
+                showExpiryDatePicker(generateExpiry)
+            }
+
             generateButton.setOnClickListener {
                 val phone = generatePhone.text.toString().trim()
                 val expiry = runCatching {
@@ -114,7 +120,8 @@ class LicenseActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 if (expiry == null) {
-                    generateExpiry.error = "Use YYYY-MM-DD"
+                    generateExpiry.error = "Select an expiry date"
+                    showExpiryDatePicker(generateExpiry)
                     return@setOnClickListener
                 }
 
@@ -166,6 +173,26 @@ class LicenseActivity : AppCompatActivity() {
         }
 
         refreshLicenseStatus(status)
+    }
+
+    private fun showExpiryDatePicker(target: EditText) {
+        val today = Calendar.getInstance()
+        val initial = runCatching {
+            LocalDate.parse(target.text.toString().trim(), dateFormatter)
+        }.getOrNull()
+
+        val year = initial?.year ?: today.get(Calendar.YEAR)
+        val month = (initial?.monthValue ?: (today.get(Calendar.MONTH) + 1)) - 1
+        val day = initial?.dayOfMonth ?: today.get(Calendar.DAY_OF_MONTH)
+
+        DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
+            val selectedDate = LocalDate.of(selectedYear, selectedMonth + 1, selectedDay)
+            target.setText(selectedDate.format(dateFormatter))
+            target.error = null
+        }, year, month, day).apply {
+            datePicker.minDate = today.timeInMillis
+            setTitle("Select license expiry date")
+        }.show()
     }
 
     private fun refreshLicenseStatus(status: TextView) {
