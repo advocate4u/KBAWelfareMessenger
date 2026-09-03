@@ -8,7 +8,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class LoginActivity : AppCompatActivity() {
-
     private lateinit var txtLoginTitle: TextView
     private lateinit var edtUserId: EditText
     private lateinit var edtPassword: EditText
@@ -37,80 +36,52 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setupLoginScreen() {
         val hasUser = SecurityManager.hasUser(this)
-
+        val hasLicense = LicenseManager.isLicenseValid(this)
         txtLoginTitle.text = "MyAdv"
-        btnLogin.text = if (hasUser) "LOGIN" else "ACTIVATE & LOGIN"
-        btnLicense.text = if (LicenseManager.isLicenseValid(this)) "VIEW / CHANGE LICENSE" else "INSTALL LICENSE"
+        btnLogin.text = if (hasUser) "LOGIN" else if (hasLicense) "CREATE PASSWORD & ACTIVATE" else "ACTIVATE LICENSE FIRST"
+        btnLicense.text = if (hasLicense) "VIEW / CHANGE LICENSE" else "INSTALL LICENSE"
 
         btnLogin.setOnClickListener {
             if (hasUser) loginUser() else activateFirstLogin()
         }
-
-        btnLicense.setOnClickListener {
-            startActivity(Intent(this, LicenseActivity::class.java))
-        }
+        btnLicense.setOnClickListener { startActivity(Intent(this, LicenseActivity::class.java)) }
     }
 
     private fun activateFirstLogin() {
+        val license = LicenseManager.getValidLicense(this)
+        if (license == null) {
+            UiFeedback.error(this, "Install your MyAdv license first. The license determines whether this account is ADMIN or USER.", true)
+            startActivity(Intent(this, LicenseActivity::class.java))
+            return
+        }
+
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
+        if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
+        if (password.length < 6) { edtPassword.error = "Create a password of at least 6 characters"; edtPassword.requestFocus(); return }
 
-        if (userId.isEmpty()) {
-            edtUserId.error = "Enter User ID / phone number"
-            edtUserId.requestFocus()
+        val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
+        val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
+        if (licensedPhone != enteredPhone) {
+            UiFeedback.error(this, "User ID must match the phone number on the installed license.", true)
             return
-        }
-        if (password.isEmpty()) {
-            edtPassword.error = "Enter the password provided by the administrator"
-            edtPassword.requestFocus()
-            return
-        }
-        if (password.length < 6) {
-            edtPassword.error = "Password must be at least 6 characters"
-            edtPassword.requestFocus()
-            return
-        }
-
-        if (!SecurityManager.isAdminPhoneNumber(userId)) {
-            val license = LicenseManager.getValidLicense(this)
-            if (license == null) {
-                UiFeedback.error(this, "Install a valid MyAdv license before activating this user account.", true)
-                return
-            }
-            val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
-            val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
-            if (licensedPhone != enteredPhone) {
-                UiFeedback.error(this, "User ID must match the phone number on the installed license.", true)
-                return
-            }
         }
 
         val created = SecurityManager.createUser(this, userId, password)
         if (created) {
-            UiFeedback.success(this, "MyAdv login activated successfully.")
+            UiFeedback.success(this, if (license.role == UserRole.ADMIN) "Admin account activated successfully." else "User account activated successfully.")
             openMainActivity()
         } else {
-            UiFeedback.error(this, "Unable to activate login. Check the User ID, password and license.", true)
+            UiFeedback.error(this, "Unable to activate account. Make sure the license matches this phone and is valid.", true)
         }
     }
 
     private fun loginUser() {
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
-
-        if (userId.isEmpty()) {
-            edtUserId.error = "Enter User ID / phone number"
-            edtUserId.requestFocus()
-            return
-        }
-        if (password.isEmpty()) {
-            edtPassword.error = "Enter password"
-            edtPassword.requestFocus()
-            return
-        }
-
-        val authenticated = SecurityManager.authenticate(this, userId, password)
-        if (authenticated) {
+        if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
+        if (password.isEmpty()) { edtPassword.error = "Enter password"; edtPassword.requestFocus(); return }
+        if (SecurityManager.authenticate(this, userId, password)) {
             AppLogger.info(this, "AUTH", "User login successful.")
             UiFeedback.success(this, "Welcome to MyAdv")
             openMainActivity()
@@ -121,10 +92,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun openMainActivity() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        startActivity(intent)
+        startActivity(Intent(this, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
         finish()
     }
 }
