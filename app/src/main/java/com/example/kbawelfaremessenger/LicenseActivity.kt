@@ -11,6 +11,11 @@ import java.time.format.DateTimeFormatter
 class LicenseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!SecurityManager.isAdmin(this)) {
+            Toast.makeText(this, "Administrator access required.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         setContentView(R.layout.activity_license)
         supportActionBar?.title = "App License"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -21,9 +26,7 @@ class LicenseActivity : AppCompatActivity() {
 
         fun refresh() {
             val license = LicenseManager.getInstalledLicense(this)
-            status.text = if (license == null) {
-                "Status: NOT ACTIVATED"
-            } else {
+            status.text = if (license == null) "Status: NOT ACTIVATED" else {
                 val valid = LicenseManager.isLicenseValid(this)
                 "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\n" +
                     "License ID: ${license.licenseId}\n" +
@@ -41,23 +44,15 @@ class LicenseActivity : AppCompatActivity() {
             }
             val result = LicenseManager.installLicense(this, id, token)
             Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-            if (result.allowed) {
-                licenseId.text.clear()
-                signedToken.text.clear()
-            }
+            if (result.allowed) { licenseId.text.clear(); signedToken.text.clear() }
             refresh()
         }
-
         findViewById<Button>(R.id.btnClearLicense).setOnClickListener {
             LicenseManager.clearLicense(this)
             refresh()
         }
-
         refresh()
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
+    override fun onSupportNavigateUp(): Boolean { finish(); return true }
 }
