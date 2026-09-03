@@ -50,10 +50,7 @@ object SecurityManager {
         val id = userId.trim()
         val user = findUser(context, id) ?: return false
         val ok = try {
-            MessageDigest.isEqual(
-                Base64.decode(user.getString("hash"), Base64.NO_WRAP),
-                hashPassword(password, Base64.decode(user.getString("salt"), Base64.NO_WRAP))
-            )
+            MessageDigest.isEqual(Base64.decode(user.getString("hash"), Base64.NO_WRAP), hashPassword(password, Base64.decode(user.getString("salt"), Base64.NO_WRAP)))
         } catch (_: Exception) { false }
         if (ok) preferences(context).edit().putString(KEY_CURRENT_USER, id).apply()
         return ok
@@ -112,7 +109,7 @@ object SecurityManager {
         val oldSalt = prefs.getString(KEY_PASSWORD_SALT, null)
         if (!oldId.isNullOrBlank() && !oldHash.isNullOrBlank() && !oldSalt.isNullOrBlank()) {
             val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", UserRole.ADMIN.name).put("hash", oldHash).put("salt", oldSalt))
-            prefs.edit().putString(KEY_USERS, migrated.toString()).apply()
+            prefs.edit().putString(KEY_USERS, migrated.toString()).putString(KEY_CURRENT_USER, oldId).apply()
             return migrated
         }
         return JSONArray()
@@ -125,11 +122,9 @@ object SecurityManager {
     }
 
     private fun saveUsers(context: Context, users: JSONArray) { preferences(context).edit().putString(KEY_USERS, users.toString()).apply() }
-
     private fun hashPassword(password: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
         return try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded } finally { spec.clearPassword() }
     }
-
     private fun encode(value: ByteArray): String = Base64.encodeToString(value, Base64.NO_WRAP)
 }
