@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -104,6 +105,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtStats: TextView
     private lateinit var txtSelected: TextView
     private lateinit var txtFile: TextView
+    private lateinit var txtSendCount: TextView
 
     private lateinit var recyclerContacts: RecyclerView
 
@@ -294,6 +296,8 @@ class MainActivity : AppCompatActivity() {
 
         applyMessageSetting()
 
+        updateCounts()
+
         AppLogger.info(
             this,
             "MAIN",
@@ -364,6 +368,9 @@ class MainActivity : AppCompatActivity() {
         txtFile =
             findViewById(R.id.txtFile)
 
+        txtSendCount =
+            findViewById(R.id.txtSendCount)
+
         recyclerContacts =
             findViewById(R.id.recyclerContacts)
 
@@ -420,12 +427,8 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.adapter =
             adapter
 
-        /*
-         * RecyclerView is inside the main ScrollView.
-         * Allowing nested scrolling here gives the contact
-         * list its own proper scrolling area.
-         */
-        recyclerContacts.isNestedScrollingEnabled = true
+        recyclerContacts.isNestedScrollingEnabled =
+            true
 
         recyclerContacts.setHasFixedSize(false)
 
@@ -976,60 +979,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupButtonColors() {
 
-        setButtonColor(
-            btnUpload,
-            "#1976D2"
-        )
-
-        setButtonColor(
-            btnSelectAll,
-            "#455A64"
-        )
-
-        setButtonColor(
-            btnUnselectAll,
-            "#757575"
-        )
-
-        setButtonColor(
-            btnSelectRange,
-            "#5E35B1"
-        )
-
-        setButtonColor(
-            btnUnselectRange,
-            "#8E24AA"
-        )
-
-        setButtonColor(
-            btnPreview,
-            "#7B1FA2"
-        )
-
-        setButtonColor(
-            btnTestSms,
-            "#F9A825"
-        )
-
-        setButtonColor(
-            btnSendSms,
-            "#2E7D32"
-        )
-
-        setButtonColor(
-            btnWhatsApp,
-            "#00897B"
-        )
-
-        setButtonColor(
-            btnReset,
-            "#EF6C00"
-        )
-
-        setButtonColor(
-            btnClearData,
-            "#C62828"
-        )
+        setButtonColor(btnUpload, "#1976D2")
+        setButtonColor(btnSelectAll, "#455A64")
+        setButtonColor(btnUnselectAll, "#757575")
+        setButtonColor(btnSelectRange, "#5E35B1")
+        setButtonColor(btnUnselectRange, "#8E24AA")
+        setButtonColor(btnPreview, "#7B1FA2")
+        setButtonColor(btnTestSms, "#F9A825")
+        setButtonColor(btnSendSms, "#2E7D32")
+        setButtonColor(btnWhatsApp, "#00897B")
+        setButtonColor(btnReset, "#EF6C00")
+        setButtonColor(btnClearData, "#C62828")
     }
 
     private fun setButtonColor(
@@ -1899,6 +1859,8 @@ Do you want to continue?
             txtStatus.text =
                 "All selected contacts were already sent."
 
+            updateSendCount()
+
             showSmsResultAlert(
                 selected
             )
@@ -1922,6 +1884,8 @@ Do you want to continue?
             "Sending SMS to ${sendQueue.size} contacts..."
 
         updateCounts()
+
+        updateSendCount()
 
         AppLogger.info(
             this,
@@ -1961,6 +1925,7 @@ Do you want to continue?
         )
 
         updateCounts()
+        updateSendCount()
 
         val message =
             personaliseMessage(contact)
@@ -2126,6 +2091,7 @@ Do you want to continue?
         )
 
         updateCounts()
+        updateSendCount()
 
         txtStatus.text =
             "SMS progress: ${sentCount()} sent, ${failedCount()} failed."
@@ -2155,6 +2121,7 @@ Do you want to continue?
                 true
 
             updateCounts()
+            updateSendCount()
 
             txtStatus.text =
                 "SMS sending completed."
@@ -2170,6 +2137,59 @@ Do you want to continue?
                     it.contact
                 }
             )
+        }
+    }
+
+    // ---------------------------------------------------------
+    // SEND COUNT
+    // ---------------------------------------------------------
+
+    private fun updateSendCount() {
+
+        if (!::txtSendCount.isInitialized) {
+            return
+        }
+
+        val selected =
+            adapter.getSelectedPhones().size
+
+        val sent =
+            contacts.count {
+                it.smsStatus == SmsStatus.SENT
+            }
+
+        val failed =
+            contacts.count {
+                it.smsStatus == SmsStatus.FAILED
+            }
+
+        val sending =
+            contacts.count {
+                it.smsStatus == SmsStatus.SENDING
+            }
+
+        txtSendCount.text =
+            when {
+
+                smsOperationActive -> {
+                    "Sent: $sent / $selected"
+                }
+
+                selected > 0 -> {
+                    "Sent: $sent / $selected"
+                }
+
+                else -> {
+                    "Sent: $sent"
+                }
+            }
+
+        if (failed > 0 || sending > 0) {
+
+            txtSendCount.text =
+                "Sent: $sent / $selected" +
+                        "   Failed: $failed" +
+                        "   Sending: $sending"
         }
     }
 
@@ -2485,6 +2505,8 @@ Do you want to continue?
                     "Sent: $sent  |  " +
                     "Failed: $failed  |  " +
                     "Pending/Sending: $sending"
+
+        updateSendCount()
     }
 
     private fun sentCount() =
@@ -2686,32 +2708,62 @@ Do you want to continue?
                     Gravity.TOP
 
                 root.setPadding(
-                    4,
+                    2,
                     6,
                     4,
                     6
                 )
 
-                // ---------------------------------------------
+                // -------------------------------------------------
                 // Checkbox
-                // ---------------------------------------------
+                // -------------------------------------------------
 
-                checkBox.layoutParams =
+                checkBox.apply {
+
+                    minWidth = 0
+                    minHeight = 0
+
+                    setPadding(
+                        0,
+                        0,
+                        0,
+                        0
+                    )
+
+                    gravity =
+                        Gravity.CENTER
+                }
+
+                val checkboxParams =
                     LinearLayout.LayoutParams(
-                        48,
-                        48
+                        dp(
+                            root.context,
+                            42
+                        ),
+                        dp(
+                            root.context,
+                            42
+                        )
                     ).apply {
+
                         gravity =
                             Gravity.TOP
+
+                        rightMargin =
+                            dp(
+                                root.context,
+                                4
+                            )
                     }
 
                 root.addView(
-                    checkBox
+                    checkBox,
+                    checkboxParams
                 )
 
-                // ---------------------------------------------
+                // -------------------------------------------------
                 // Information area
-                // ---------------------------------------------
+                // -------------------------------------------------
 
                 info.orientation =
                     LinearLayout.VERTICAL
@@ -2720,10 +2772,10 @@ Do you want to continue?
                     Gravity.START
 
                 info.setPadding(
-                    8,
                     2,
+                    0,
                     4,
-                    2
+                    0
                 )
 
                 nameText.textSize =
@@ -2731,7 +2783,7 @@ Do you want to continue?
 
                 nameText.setTypeface(
                     null,
-                    android.graphics.Typeface.BOLD
+                    Typeface.BOLD
                 )
 
                 phoneText.textSize =
@@ -2749,7 +2801,7 @@ Do you want to continue?
 
                 statusText.setTypeface(
                     null,
-                    android.graphics.Typeface.BOLD
+                    Typeface.BOLD
                 )
 
                 info.addView(
@@ -2818,61 +2870,38 @@ Do you want to continue?
             val contact =
                 visibleContacts[position]
 
-            // ---------------------------------------------
-            // Name / row
-            // ---------------------------------------------
+            // -------------------------------------------------
+            // Name
+            // -------------------------------------------------
 
             holder.nameText.text =
                 "${position + 1}. ${contact.name}"
 
+            // -------------------------------------------------
+            // Phone
+            // -------------------------------------------------
+
             holder.phoneText.text =
-                contact.phone
+                "Mobile: ${contact.phone}"
 
-            // ---------------------------------------------
-            // ALL OTHER CSV DETAILS
-            // ---------------------------------------------
+            // -------------------------------------------------
+            // ALL CSV DETAILS
+            // -------------------------------------------------
 
-            val otherFields =
-                contact.fields
-                    .filter { (key, value) ->
+            val details =
+                contact.fields.entries
+                    .filter { entry ->
+                        entry.key.isNotBlank() &&
+                                entry.value.isNotBlank()
+                    }
+                    .joinToString(
+                        separator = "\n"
+                    ) { entry ->
 
-                        key.isNotBlank() &&
-                                value.isNotBlank() &&
-                                !key.equals(
-                                    "Name",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Original Name",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Given Name",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Phone 1 - Value",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Mobile",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Mobile Number",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Phone",
-                                    ignoreCase = true
-                                ) &&
-                                !key.equals(
-                                    "Phone Number",
-                                    ignoreCase = true
-                                )
+                        "${entry.key}: ${entry.value}"
                     }
 
-            if (otherFields.isEmpty()) {
+            if (details.isBlank()) {
 
                 holder.detailsText.visibility =
                     View.GONE
@@ -2883,17 +2912,12 @@ Do you want to continue?
                     View.VISIBLE
 
                 holder.detailsText.text =
-                    otherFields.entries.joinToString(
-                        separator = "\n"
-                    ) { entry ->
-
-                        "${entry.key}: ${entry.value}"
-                    }
+                    details
             }
 
-            // ---------------------------------------------
-            // SMS status
-            // ---------------------------------------------
+            // -------------------------------------------------
+            // Status
+            // -------------------------------------------------
 
             holder.statusText.text =
                 when (contact.smsStatus) {
@@ -2911,9 +2935,9 @@ Do you want to continue?
                         "✕ FAILED"
                 }
 
-            // ---------------------------------------------
+            // -------------------------------------------------
             // Checkbox
-            // ---------------------------------------------
+            // -------------------------------------------------
 
             holder.checkBox.setOnCheckedChangeListener(
                 null
@@ -2944,9 +2968,9 @@ Do you want to continue?
                 onSelectionChanged()
             }
 
-            // ---------------------------------------------
+            // -------------------------------------------------
             // Row click
-            // ---------------------------------------------
+            // -------------------------------------------------
 
             holder.root.setOnClickListener {
 
@@ -2998,11 +3022,13 @@ Do you want to continue?
                                     .contains(q) ||
 
                                 contact.fields.any {
-                                    (_, value) ->
+                                    (key, value) ->
 
-                                    value
-                                        .lowercase()
-                                        .contains(q)
+                                    key.lowercase()
+                                        .contains(q) ||
+
+                                            value.lowercase()
+                                                .contains(q)
                                 }
                     }
                 )
@@ -3119,6 +3145,20 @@ Do you want to continue?
                 notifyItemChanged(
                     index
                 )
+            }
+        }
+
+        companion object {
+
+            private fun dp(
+                context: Context,
+                value: Int
+            ): Int {
+
+                return (
+                    value *
+                            context.resources.displayMetrics.density
+                    ).toInt()
             }
         }
     }
