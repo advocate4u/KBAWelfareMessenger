@@ -2,8 +2,11 @@ package com.example.kbawelfaremessenger
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -19,7 +22,7 @@ class AuthenticationActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_authentication)
-        supportActionBar?.title = "User Management"
+        supportActionBar?.title = if (SecurityManager.isSuperAdmin(this)) "Super Admin • Access Management" else "Admin • User Management"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         usersContainer = findViewById(R.id.usersContainer)
         findViewById<Button>(R.id.btnAddUser).setOnClickListener { showAddUserDialog() }
@@ -60,31 +63,52 @@ class AuthenticationActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 8, 32, 0)
         }
-        val userId = android.widget.EditText(this).apply {
-            hint = "User ID"
+
+        val userId = EditText(this).apply {
+            hint = "User ID / phone number"
             setSingleLine(true)
         }
-        
-        val password = android.widget.EditText(this).apply {
+
+        val password = EditText(this).apply {
             hint = "Password (minimum 6 characters)"
             setSingleLine(true)
             inputType = 0x81
         }
+
+        val roleSpinner = Spinner(this)
+        val roleOptions = if (SecurityManager.isSuperAdmin(this)) {
+            listOf("USER", "ADMIN")
+        } else {
+            listOf("USER")
+        }
+        roleSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, roleOptions)
+
         layout.addView(userId)
         layout.addView(password)
+        layout.addView(roleSpinner)
+
         AlertDialog.Builder(this)
-            .setTitle("Add User")
-            .setMessage("New accounts are created as USER accounts.")
+            .setTitle(if (SecurityManager.isSuperAdmin(this)) "Create Account" else "Add User")
+            .setMessage(
+                if (SecurityManager.isSuperAdmin(this))
+                    "SUPER ADMIN can grant either ADMIN or USER access. SUPER ADMIN access cannot be granted from this screen."
+                else
+                    "ADMIN can create USER accounts only."
+            )
             .setView(layout)
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("CREATE") { _, _ ->
                 val id = userId.text.toString().trim()
                 val pass = password.text.toString()
+                val selectedRole = if (roleSpinner.selectedItem.toString() == "ADMIN") UserRole.ADMIN else UserRole.USER
                 when {
                     id.isBlank() -> Toast.makeText(this, "Enter User ID.", Toast.LENGTH_SHORT).show()
                     pass.length < 6 -> Toast.makeText(this, "Password must be at least 6 characters.", Toast.LENGTH_SHORT).show()
-                    !SecurityManager.addUser(this, id, pass) -> Toast.makeText(this, "Unable to create user. ID may already exist.", Toast.LENGTH_LONG).show()
-                    else -> { Toast.makeText(this, "User created.", Toast.LENGTH_SHORT).show(); refreshUsers() }
+                    !SecurityManager.addUser(this, id, pass, selectedRole) -> Toast.makeText(this, "Unable to create account. Check the User ID, role permission, or existing account.", Toast.LENGTH_LONG).show()
+                    else -> {
+                        Toast.makeText(this, "${selectedRole.name} account created.", Toast.LENGTH_SHORT).show()
+                        refreshUsers()
+                    }
                 }
             }
             .show()
@@ -92,14 +116,14 @@ class AuthenticationActivity : AppCompatActivity() {
 
     private fun confirmDelete(userId: String) {
         AlertDialog.Builder(this)
-            .setTitle("Delete User")
-            .setMessage("Delete user '$userId'? This cannot be undone.")
+            .setTitle("Delete Account")
+            .setMessage("Delete account '$userId'? This cannot be undone.")
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("DELETE") { _, _ ->
                 if (SecurityManager.deleteUser(this, userId)) {
-                    Toast.makeText(this, "User deleted.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Account deleted.", Toast.LENGTH_SHORT).show()
                     refreshUsers()
-                } else Toast.makeText(this, "Unable to delete user.", Toast.LENGTH_SHORT).show()
+                } else Toast.makeText(this, "Unable to delete account.", Toast.LENGTH_SHORT).show()
             }
             .show()
     }
