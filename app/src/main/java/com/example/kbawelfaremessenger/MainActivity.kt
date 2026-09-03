@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
 import android.text.Editable
@@ -77,6 +78,12 @@ class MainActivity : AppCompatActivity() {
 
         private const val EXTRA_REQUEST_ID =
             "request_id"
+
+        private const val PREF_PERMISSION_STATE =
+            "sms_permission_state"
+
+        private const val KEY_PERMISSION_REQUESTED =
+            "permission_request_attempted"
     }
 
     // ---------------------------------------------------------
@@ -176,35 +183,30 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    // ---------------------------------------------------------
-    // SMS + phone permissions
-    // ---------------------------------------------------------
+    // =========================================================
+    // SMS + PHONE PERMISSIONS
+    // =========================================================
 
+    /**
+     * IMPORTANT:
+     *
+     * Do not check the RequestMultiplePermissions callback map
+     * directly for permissions that were not requested.
+     *
+     * Android can return only the permissions that were actually
+     * requested, and Android may group phone-related permissions.
+     *
+     * Therefore the callback always checks the REAL current
+     * permission state through hasSmsPermissions().
+     */
     private val smsPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
+        ) { _ ->
 
-            val sendSmsGranted =
-                permissions[
-                    Manifest.permission.SEND_SMS
-                ] == true
+            if (hasSmsPermissions()) {
 
-            val phoneStateGranted =
-                permissions[
-                    Manifest.permission.READ_PHONE_STATE
-                ] == true
-
-            val phoneNumbersGranted =
-                permissions[
-                    Manifest.permission.READ_PHONE_NUMBERS
-                ] == true
-
-            if (
-                sendSmsGranted &&
-                phoneStateGranted &&
-                phoneNumbersGranted
-            ) {
+                markSmsPermissionRequestCompleted()
 
                 val action =
                     pendingSmsPermissionAction
@@ -218,18 +220,33 @@ class MainActivity : AppCompatActivity() {
                     startSmsAfterPermission()
                 }
 
+                return@registerForActivityResult
+            }
+
+            /*
+             * At this point Android has returned from the permission
+             * request but one or more required permissions are still
+             * missing.
+             */
+            val missingPermissions =
+                getMissingSmsPermissions()
+
+            pendingSmsPermissionAction =
+                null
+
+            val permanentlyDenied =
+                hasPermanentlyDeniedSmsPermission(
+                    missingPermissions
+                )
+
+            if (permanentlyDenied) {
+
+                showPermissionSettingsDialog()
+
             } else {
 
-                pendingSmsPermissionAction =
-                    null
-
-                showAlert(
-                    "Permission Required",
-                    "The following permissions are required for secure SMS sending:\n\n" +
-                            "• Send SMS\n" +
-                            "• Read phone state\n" +
-                            "• Read phone numbers\n\n" +
-                            "SMS sending is blocked until all required permissions are granted."
+                showPermissionRequiredDialog(
+                    missingPermissions
                 )
             }
         }
@@ -363,6 +380,24 @@ class MainActivity : AppCompatActivity() {
         applyMessageSetting()
 
         updateCounts()
+
+        /*
+         * If the user went to Android Settings and enabled the
+         * required permissions, allow the pending action to continue.
+         */
+        if (
+            pendingSmsPermissionAction != null &&
+            hasSmsPermissions()
+        ) {
+
+            val action =
+                pendingSmsPermissionAction
+
+            pendingSmsPermissionAction =
+                null
+
+            action?.invoke()
+        }
 
         AppLogger.info(
             this,
@@ -1059,60 +1094,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupButtonColors() {
 
-        setButtonColor(
-            btnUpload,
-            "#315A7D"
-        )
-
-        setButtonColor(
-            btnSelectAll,
-            "#526777"
-        )
-
-        setButtonColor(
-            btnUnselectAll,
-            "#71808C"
-        )
-
-        setButtonColor(
-            btnSelectRange,
-            "#4F6280"
-        )
-
-        setButtonColor(
-            btnUnselectRange,
-            "#68798F"
-        )
-
-        setButtonColor(
-            btnPreview,
-            "#596B7A"
-        )
-
-        setButtonColor(
-            btnTestSms,
-            "#9A7B32"
-        )
-
-        setButtonColor(
-            btnSendSms,
-            "#34704A"
-        )
-
-        setButtonColor(
-            btnWhatsApp,
-            "#36796D"
-        )
-
-        setButtonColor(
-            btnReset,
-            "#9A6840"
-        )
-
-        setButtonColor(
-            btnClearData,
-            "#9A4C4C"
-        )
+        setButtonColor(btnUpload, "#315A7D")
+        setButtonColor(btnSelectAll, "#526777")
+        setButtonColor(btnUnselectAll, "#71808C")
+        setButtonColor(btnSelectRange, "#4F6280")
+        setButtonColor(btnUnselectRange, "#68798F")
+        setButtonColor(btnPreview, "#596B7A")
+        setButtonColor(btnTestSms, "#9A7B32")
+        setButtonColor(btnSendSms, "#34704A")
+        setButtonColor(btnWhatsApp, "#36796D")
+        setButtonColor(btnReset, "#9A6840")
+        setButtonColor(btnClearData, "#9A4C4C")
     }
 
     private fun setButtonColor(
@@ -1609,13 +1601,11 @@ class MainActivity : AppCompatActivity() {
                 )
 
             if (number.startsWith("+")) {
-
                 number =
                     number.substring(1)
             }
 
             if (number.startsWith("00")) {
-
                 number =
                     number.substring(2)
             }
@@ -1638,7 +1628,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
             if (number.length == 10) {
-
                 return countryCode + number
             }
         }
@@ -1787,7 +1776,6 @@ class MainActivity : AppCompatActivity() {
 
         val scroll =
             ScrollView(this).apply {
-
                 addView(textView)
             }
 
@@ -1840,16 +1828,339 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Strict verification:
-     *
-     * 1. A valid signed license must exist.
-     * 2. Default SMS subscription must exist.
-     * 3. That subscription must be active.
-     * 4. Android must expose the SIM phone number.
-     * 5. SIM phone number must exactly match the licensed phone.
-     *
-     * No device ID fallback is used.
+     * Returns only permissions that are currently missing.
      */
+    private fun getMissingSmsPermissions(): Array<String> {
+
+        val missing =
+            mutableListOf<String>()
+
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.SEND_SMS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            missing.add(
+                Manifest.permission.SEND_SMS
+            )
+        }
+
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            missing.add(
+                Manifest.permission.READ_PHONE_STATE
+            )
+        }
+
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_PHONE_NUMBERS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            missing.add(
+                Manifest.permission.READ_PHONE_NUMBERS
+            )
+        }
+
+        return missing.toTypedArray()
+    }
+
+    private fun permissionWasRequestedBefore(): Boolean {
+
+        return getSharedPreferences(
+            PREF_PERMISSION_STATE,
+            MODE_PRIVATE
+        ).getBoolean(
+            KEY_PERMISSION_REQUESTED,
+            false
+        )
+    }
+
+    private fun markSmsPermissionRequestCompleted() {
+
+        getSharedPreferences(
+            PREF_PERMISSION_STATE,
+            MODE_PRIVATE
+        )
+            .edit()
+            .putBoolean(
+                KEY_PERMISSION_REQUESTED,
+                true
+            )
+            .apply()
+    }
+
+    /**
+     * Detects the case where Android will no longer show the
+     * permission dialog and the user must enable it manually
+     * from App Settings.
+     */
+    private fun hasPermanentlyDeniedSmsPermission(
+        missingPermissions: Array<String>
+    ): Boolean {
+
+        if (!permissionWasRequestedBefore()) {
+            return false
+        }
+
+        return missingPermissions.any { permission ->
+
+            !shouldShowRequestPermissionRationale(
+                permission
+            )
+        }
+    }
+
+    /**
+     * Shows the normal permission-required dialog.
+     */
+    private fun showPermissionRequiredDialog(
+        missingPermissions: Array<String>
+    ) {
+
+        val message =
+            buildString {
+
+                append(
+                    "The following permissions are required for secure SMS sending:\n\n"
+                )
+
+                if (
+                    missingPermissions.contains(
+                        Manifest.permission.SEND_SMS
+                    )
+                ) {
+
+                    append(
+                        "• Send SMS\n"
+                    )
+                }
+
+                if (
+                    missingPermissions.contains(
+                        Manifest.permission.READ_PHONE_STATE
+                    )
+                ) {
+
+                    append(
+                        "• Read phone state\n"
+                    )
+                }
+
+                if (
+                    missingPermissions.contains(
+                        Manifest.permission.READ_PHONE_NUMBERS
+                    )
+                ) {
+
+                    append(
+                        "• Read phone numbers\n"
+                    )
+                }
+
+                append(
+                    "\nSMS sending is blocked until all required permissions are granted."
+                )
+            }
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "Permission Required"
+            )
+            .setMessage(
+                message
+            )
+            .setPositiveButton(
+                "Allow"
+            ) { _, _ ->
+
+                requestMissingSmsPermissions()
+            }
+            .setNegativeButton(
+                "Cancel",
+                null
+            )
+            .show()
+    }
+
+    /**
+     * Handles permissions that Android will not ask for again.
+     */
+    private fun showPermissionSettingsDialog() {
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "Permission Required"
+            )
+            .setMessage(
+                "One or more permissions required for secure SMS sending have been denied permanently.\n\n" +
+                        "Android will not show the permission popup again for these permissions.\n\n" +
+                        "Please open App Settings and enable:\n" +
+                        "• Send SMS\n" +
+                        "• Phone permissions\n\n" +
+                        "SMS sending remains blocked until all required permissions are enabled."
+            )
+            .setNegativeButton(
+                "Cancel",
+                null
+            )
+            .setPositiveButton(
+                "Open Settings"
+            ) { _, _ ->
+
+                try {
+
+                    val intent =
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                        ).apply {
+
+                            data =
+                                Uri.parse(
+                                    "package:$packageName"
+                                )
+                        }
+
+                    startActivity(intent)
+
+                } catch (e: Exception) {
+
+                    showAlert(
+                        "Settings",
+                        "Unable to open Android App Settings."
+                    )
+                }
+            }
+            .show()
+    }
+
+    /**
+     * Requests only the permissions that are actually missing.
+     *
+     * This is the method that starts the Android permission popup.
+     */
+    private fun requestMissingSmsPermissions() {
+
+        val missingPermissions =
+            getMissingSmsPermissions()
+
+        if (missingPermissions.isEmpty()) {
+
+            val action =
+                pendingSmsPermissionAction
+
+            pendingSmsPermissionAction =
+                null
+
+            if (action != null) {
+                action()
+            } else {
+                startSmsAfterPermission()
+            }
+
+            return
+        }
+
+        /*
+         * Record that Android has now been asked.
+         * This lets us distinguish a future permanent denial
+         * from the first permission request.
+         */
+        markSmsPermissionRequestCompleted()
+
+        smsPermissionLauncher.launch(
+            missingPermissions
+        )
+    }
+
+    /**
+     * Main SMS permission entry point.
+     */
+    private fun checkSmsPermissionAndStart() {
+
+        if (hasSmsPermissions()) {
+
+            startSmsAfterPermission()
+
+            return
+        }
+
+        pendingSmsPermissionAction =
+            {
+                startSmsAfterPermission()
+            }
+
+        requestMissingSmsPermissions()
+    }
+
+    private fun startSmsAfterPermission() {
+
+        val selected =
+            selectedContacts()
+
+        if (selected.isEmpty()) {
+
+            showAlert(
+                "No Contacts Selected",
+                "Please select at least one contact."
+            )
+
+            return
+        }
+
+        /*
+         * First strict license/SIM preflight.
+         * No confirmation dialog is shown until the
+         * licensed SIM has been verified.
+         */
+        try {
+
+            getVerifiedSmsSubscription()
+
+        } catch (e: SmsLicenseException) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Bulk SMS blocked: ${e.message}"
+            )
+
+            showAlert(
+                "SMS Not Allowed",
+                e.message
+                    ?: "License/SIM verification failed."
+            )
+
+            return
+        }
+
+        if (
+            appSettings.confirmBeforeBulkSend
+        ) {
+
+            startSmsConfirmation()
+
+        } else {
+
+            startSmsOperation(
+                selected
+            )
+        }
+    }
+
+    // =========================================================
+    // STRICT LICENSE / SIM CHECK
+    // =========================================================
+
     private fun getVerifiedSmsSubscription():
             VerifiedSmsSubscription {
 
@@ -1933,14 +2244,6 @@ class MainActivity : AppCompatActivity() {
 
         if (rawSimPhone.isEmpty()) {
 
-            /*
-             * VERY IMPORTANT:
-             *
-             * Do NOT fall back to device ID, SIM serial,
-             * subscription ID or any other identifier.
-             *
-             * User requirement is strict phone-number binding.
-             */
             throw SmsLicenseException(
                 "Android could not verify the phone number of the selected SMS SIM.\n\n" +
                         "For security reasons SMS sending is blocked."
@@ -2004,86 +2307,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---------------------------------------------------------
-    // SMS permission
+    // SMS confirmation
     // ---------------------------------------------------------
-
-    private fun checkSmsPermissionAndStart() {
-
-        if (hasSmsPermissions()) {
-
-            startSmsAfterPermission()
-
-            return
-        }
-
-        pendingSmsPermissionAction =
-            {
-                startSmsAfterPermission()
-            }
-
-        smsPermissionLauncher.launch(
-            arrayOf(
-                Manifest.permission.SEND_SMS,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.READ_PHONE_NUMBERS
-            )
-        )
-    }
-
-    private fun startSmsAfterPermission() {
-
-        val selected =
-            selectedContacts()
-
-        if (selected.isEmpty()) {
-
-            showAlert(
-                "No Contacts Selected",
-                "Please select at least one contact."
-            )
-
-            return
-        }
-
-        /*
-         * First strict license/SIM preflight.
-         * No confirmation dialog is shown until the
-         * licensed SIM has been verified.
-         */
-        try {
-
-            getVerifiedSmsSubscription()
-
-        } catch (e: SmsLicenseException) {
-
-            AppLogger.warning(
-                this,
-                "LICENSE",
-                "Bulk SMS blocked: ${e.message}"
-            )
-
-            showAlert(
-                "SMS Not Allowed",
-                e.message
-                    ?: "License/SIM verification failed."
-            )
-
-            return
-        }
-
-        if (
-            appSettings.confirmBeforeBulkSend
-        ) {
-
-            startSmsConfirmation()
-
-        } else {
-
-            startSmsOperation(
-                selected
-            )
-        }
-    }
 
     private fun startSmsConfirmation() {
 
@@ -2092,7 +2317,6 @@ class MainActivity : AppCompatActivity() {
 
         val alreadySent =
             selected.count {
-
                 it.smsStatus ==
                         SmsStatus.SENT
             }
@@ -2103,7 +2327,6 @@ class MainActivity : AppCompatActivity() {
             ) {
 
                 selected.count {
-
                     it.smsStatus !=
                             SmsStatus.SENT
                 }
@@ -2215,7 +2438,6 @@ Do you want to continue?
             ) {
 
                 selected.filter {
-
                     it.smsStatus !=
                             SmsStatus.SENT
                 }
@@ -2231,7 +2453,6 @@ Do you want to continue?
 
             selected
                 .filter {
-
                     it.smsStatus ==
                             SmsStatus.SENT
                 }
@@ -2340,13 +2561,6 @@ Do you want to continue?
 
         } catch (e: SmsLicenseException) {
 
-            /*
-             * License/SIM changed or became unverifiable
-             * while a bulk operation was running.
-             *
-             * Do NOT mark the contact as FAILED because
-             * this is a security block, not an SMS failure.
-             */
             contact.smsStatus =
                 SmsStatus.NONE
 
@@ -2391,8 +2605,7 @@ Do you want to continue?
         /*
          * CRITICAL SECURITY CHECK:
          *
-         * This is performed immediately before the actual
-         * SMS API call for EVERY contact.
+         * Performed immediately before the actual SMS API call.
          */
         val verified =
             getVerifiedSmsSubscription()
@@ -2448,7 +2661,7 @@ Do you want to continue?
                         EXTRA_REQUEST_ID,
                         requestId
                     )
-            }
+                }
 
             val pendingIntent =
                 PendingIntent.getBroadcast(
@@ -2464,12 +2677,6 @@ Do you want to continue?
             )
         }
 
-        /*
-         * Do NOT use SmsManager.getDefault().
-         *
-         * The SMS Manager is explicitly bound to the
-         * verified default SMS subscription.
-         */
         if (parts.size == 1) {
 
             smsManager.sendTextMessage(
@@ -2492,13 +2699,6 @@ Do you want to continue?
         }
     }
 
-    /**
-     * Stops a running bulk operation when the license/SIM
-     * security check fails.
-     *
-     * Existing SMS callbacks are intentionally not destroyed.
-     * They may still arrive for messages already submitted.
-     */
     private fun abortSmsOperation(
         reason: String
     ) {
@@ -2573,7 +2773,6 @@ Do you want to continue?
         )
 
         updateCounts()
-
         updateSendCount()
 
         txtStatus.text =
@@ -2604,7 +2803,6 @@ Do you want to continue?
                 true
 
             updateCounts()
-
             updateSendCount()
 
             txtStatus.text =
@@ -2639,21 +2837,18 @@ Do you want to continue?
 
         val sent =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.SENDING
             }
@@ -2661,17 +2856,14 @@ Do you want to continue?
         txtSendCount.text =
             when {
 
-                smsOperationActive -> {
+                smsOperationActive ->
                     "Sent: $sent / $selected"
-                }
 
-                selected > 0 -> {
+                selected > 0 ->
                     "Sent: $sent / $selected"
-                }
 
-                else -> {
+                else ->
                     "Sent: $sent"
-                }
             }
 
         if (
@@ -2704,19 +2896,16 @@ Do you want to continue?
 
         val sent =
             results.count {
-
                 it.status == "SENT"
             }
 
         val failed =
             results.count {
-
                 it.status == "FAILED"
             }
 
         val skipped =
             results.count {
-
                 it.status == "SKIPPED"
             }
 
@@ -2797,7 +2986,6 @@ Do you want to continue?
 
         val scroll =
             ScrollView(this).apply {
-
                 addView(textView)
             }
 
@@ -2813,9 +3001,9 @@ Do you want to continue?
             .show()
     }
 
-    // ---------------------------------------------------------
-    // Test SMS
-    // ---------------------------------------------------------
+    // =========================================================
+    // TEST SMS
+    // =========================================================
 
     private fun testSms() {
 
@@ -2835,13 +3023,45 @@ Do you want to continue?
         val contact =
             selected.first()
 
+        /*
+         * FIX:
+         *
+         * Permission must be checked BEFORE license/SIM
+         * verification.
+         *
+         * Previously testSms() called getVerifiedSmsSubscription()
+         * first, so Android's permission popup was never reached.
+         */
+        if (!hasSmsPermissions()) {
+
+            pendingSmsPermissionAction =
+                {
+                    showTestSmsConfirmation(
+                        contact
+                    )
+                }
+
+            requestMissingSmsPermissions()
+
+            return
+        }
+
+        showTestSmsConfirmation(
+            contact
+        )
+    }
+
+    private fun showTestSmsConfirmation(
+        contact: Contact
+    ) {
+
         val message =
             personaliseMessage(
                 contact
             )
 
         /*
-         * Verify BEFORE showing the final Test SMS confirmation.
+         * Verify BEFORE showing final Test SMS confirmation.
          */
         try {
 
@@ -2905,13 +3125,7 @@ Do you want to continue?
                     )
                 }
 
-            smsPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.SEND_SMS,
-                    Manifest.permission.READ_PHONE_STATE,
-                    Manifest.permission.READ_PHONE_NUMBERS
-                )
-            )
+            requestMissingSmsPermissions()
 
             return
         }
@@ -2931,7 +3145,7 @@ Do you want to continue?
 
             /*
              * FINAL strict verification immediately before
-             * the actual Test SMS API call.
+             * actual Test SMS API call.
              */
             val verified =
                 getVerifiedSmsSubscription()
@@ -3052,21 +3266,18 @@ Do you want to continue?
 
         val sent =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
-
                 it.smsStatus ==
                         SmsStatus.SENDING
             }
@@ -3085,14 +3296,12 @@ Do you want to continue?
 
     private fun sentCount() =
         contacts.count {
-
             it.smsStatus ==
                     SmsStatus.SENT
         }
 
     private fun failedCount() =
         contacts.count {
-
             it.smsStatus ==
                     SmsStatus.FAILED
         }
