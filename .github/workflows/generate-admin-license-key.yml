@@ -1,53 +1,38 @@
-name: Generate Admin License Key
+name: Validate Admin License Key
 
 on:
   workflow_dispatch:
 
 jobs:
-  generate-key:
+  validate-key:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Set up JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Generate RSA admin signing key pair
+      - name: Validate protected PKCS12 signing key
+        shell: bash
+        env:
+          ADMIN_LICENSE_P12_BASE64: ${{ secrets.ADMIN_LICENSE_P12_BASE64 }}
+          ADMIN_LICENSE_P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
         run: |
-          set -e
-
-          keytool -genkeypair \
-            -alias admin-license \
-            -keyalg RSA \
-            -keysize 4096 \
-            -validity 10000 \
-            -storetype PKCS12 \
+          set -euo pipefail
+          umask 077
+          test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ADMIN_LICENSE_P12_BASE64 secret is not configured."; exit 1; }
+          test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
+          printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
+          keytool -list \
             -keystore admin-license-private.p12 \
-            -storepass temp-password \
-            -keypass temp-password \
-            -dname "CN=KBAWelfareMessenger License Authority, O=Advocate4U, C=IN"
-
+            -storetype PKCS12 \
+            -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
+            -alias admin-license >/dev/null
           keytool -exportcert \
             -rfc \
             -keystore admin-license-private.p12 \
-            -storepass temp-password \
+            -storetype PKCS12 \
+            -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
             -alias admin-license \
-            -file admin-license-public.pem
+            -file admin-license-public.pem >/dev/null
+          echo "Protected admin PKCS12 key is valid."
+          echo "Public certificate generated successfully."
 
-          base64 -w 0 admin-license-private.p12 > ADMIN_LICENSE_PRIVATE_KEY_BASE64.txt
-
-          echo "Admin key pair generated."
-          echo "The private key file is protected by the temporary container password inside the workflow artifact."
-          echo "The public key can be safely placed in the Android app."
-
-      - name: Package admin license key material
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin-license-key-material
-          path: |
-            admin-license-private.p12
-            admin-license-public.pem
-            ADMIN_LICENSE_PRIVATE_KEY_BASE64.txt
-          retention-days: 1
+      - name: Remove temporary key files
+        if: always()
+        run: rm -f admin-license-private.p12 admin-license-public.pem
