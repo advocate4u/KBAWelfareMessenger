@@ -22,5 +22,6 @@
         <activity android:name=".AdvocateHelperActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".BackupRestoreActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".LicenseActivity" android:screenOrientation="portrait" android:exported="false" />
+        <activity android:name=".AuthenticationActivity" android:screenOrientation="portrait" android:exported="false" />
     </application>
 </manifest>
