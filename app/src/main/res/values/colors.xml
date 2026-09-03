@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Classic, familiar semantic feedback colors -->
+    <color name="feedback_error">#C62828</color>
+    <color name="feedback_success">#2E7D32</color>
+    <color name="feedback_warning">#F9A825</color>
+    <color name="feedback_info">#1565C0</color>
+
+    <!-- Premium legal-office palette -->
+    <color name="premium_navy">#17212B</color>
+    <color name="premium_gold">#B08D3C</color>
+    <color name="premium_ivory">#FAF8F2</color>
+</resources>
