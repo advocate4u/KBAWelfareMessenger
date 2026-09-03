@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class LoginActivity : AppCompatActivity() {
@@ -17,16 +16,12 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_login)
-
         initialiseViews()
-
         setupLoginScreen()
     }
 
     private fun initialiseViews() {
-
         txtLoginTitle = findViewById(R.id.txtLoginTitle)
         edtUserId = findViewById(R.id.edtUserId)
         edtPassword = findViewById(R.id.edtPassword)
@@ -34,184 +29,81 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setupLoginScreen() {
-
-        val hasUser =
-            SecurityManager.hasUser(this)
+        val hasUser = SecurityManager.hasUser(this)
 
         if (hasUser) {
-
-            txtLoginTitle.text =
-                "KBA Welfare Messenger"
-
-            btnLogin.text =
-                "LOGIN"
-
+            txtLoginTitle.text = "MyAdv"
+            btnLogin.text = "LOGIN"
         } else {
-
-            txtLoginTitle.text =
-                "Create Login"
-
-            btnLogin.text =
-                "CREATE LOGIN"
+            txtLoginTitle.text = "Create MyAdv Login"
+            btnLogin.text = "CREATE LOGIN"
         }
 
         btnLogin.setOnClickListener {
-
-            if (hasUser) {
-                loginUser()
-            } else {
-                createUser()
-            }
+            if (hasUser) loginUser() else createUser()
         }
     }
 
     private fun createUser() {
-
-        val userId =
-            edtUserId.text
-                .toString()
-                .trim()
-
-        val password =
-            edtPassword.text
-                .toString()
+        val userId = edtUserId.text.toString().trim()
+        val password = edtPassword.text.toString()
 
         if (userId.isEmpty()) {
-
-            edtUserId.error =
-                "Enter User ID"
-
+            edtUserId.error = "Enter User ID"
             edtUserId.requestFocus()
-
             return
         }
-
         if (password.isEmpty()) {
-
-            edtPassword.error =
-                "Enter password"
-
+            edtPassword.error = "Enter password"
             edtPassword.requestFocus()
-
             return
         }
-
         if (password.length < 6) {
-
-            edtPassword.error =
-                "Password must be at least 6 characters"
-
+            edtPassword.error = "Password must be at least 6 characters"
             edtPassword.requestFocus()
-
             return
         }
 
-        val created =
-            SecurityManager.createUser(
-                this,
-                userId,
-                password
-            )
-
+        val created = SecurityManager.createUser(this, userId, password)
         if (created) {
-
-            Toast.makeText(
-                this,
-                "Login created successfully.",
-                Toast.LENGTH_SHORT
-            ).show()
-
+            UiFeedback.success(this, "Login created successfully.")
             openMainActivity()
-
         } else {
-
-            Toast.makeText(
-                this,
-                "Unable to create login.",
-                Toast.LENGTH_LONG
-            ).show()
+            UiFeedback.error(this, "Unable to create login.", true)
         }
     }
 
     private fun loginUser() {
-
-        val userId =
-            edtUserId.text
-                .toString()
-                .trim()
-
-        val password =
-            edtPassword.text
-                .toString()
+        val userId = edtUserId.text.toString().trim()
+        val password = edtPassword.text.toString()
 
         if (userId.isEmpty()) {
-
-            edtUserId.error =
-                "Enter User ID"
-
+            edtUserId.error = "Enter User ID"
             edtUserId.requestFocus()
-
             return
         }
-
         if (password.isEmpty()) {
-
-            edtPassword.error =
-                "Enter password"
-
+            edtPassword.error = "Enter password"
             edtPassword.requestFocus()
-
             return
         }
 
-        val authenticated =
-            SecurityManager.authenticate(
-                this,
-                userId,
-                password
-            )
-
+        val authenticated = SecurityManager.authenticate(this, userId, password)
         if (authenticated) {
-
-            AppLogger.info(
-                this,
-                "AUTH",
-                "User login successful."
-            )
-
+            AppLogger.info(this, "AUTH", "User login successful.")
+            UiFeedback.success(this, "Welcome to MyAdv")
             openMainActivity()
-
         } else {
-
-            AppLogger.warning(
-                this,
-                "AUTH",
-                "Invalid login attempt."
-            )
-
-            Toast.makeText(
-                this,
-                "Invalid User ID or password.",
-                Toast.LENGTH_LONG
-            ).show()
+            AppLogger.warning(this, "AUTH", "Invalid login attempt.")
+            UiFeedback.error(this, "Invalid User ID or password.", true)
         }
     }
 
     private fun openMainActivity() {
-
-        val intent =
-            Intent(
-                this,
-                MainActivity::class.java
-            ).apply {
-
-                flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
         startActivity(intent)
-
         finish()
     }
 }
