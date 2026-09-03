@@ -22,7 +22,8 @@ jobs:
           EXPIRY: ${{ inputs.expiry }}
         run: |
           set -euo pipefail
-          PHONE="$(echo "$ADMIN_PHONE" | tr -cd '0-9' | tail -c 10)"
+          PHONE="$(printf '%s' "$ADMIN_PHONE" | tr -cd '0-9')"
+          if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
           case "$PHONE" in
             9813337779|9104371000) ;;
             *) echo "Only 9813337779 or 9104371000 can receive an Admin license."; exit 1 ;;
@@ -46,17 +47,22 @@ jobs:
           P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
         run: |
           set -euo pipefail
-          PHONE="$(echo "$ADMIN_PHONE" | tr -cd '0-9' | tail -c 10)"
+          PHONE="$(printf '%s' "$ADMIN_PHONE" | tr -cd '0-9')"
+          if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
           PHONE="91$PHONE"
           PAYLOAD="phone=$PHONE\nexpiry=$EXPIRY\nrole=ADMIN"
           printf '%b' "$PAYLOAD" > payload.txt
 
+          test -n "$P12_PASSWORD" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
           openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes -passin pass:"$P12_PASSWORD" -out private-key.pem
           chmod 600 private-key.pem
           SIGNATURE_B64="$(openssl dgst -sha256 -sign private-key.pem payload.txt | base64 -w 0)"
           PAYLOAD_B64="$(base64 -w 0 payload.txt)"
-
-          RANDOM_ID="ANI$(tr -dc 'A-Z0-9' </dev/urandom | head -c 1)-$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4)-$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4)-$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4)"
+          A="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 1 || true)"
+          B="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
+          C="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
+          D="$(tr -dc 'A-Z0-9' </dev/urandom | head -c 4 || true)"
+          RANDOM_ID="ANI${A}-${B}-${C}-${D}"
           {
             echo "MyAdv INITIAL ADMIN LICENSE"
             echo "License ID: $RANDOM_ID"
@@ -66,7 +72,6 @@ jobs:
             echo "Signed Token:"
             echo "$PAYLOAD_B64.$SIGNATURE_B64"
           } > MYADV_ADMIN_LICENSE.txt
-
           rm -f admin-license-private.p12 private-key.pem payload.txt
 
       - name: Upload Admin license artifact
