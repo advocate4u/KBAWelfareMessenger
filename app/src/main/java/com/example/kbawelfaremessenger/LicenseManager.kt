@@ -60,6 +60,30 @@ yn90df4QmpIDXBKWYA==
             if (!isValidLicenseIdFormat(cleanId)) return LicenseCheckResult(false, "Invalid license key format.")
             val license = verifySignedToken(cleanId, signedToken) ?: return LicenseCheckResult(false, "License verification failed.")
             if (LocalDate.now().isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
+
+            // Enforce the license hierarchy at the activation boundary, not only in the UI.
+            // First activation is allowed because there is no local account yet. Once an
+            // account exists, the replacement/renewal license must match that account's role
+            // and phone. This prevents an Admin from installing a USER or SUPER_ADMIN license,
+            // a USER from installing an ADMIN/SUPER_ADMIN license, or an account from moving to
+            // another phone by simply importing a different signed license.
+            val currentUserId = SecurityManager.currentUserId(context)
+            val currentRole = SecurityManager.currentRole(context)
+            if (currentUserId != null && currentRole != null) {
+                val currentPhone = normalisePhone(currentUserId)
+                if (currentPhone.isBlank() || currentPhone != license.phone) {
+                    return LicenseCheckResult(false, "License phone does not match the currently authenticated account.")
+                }
+                if (license.role != currentRole) {
+                    return LicenseCheckResult(false, "License role cannot be changed for an existing account. $currentRole account requires a ${currentRole.name} license.")
+                }
+            } else {
+                // Initial activation: only the designated phone numbers may become SUPER_ADMIN.
+                if (license.role == UserRole.SUPER_ADMIN && !SecurityManager.isSuperAdminPhoneNumber(license.phone)) {
+                    return LicenseCheckResult(false, "SUPER ADMIN licenses can only be activated by an approved Super Admin phone number.")
+                }
+            }
+
             context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
                 .putString(KEY_LICENSE_ID, license.licenseId).putString(KEY_LICENSE_TOKEN, signedToken.trim()).apply()
             AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
