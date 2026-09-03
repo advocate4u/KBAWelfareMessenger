@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,6 +10,10 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="20dp">
+
+        <!-- ================================================= -->
+        <!-- CSV SETTINGS -->
+        <!-- ================================================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -47,6 +52,40 @@
             android:inputType="text"
             android:singleLine="true" />
 
+
+        <!-- ================================================= -->
+        <!-- AUTHENTICATION -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Authentication"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Manage application authentication and administrator access."
+            android:textSize="14sp"
+            android:alpha="0.75"
+            android:paddingBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnAuthentication"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="AUTHENTICATION"
+            android:textStyle="bold" />
+
+
+        <!-- ================================================= -->
+        <!-- MESSAGE SETTINGS -->
+        <!-- ================================================= -->
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,6 +118,11 @@
             android:textSize="16sp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp" />
+
+
+        <!-- ================================================= -->
+        <!-- SMS SETTINGS -->
+        <!-- ================================================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -121,6 +165,11 @@
             android:paddingTop="8dp"
             android:paddingBottom="8dp" />
 
+
+        <!-- ================================================= -->
+        <!-- LOGGING -->
+        <!-- ================================================= -->
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -138,6 +187,11 @@
             android:textSize="16sp"
             android:paddingTop="8dp"
             android:paddingBottom="16dp" />
+
+
+        <!-- ================================================= -->
+        <!-- ACTIONS -->
+        <!-- ================================================= -->
 
         <Button
             android:id="@+id/btnSaveSettings"
