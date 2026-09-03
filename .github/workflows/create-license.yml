@@ -43,12 +43,34 @@ jobs:
           ADMIN_LICENSE_P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
         run: |
           set -euo pipefail
+          umask 077
+
           test -n "$ADMIN_LICENSE_P12_BASE64" || { echo "ERROR: ADMIN_LICENSE_P12_BASE64 secret is not configured."; exit 1; }
           test -n "$ADMIN_LICENSE_P12_PASSWORD" || { echo "ERROR: ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
-          printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
+
+          if ! printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12 2>base64-error.txt; then
+            echo "ERROR: ADMIN_LICENSE_P12_BASE64 is not valid Base64."
+            cat base64-error.txt
+            exit 1
+          fi
           chmod 600 admin-license-private.p12
-          keytool -list -keystore admin-license-private.p12 -storetype PKCS12 -storepass "$ADMIN_LICENSE_P12_PASSWORD" -alias admin-license >/dev/null
-          echo "PKCS12 signing key loaded and validated."
+
+          echo "Checking protected PKCS12 keystore..."
+          if ! keytool -list \
+            -keystore admin-license-private.p12 \
+            -storetype PKCS12 \
+            -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
+            > keytool-list.txt 2>&1; then
+            echo "ERROR: GitHub secret could not open the PKCS12 keystore."
+            echo "This normally means the P12 password is wrong or the Base64 secret contains a different/corrupt P12 file."
+            echo "Keytool diagnostic:"
+            cat keytool-list.txt
+            exit 1
+          fi
+
+          echo "PKCS12 signing key loaded successfully."
+          echo "Keystore entries:"
+          grep -E 'Alias name:|Entry type:' keytool-list.txt || true
 
       - name: Create signed license
         env:
@@ -94,7 +116,7 @@ jobs:
       - name: Remove private key material
         if: always()
         run: |
-          rm -f admin-license-private.p12 private-key.pem license-signature.bin license-payload.txt
+          rm -f admin-license-private.p12 private-key.pem license-signature.bin license-payload.txt keytool-list.txt base64-error.txt
 
       - name: Upload license package
         uses: actions/upload-artifact@v4
