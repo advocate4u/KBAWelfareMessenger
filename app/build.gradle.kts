@@ -47,6 +47,13 @@ android {
         }
     }
 
+    applicationVariants.all {
+        outputs.all {
+            val apkName = "MyAdv-v${versionName}-release.apk"
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = apkName
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
