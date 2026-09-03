@@ -1,158 +1,344 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:fillViewport="true">
 
-    <!-- Top Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="10dp">
 
-        <Button
-            android:id="@+id/btnUpload"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="UPLOAD CSV" />
+        <!-- ================================================= -->
+        <!-- TOP BAR -->
+        <!-- ================================================= -->
 
-        <Button
-            android:id="@+id/btnSettings"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="⚙ SETTINGS" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="KBA Welfare Messenger"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚙"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
+        <!-- CSV SECTION -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtCsvHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="?attr/colorControlHighlight"
+            android:padding="10dp"
+            android:text="▼  CSV / CONTACTS"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutCsvSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btnUpload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="UPLOAD CSV" />
+
+            <TextView
+                android:id="@+id/txtFile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="4dp"
+                android:text="No CSV selected"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/edtSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Search name or mobile number"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnSelectAll"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SELECT ALL" />
+
+                <Button
+                    android:id="@+id/btnUnselectAll"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="UNSELECT ALL" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
+        <!-- RANGE SECTION -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtRangeHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorControlHighlight"
+            android:padding="10dp"
+            android:text="▶  RANGE SELECTION"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutRangeSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/edtRangeFrom"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="From"
+                    android:inputType="number"
+                    android:singleLine="true" />
+
+                <EditText
+                    android:id="@+id/edtRangeTo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:hint="To"
+                    android:inputType="number"
+                    android:singleLine="true" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnSelectRange"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SELECT RANGE" />
+
+                <Button
+                    android:id="@+id/btnUnselectRange"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="UNSELECT RANGE" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
+        <!-- CONTACT STATUS -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtSelected"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="5dp"
+            android:text="Selected: 0"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0" />
+
+        <TextView
+            android:id="@+id/txtStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ready"
+            android:textStyle="bold" />
+
+
+        <!-- ================================================= -->
+        <!-- CONTACT LIST -->
+        <!-- ================================================= -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerContacts"
+            android:layout_width="match_parent"
+            android:layout_height="350dp"
+            android:layout_marginTop="5dp" />
+
+
+        <!-- ================================================= -->
+        <!-- MESSAGE SECTION -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtMessageHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorControlHighlight"
+            android:padding="10dp"
+            android:text="▼  MESSAGE"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutMessageSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/edtMessage"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:gravity="top|start"
+                android:hint="Message"
+                android:inputType="textMultiLine"
+                android:padding="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="PREVIEW" />
+
+                <Button
+                    android:id="@+id/btnTestSms"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="TEST SMS" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
+        <!-- SEND ACTIONS -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtSendHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorControlHighlight"
+            android:padding="10dp"
+            android:text="▼  SEND ACTIONS"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutSendSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btnSendSms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SEND SMS" />
+
+            <Button
+                android:id="@+id/btnWhatsApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="WHATSAPP" />
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
+        <!-- OTHER ACTIONS -->
+        <!-- ================================================= -->
+
+        <TextView
+            android:id="@+id/txtOtherHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="?attr/colorControlHighlight"
+            android:padding="10dp"
+            android:text="▶  OTHER ACTIONS"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutOtherSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnReset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="RESET" />
+
+            <Button
+                android:id="@+id/btnClearData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="CLEAR DATA" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- File -->
-    <TextView
-        android:id="@+id/txtFile"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="No CSV selected"
-        android:textStyle="bold" />
-
-    <!-- Search -->
-    <EditText
-        android:id="@+id/edtSearch"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Search name or mobile number"
-        android:inputType="text"
-        android:singleLine="true" />
-
-    <!-- Select Buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/btnSelectAll"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="SELECT ALL" />
-
-        <Button
-            android:id="@+id/btnUnselectAll"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="UNSELECT ALL" />
-
-    </LinearLayout>
-
-    <!-- Range Selection -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <EditText
-            android:id="@+id/edtRangeFrom"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="From"
-            android:inputType="number"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/edtRangeTo"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:hint="To"
-            android:inputType="number"
-            android:singleLine="true" />
-
-        <Button
-            android:id="@+id/btnSelectRange"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:text="SELECT" />
-
-        <Button
-            android:id="@+id/btnUnselectRange"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="UNSELECT" />
-
-    </LinearLayout>
-
-    <!-- Selection / Statistics -->
-    <TextView
-        android:id="@+id/txtSelected"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="Selected: 0"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/txtStats"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0" />
-
-    <TextView
-        android:id="@+id/txtStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Ready"
-        android:textStyle="bold" />
-
-    <!-- Contacts -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerContacts"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="6dp" />
-
-    <!-- Message -->
-    <EditText
-        android:id="@+id/edtMessage"
-        android:layout_width="match_parent"
-        android:layout_height="110dp"
-        android:gravity="top|start"
-        android:hint="Message"
-        android:inputType="textMultiLine"
-        android:padding="10dp" />
-
-    <!-- Preview / Test -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation
+</ScrollView>
