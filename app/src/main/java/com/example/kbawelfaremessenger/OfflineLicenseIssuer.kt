@@ -17,14 +17,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/**
- * Offline license issuer used only by an approved administrator.
- *
- * The RSA private key is NOT compiled into the APK. It is provisioned
- * once on the administrator's device and encrypted at rest with an
- * Android Keystore AES key. The private key is then used locally to
- * sign licenses without GitHub or internet access.
- */
+/** Offline issuer for normal USER licenses. Initial ADMIN licenses are issued by the system-owner workflow. */
 object OfflineLicenseIssuer {
     private const val PREFS = "offline_license_issuer"
     private const val KEY_CIPHERTEXT = "encrypted_private_key"
@@ -36,8 +29,7 @@ object OfflineLicenseIssuer {
 
     data class GeneratedLicense(val licenseId: String, val signedToken: String, val phone: String, val expiry: LocalDate)
 
-    fun hasSigningKey(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_CIPHERTEXT)
+    fun hasSigningKey(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_CIPHERTEXT)
 
     fun installSigningKey(context: Context, pem: String): Boolean {
         if (!SecurityManager.isAdmin(context)) return false
@@ -49,26 +41,24 @@ object OfflineLicenseIssuer {
             val encrypted = cipher.doFinal(privateKey.encoded)
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(KEY_CIPHERTEXT, Base64.encodeToString(encrypted, Base64.NO_WRAP))
-                .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
-                .apply()
+                .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP)).apply()
             true
         } catch (_: Exception) { false }
     }
 
+    /** Admins use this only for USER licenses. ADMIN licenses are created by the system-owner workflow. */
     fun generateLicense(context: Context, phoneInput: String, expiry: LocalDate): GeneratedLicense? {
         if (!SecurityManager.isAdmin(context) || !hasSigningKey(context)) return null
         val phone = normalizePhone(phoneInput) ?: return null
+        if (SecurityManager.isAdminPhoneNumber(phone)) return null
         if (expiry.isBefore(LocalDate.now())) return null
         return try {
-            val payload = "phone=$phone\nexpiry=${expiry.format(java.time.format.DateTimeFormatter.ofPattern(DATE_PATTERN))}"
+            val payload = "phone=$phone\nexpiry=${expiry.format(java.time.format.DateTimeFormatter.ofPattern(DATE_PATTERN))}\nrole=USER"
             val payloadBytes = payload.toByteArray(StandardCharsets.UTF_8)
             val privateKey = decryptPrivateKey(context)
             val signature = Signature.getInstance("SHA256withRSA")
-            signature.initSign(privateKey)
-            signature.update(payloadBytes)
-            val signatureBytes = signature.sign()
-            val token = Base64.encodeToString(payloadBytes, Base64.NO_WRAP) + "." +
-                Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+            signature.initSign(privateKey); signature.update(payloadBytes)
+            val token = Base64.encodeToString(payloadBytes, Base64.NO_WRAP) + "." + Base64.encodeToString(signature.sign(), Base64.NO_WRAP)
             GeneratedLicense(randomLicenseId(), token, phone, expiry)
         } catch (_: Exception) { null }
     }
@@ -91,13 +81,9 @@ object OfflineLicenseIssuer {
     }
 
     private fun parsePrivateKey(pem: String): PrivateKey {
-        val cleaned = pem
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
-            .replace(Regex("\\s"), "")
+        val cleaned = pem.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "").replace(Regex("\\s"), "")
         require(cleaned.isNotBlank())
-        val bytes = Base64.decode(cleaned, Base64.DEFAULT)
-        return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(bytes))
+        return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(Base64.decode(cleaned, Base64.DEFAULT)))
     }
 
     private fun getWrapKey(): SecretKey {
@@ -110,13 +96,8 @@ object OfflineLicenseIssuer {
         val existing = ks.getKey(WRAP_KEY_ALIAS, null) as? SecretKey
         if (existing != null) return existing
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-        generator.init(KeyGenParameterSpec.Builder(
-            WRAP_KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .build())
+        generator.init(KeyGenParameterSpec.Builder(WRAP_KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setKeySize(256).build())
         return generator.generateKey()
     }
 
@@ -126,7 +107,6 @@ object OfflineLicenseIssuer {
         val iv = Base64.decode(prefs.getString(KEY_IV, null) ?: error("Signing key IV missing"), Base64.DEFAULT)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, getWrapKey(), GCMParameterSpec(128, iv))
-        val pkcs8 = cipher.doFinal(ciphertext)
-        return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(pkcs8))
+        return KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(cipher.doFinal(ciphertext)))
     }
 }
