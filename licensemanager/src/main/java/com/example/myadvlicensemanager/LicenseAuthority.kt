@@ -53,25 +53,6 @@ object LicenseAuthority {
         return true
     }
 
-    // Legacy compatibility only. This is no longer exposed by the MyAdvAM UI.
-    fun installSigningKey(c: Context, input: java.io.InputStream, password: CharArray): Boolean = try {
-        val ks = KeyStore.getInstance("PKCS12")
-        input.use { ks.load(it, password) }
-        val aliases = ks.aliases()
-        var key: PrivateKey? = null
-        while (aliases.hasMoreElements()) {
-            val alias = aliases.nextElement()
-            if (!ks.isKeyEntry(alias)) continue
-            val candidate = ks.getKey(alias, password)
-            if (candidate is PrivateKey) { key = candidate; break }
-        }
-        key?.let { saveKey(c, it) } ?: false
-    } catch (_: Exception) {
-        false
-    } finally {
-        java.util.Arrays.fill(password, '\u0000')
-    }
-
     fun createLicense(c: Context, target: String, role: ManagerRole, issueDate: LocalDate,
                       expiry: LocalDate, options: LicenseOptions): License? {
         if (!hasKey(c) || expiry.isBefore(issueDate) || expiry.isBefore(LocalDate.now())) return null
