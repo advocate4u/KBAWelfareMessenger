@@ -22,24 +22,48 @@ jobs:
           set -euo pipefail
           umask 077
 
-          test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ADMIN_LICENSE_P12_BASE64 secret is empty or unavailable."; exit 1; }
-          test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is empty or unavailable."; exit 1; }
+          test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ERROR: ADMIN_LICENSE_P12_BASE64 secret is empty or unavailable."; exit 1; }
+          test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ERROR: ADMIN_LICENSE_P12_PASSWORD secret is empty or unavailable."; exit 1; }
 
-          printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
+          if ! printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12 2>base64-error.txt; then
+            echo "ERROR: ADMIN_LICENSE_P12_BASE64 is not valid Base64."
+            cat base64-error.txt
+            exit 1
+          fi
+          chmod 600 admin-license-private.p12
 
-          keytool -list \
+          echo "Checking protected PKCS12 keystore..."
+          if ! keytool -list \
             -keystore admin-license-private.p12 \
             -storetype PKCS12 \
             -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -alias admin-license >/dev/null
+            > keytool-list.txt 2>&1; then
+            echo "ERROR: GitHub secret could not open the PKCS12 keystore."
+            echo "This normally means the P12 password is wrong or the Base64 secret contains a different/corrupt P12 file."
+            echo "Keytool diagnostic:"
+            cat keytool-list.txt
+            exit 1
+          fi
 
-          keytool -exportcert \
+          ALIAS=$(awk -F': ' '/^Alias name: / {print $2; exit}' keytool-list.txt)
+          if [ -z "$ALIAS" ]; then
+            echo "ERROR: No keystore alias was found in the PKCS12 file."
+            cat keytool-list.txt
+            exit 1
+          fi
+          echo "Using keystore alias: $ALIAS"
+
+          if ! keytool -exportcert \
             -rfc \
             -keystore admin-license-private.p12 \
             -storetype PKCS12 \
             -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            -alias admin-license \
-            -file admin-license-public.pem
+            -alias "$ALIAS" \
+            -file admin-license-public.pem 2>export-error.txt; then
+            echo "ERROR: Could not export the public certificate from the PKCS12 keystore."
+            cat export-error.txt
+            exit 1
+          fi
 
       - name: Replace embedded public key
         shell: python
@@ -61,7 +85,7 @@ jobs:
       - name: Remove temporary key files
         if: always()
         shell: bash
-        run: rm -f admin-license-private.p12 admin-license-public.pem
+        run: rm -f admin-license-private.p12 admin-license-public.pem keytool-list.txt base64-error.txt export-error.txt
 
       - name: Commit updated public key
         shell: bash
