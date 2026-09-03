@@ -68,8 +68,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Expiry date (YYYY-MM-DD)"
-            android:inputType="date"
-            android:singleLine="true" />
+            android:inputType="none"
+            android:focusable="false"
+            android:clickable="true"
+            android:cursorVisible="false"
+            android:singleLine="true"
+            android:drawableEnd="@android:drawable/ic_menu_my_calendar" />
         <Button
             android:id="@+id/btnGenerateLicense"
             android:layout_width="match_parent"
