@@ -1,7 +1,9 @@
 package com.example.kbawelfaremessenger
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -9,12 +11,20 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class LicenseActivity : AppCompatActivity() {
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+    private val signingKeyPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        promptForKeyPassword(uri)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,7 +39,6 @@ class LicenseActivity : AppCompatActivity() {
         val title = findViewById<TextView>(R.id.txtLicenseTitle)
         val description = findViewById<TextView>(R.id.txtLicenseDescription)
         val adminKeyStatus = findViewById<TextView>(R.id.txtAdminKeyStatus)
-        val keyInput = findViewById<EditText>(R.id.edtAdminPrivateKey)
         val saveKey = findViewById<Button>(R.id.btnSaveAdminKey)
         val adminKeyInfo = findViewById<TextView>(R.id.txtAdminKeyInfo)
         val generateSection = findViewById<TextView>(R.id.txtGenerateSection)
@@ -54,16 +63,21 @@ class LicenseActivity : AppCompatActivity() {
         }
 
         if (!canManage) {
-            listOf(adminKeyStatus, keyInput, saveKey, adminKeyInfo, generateSection, generatePhone,
-                generateRole, generateExpiry, generateButton, generated, shareGenerated, clearButton).forEach { it.visibility = View.GONE }
+            listOf(
+                adminKeyStatus, saveKey, adminKeyInfo, generateSection, generatePhone,
+                generateRole, generateExpiry, generateButton, generated, shareGenerated, clearButton
+            ).forEach { it.visibility = View.GONE }
             installSection.text = "INSTALL LICENSE PROVIDED BY ADMINISTRATOR"
         } else {
             val availableRoles = if (isSuperAdmin) listOf(UserRole.ADMIN, UserRole.USER) else listOf(UserRole.USER)
-            generateRole.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, availableRoles.map { it.name })
+            generateRole.adapter = ArrayAdapter(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                availableRoles.map { it.name }
+            )
 
             saveKey.visibility = View.VISIBLE
             adminKeyStatus.visibility = View.VISIBLE
-            keyInput.visibility = View.VISIBLE
             adminKeyInfo.visibility = View.VISIBLE
             generateSection.visibility = View.VISIBLE
             generatePhone.visibility = View.VISIBLE
@@ -77,34 +91,38 @@ class LicenseActivity : AppCompatActivity() {
             fun refreshKeyStatus() {
                 adminKeyStatus.text = if (OfflineLicenseIssuer.hasSigningKey(this))
                     "Signing key: CONFIGURED (encrypted on this device)"
-                else "Signing key: NOT CONFIGURED"
+                else
+                    "Signing key: NOT CONFIGURED"
             }
             refreshKeyStatus()
 
             saveKey.setOnClickListener {
-                val pem = keyInput.text.toString().trim()
-                if (!pem.contains("BEGIN PRIVATE KEY") || !pem.contains("END PRIVATE KEY")) {
-                    keyInput.error = "Paste the PKCS#8 private key"
-                    return@setOnClickListener
-                }
-                val ok = OfflineLicenseIssuer.installSigningKey(this, pem)
-                if (ok) {
-                    keyInput.text.clear()
-                    Toast.makeText(this, "Signing key encrypted and saved on this device.", Toast.LENGTH_LONG).show()
-                    refreshKeyStatus()
-                } else Toast.makeText(this, "Unable to configure signing key.", Toast.LENGTH_LONG).show()
+                signingKeyPicker.launch(arrayOf("application/x-pkcs12", "application/pkcs12", "application/octet-stream"))
             }
 
             generateButton.setOnClickListener {
                 val phone = generatePhone.text.toString().trim()
-                val expiry = runCatching { LocalDate.parse(generateExpiry.text.toString().trim(), dateFormatter) }.getOrNull()
+                val expiry = runCatching {
+                    LocalDate.parse(generateExpiry.text.toString().trim(), dateFormatter)
+                }.getOrNull()
                 val selectedRole = UserRole.valueOf(generateRole.selectedItem.toString())
-                if (phone.isBlank()) { generatePhone.error = "Enter phone number"; return@setOnClickListener }
-                if (expiry == null) { generateExpiry.error = "Use YYYY-MM-DD"; return@setOnClickListener }
+
+                if (phone.isBlank()) {
+                    generatePhone.error = "Enter phone number"
+                    return@setOnClickListener
+                }
+                if (expiry == null) {
+                    generateExpiry.error = "Use YYYY-MM-DD"
+                    return@setOnClickListener
+                }
 
                 val license = OfflineLicenseIssuer.generateLicense(this, phone, expiry, selectedRole)
                 if (license == null) {
-                    Toast.makeText(this, "Cannot generate ${selectedRole.name} license. Configure the signing key first and check your access.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this,
+                        "Cannot generate ${selectedRole.name} license. Configure the signing key first and check your access.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     return@setOnClickListener
                 }
                 generated.text = "License ID:\n${license.licenseId}\n\nRole: ${license.role.name}\nPhone: ${license.phone}\nExpiry: ${license.expiry.format(dateFormatter)}\n\nSigned Token:\n${license.signedToken}"
@@ -138,13 +156,18 @@ class LicenseActivity : AppCompatActivity() {
             }
             val result = LicenseManager.installLicense(this, id, token)
             Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-            if (result.allowed) { installId.text.clear(); installToken.text.clear() }
+            if (result.allowed) {
+                installId.text.clear()
+                installToken.text.clear()
+            }
             refresh()
         }
 
         fun refresh() {
             val license = LicenseManager.getInstalledLicense(this)
-            status.text = if (license == null) "Status: NOT ACTIVATED" else {
+            status.text = if (license == null) {
+                "Status: NOT ACTIVATED"
+            } else {
                 val valid = LicenseManager.isLicenseValid(this)
                 "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\nLicense ID: ${license.licenseId}\nRole: ${license.role.name}\nLicensed phone: ${license.phone}\nExpiry: ${license.expiryDate.format(dateFormatter)}"
             }
@@ -152,5 +175,54 @@ class LicenseActivity : AppCompatActivity() {
         refresh()
     }
 
-    override fun onSupportNavigateUp(): Boolean { finish(); return true }
+    private fun promptForKeyPassword(uri: android.net.Uri) {
+        val passwordInput = EditText(this).apply {
+            hint = "PKCS#12 password"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            singleLine = true
+        }
+
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding(48, 0, 48, 0)
+            addView(passwordInput)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Signing Key Password")
+            .setMessage("Enter the password for the protected .p12/.pfx package. It will be used only for this import and will not be stored.")
+            .setView(container)
+            .setNegativeButton("CANCEL", null)
+            .setPositiveButton("IMPORT") { _, _ ->
+                val password = passwordInput.text.toString().toCharArray()
+                if (password.isEmpty()) {
+                    Toast.makeText(this, "Password is required.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                Thread {
+                    val ok = try {
+                        contentResolver.openInputStream(uri)?.let { input ->
+                            OfflineLicenseIssuer.installSigningKeyFromPkcs12(this, input, password)
+                        } ?: false
+                    } catch (_: Exception) {
+                        false
+                    }
+
+                    runOnUiThread {
+                        if (ok) {
+                            Toast.makeText(this, "Signing key imported and encrypted on this device.", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(this, "Unable to import signing key. Check the .p12/.pfx file and password.", Toast.LENGTH_LONG).show()
+                        }
+                        recreate()
+                    }
+                }.start()
+            }
+            .show()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
 }
