@@ -3,8 +3,10 @@ package com.example.kbawelfaremessenger
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -19,8 +21,10 @@ class LicenseActivity : AppCompatActivity() {
         setContentView(R.layout.activity_license)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val isAdmin = SecurityManager.isAdmin(this)
-        supportActionBar?.title = if (isAdmin) "Admin License Center" else "MyAdv License Activation"
+        val role = SecurityManager.currentRole(this)
+        val canManage = SecurityManager.canManageLicenses(this)
+        val isSuperAdmin = SecurityManager.isSuperAdmin(this)
+        supportActionBar?.title = if (canManage) "License Center" else "MyAdv License Activation"
 
         val title = findViewById<TextView>(R.id.txtLicenseTitle)
         val description = findViewById<TextView>(R.id.txtLicenseDescription)
@@ -30,6 +34,7 @@ class LicenseActivity : AppCompatActivity() {
         val adminKeyInfo = findViewById<TextView>(R.id.txtAdminKeyInfo)
         val generateSection = findViewById<TextView>(R.id.txtGenerateSection)
         val generatePhone = findViewById<EditText>(R.id.edtGeneratePhone)
+        val generateRole = findViewById<Spinner>(R.id.spnGenerateRole)
         val generateExpiry = findViewById<EditText>(R.id.edtGenerateExpiry)
         val generateButton = findViewById<Button>(R.id.btnGenerateLicense)
         val generated = findViewById<TextView>(R.id.txtGeneratedLicense)
@@ -41,46 +46,41 @@ class LicenseActivity : AppCompatActivity() {
         val clearButton = findViewById<Button>(R.id.btnClearLicense)
         val status = findViewById<TextView>(R.id.txtLicenseDetails)
 
-        title.text = if (isAdmin) "MyAdv Admin License Center" else "MyAdv License Activation"
-        description.text = if (isAdmin) {
-            "Generate and manage offline advocate licenses. Only approved administrator phone numbers can generate licenses."
-        } else {
-            "Install the license provided by your administrator. License verification works offline."
+        title.text = if (canManage) "MyAdv License Center" else "MyAdv License Activation"
+        description.text = when (role) {
+            UserRole.SUPER_ADMIN -> "SUPER ADMIN: generate ADMIN or USER licenses completely offline."
+            UserRole.ADMIN -> "ADMIN: generate USER licenses completely offline."
+            else -> "Install the license provided by your administrator. License verification works offline."
         }
 
-        if (!isAdmin) {
+        if (!canManage) {
             listOf(adminKeyStatus, keyInput, saveKey, adminKeyInfo, generateSection, generatePhone,
-                generateExpiry, generateButton, generated, shareGenerated, clearButton)
-                .forEach { it.visibility = View.GONE }
+                generateRole, generateExpiry, generateButton, generated, shareGenerated, clearButton).forEach { it.visibility = View.GONE }
             installSection.text = "INSTALL LICENSE PROVIDED BY ADMINISTRATOR"
         } else {
+            val availableRoles = if (isSuperAdmin) listOf(UserRole.ADMIN, UserRole.USER) else listOf(UserRole.USER)
+            generateRole.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, availableRoles.map { it.name })
+
+            saveKey.visibility = View.VISIBLE
             adminKeyStatus.visibility = View.VISIBLE
             keyInput.visibility = View.VISIBLE
-            saveKey.visibility = View.VISIBLE
             adminKeyInfo.visibility = View.VISIBLE
             generateSection.visibility = View.VISIBLE
             generatePhone.visibility = View.VISIBLE
+            generateRole.visibility = View.VISIBLE
             generateExpiry.visibility = View.VISIBLE
             generateButton.visibility = View.VISIBLE
             generated.visibility = View.VISIBLE
             shareGenerated.visibility = View.VISIBLE
             clearButton.visibility = View.VISIBLE
-        }
 
-        fun refresh() {
-            val license = LicenseManager.getInstalledLicense(this)
-            status.text = if (license == null) "Status: NOT ACTIVATED" else {
-                val valid = LicenseManager.isLicenseValid(this)
-                "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\nLicense ID: ${license.licenseId}\nLicensed phone: ${license.phone}\nExpiry: ${license.expiryDate.format(dateFormatter)}"
-            }
-            if (isAdmin) {
+            fun refreshKeyStatus() {
                 adminKeyStatus.text = if (OfflineLicenseIssuer.hasSigningKey(this))
-                    "Admin signing key: CONFIGURED (encrypted on this device)"
-                else "Admin signing key: NOT CONFIGURED"
+                    "Signing key: CONFIGURED (encrypted on this device)"
+                else "Signing key: NOT CONFIGURED"
             }
-        }
+            refreshKeyStatus()
 
-        if (isAdmin) {
             saveKey.setOnClickListener {
                 val pem = keyInput.text.toString().trim()
                 if (!pem.contains("BEGIN PRIVATE KEY") || !pem.contains("END PRIVATE KEY")) {
@@ -90,22 +90,24 @@ class LicenseActivity : AppCompatActivity() {
                 val ok = OfflineLicenseIssuer.installSigningKey(this, pem)
                 if (ok) {
                     keyInput.text.clear()
-                    Toast.makeText(this, "Signing key encrypted and saved on this admin device.", Toast.LENGTH_LONG).show()
-                    refresh()
+                    Toast.makeText(this, "Signing key encrypted and saved on this device.", Toast.LENGTH_LONG).show()
+                    refreshKeyStatus()
                 } else Toast.makeText(this, "Unable to configure signing key.", Toast.LENGTH_LONG).show()
             }
 
             generateButton.setOnClickListener {
                 val phone = generatePhone.text.toString().trim()
                 val expiry = runCatching { LocalDate.parse(generateExpiry.text.toString().trim(), dateFormatter) }.getOrNull()
-                if (phone.isBlank()) { generatePhone.error = "Enter advocate phone number"; return@setOnClickListener }
+                val selectedRole = UserRole.valueOf(generateRole.selectedItem.toString())
+                if (phone.isBlank()) { generatePhone.error = "Enter phone number"; return@setOnClickListener }
                 if (expiry == null) { generateExpiry.error = "Use YYYY-MM-DD"; return@setOnClickListener }
-                val license = OfflineLicenseIssuer.generateLicense(this, phone, expiry)
+
+                val license = OfflineLicenseIssuer.generateLicense(this, phone, expiry, selectedRole)
                 if (license == null) {
-                    Toast.makeText(this, "Cannot generate license. Configure the admin signing key first.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Cannot generate ${selectedRole.name} license. Configure the signing key first and check your access.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
-                generated.text = "License ID:\n${license.licenseId}\n\nSigned Token:\n${license.signedToken}\n\nPhone: ${license.phone}\nExpiry: ${license.expiry.format(dateFormatter)}"
+                generated.text = "License ID:\n${license.licenseId}\n\nRole: ${license.role.name}\nPhone: ${license.phone}\nExpiry: ${license.expiry.format(dateFormatter)}\n\nSigned Token:\n${license.signedToken}"
             }
 
             shareGenerated.setOnClickListener {
@@ -119,6 +121,11 @@ class LicenseActivity : AppCompatActivity() {
                     putExtra(Intent.EXTRA_TEXT, text)
                     putExtra(Intent.EXTRA_SUBJECT, "MyAdv Advocate License")
                 }, "Share Advocate License"))
+            }
+
+            clearButton.setOnClickListener {
+                LicenseManager.clearLicense(this)
+                refresh()
             }
         }
 
@@ -135,13 +142,13 @@ class LicenseActivity : AppCompatActivity() {
             refresh()
         }
 
-        if (isAdmin) {
-            clearButton.setOnClickListener {
-                LicenseManager.clearLicense(this)
-                refresh()
+        fun refresh() {
+            val license = LicenseManager.getInstalledLicense(this)
+            status.text = if (license == null) "Status: NOT ACTIVATED" else {
+                val valid = LicenseManager.isLicenseValid(this)
+                "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\nLicense ID: ${license.licenseId}\nRole: ${license.role.name}\nLicensed phone: ${license.phone}\nExpiry: ${license.expiryDate.format(dateFormatter)}"
             }
         }
-
         refresh()
     }
 
