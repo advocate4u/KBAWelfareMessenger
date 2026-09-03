@@ -12,7 +12,7 @@
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Phone Column" android:textStyle="bold" android:layout_marginTop="12dp" />
         <EditText android:id="@+id/edtPhoneColumn" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: Phone 1 - Value" android:inputType="text" android:singleLine="true" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Authentication" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="12dp" />
+        <TextView android:id="@+id/txtAuthenticationSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Authentication" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="12dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Manage application authentication and administrator access." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
         <Button android:id="@+id/btnAuthentication" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="AUTHENTICATION" android:textStyle="bold" />
 
