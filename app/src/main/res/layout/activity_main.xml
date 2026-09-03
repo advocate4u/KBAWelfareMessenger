@@ -1,49 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainScrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:clipToPadding="false"
+    android:paddingBottom="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="10dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="12dp">
 
+        <!-- ================================================= -->
         <!-- TOP BAR -->
+        <!-- ================================================= -->
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp"
             android:orientation="horizontal">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="KBA Welfare Messenger"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="KBA Welfare Messenger"
+                    android:textSize="21sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Advocate Welfare &amp; Communication"
+                    android:textSize="12sp"
+                    android:alpha="0.65" />
+
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btnSettings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
                 android:text="⚙"
-                android:textSize="18sp" />
+                android:textSize="20sp"
+                android:contentDescription="Settings" />
 
         </LinearLayout>
 
 
+        <!-- ================================================= -->
         <!-- CSV / CONTACTS -->
+        <!-- ================================================= -->
+
         <TextView
             android:id="@+id/txtCsvHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:background="?attr/colorControlHighlight"
-            android:padding="10dp"
+            android:paddingStart="12dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
             android:text="▼  CSV / CONTACTS"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -52,27 +86,34 @@
             android:id="@+id/layoutCsvSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
 
             <Button
                 android:id="@+id/btnUpload"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="UPLOAD CSV" />
+                android:text="UPLOAD CSV"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/txtFile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="4dp"
+                android:paddingStart="4dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="6dp"
                 android:text="No CSV selected"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:alpha="0.75" />
 
             <EditText
                 android:id="@+id/edtSearch"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Search name or mobile number"
+                android:hint="Search name, mobile or any field"
                 android:inputType="text"
                 android:singleLine="true" />
 
@@ -100,13 +141,19 @@
         </LinearLayout>
 
 
+        <!-- ================================================= -->
         <!-- RANGE SELECTION -->
+        <!-- ================================================= -->
+
         <TextView
             android:id="@+id/txtRangeHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?attr/colorControlHighlight"
-            android:padding="10dp"
+            android:paddingStart="12dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
             android:text="▶  RANGE SELECTION"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -116,7 +163,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="gone"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -137,7 +186,7 @@
                     android:id="@+id/edtRangeTo"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
                     android:hint="To"
                     android:inputType="number"
@@ -169,82 +218,126 @@
         </LinearLayout>
 
 
-        <!-- COUNTS -->
-        <TextView
-            android:id="@+id/txtSelected"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="6dp"
-            android:paddingBottom="2dp"
-            android:text="Selected: 0"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/txtStats"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="4dp"
-            android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-
-        <!-- STATUS -->
-        <TextView
-            android:id="@+id/txtStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="4dp"
-            android:text="Ready"
-            android:textStyle="bold" />
-
-
-        <!-- CONTACT LIST -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerContacts"
-            android:layout_width="match_parent"
-            android:layout_height="350dp"
-            android:layout_marginTop="5dp"
-            android:nestedScrollingEnabled="true" />
-
-
-        <!-- MESSAGE -->
-        <TextView
-            android:id="@+id/txtMessageHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/colorControlHighlight"
-            android:padding="10dp"
-            android:text="▼  MESSAGE"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+        <!-- ================================================= -->
+        <!-- COUNTS / STATUS -->
+        <!-- ================================================= -->
 
         <LinearLayout
-            android:id="@+id/layoutMessageSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp">
 
-            <EditText
-                android:id="@+id/edtMessage"
+            <TextView
+                android:id="@+id/txtSelected"
                 android:layout_width="match_parent"
-                android:layout_height="120dp"
-                android:gravity="top|start"
-                android:hint="Message"
-                android:inputType="textMultiLine"
-                android:padding="10dp" />
+                android:layout_height="wrap_content"
+                android:text="Selected: 0"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:alpha="0.8" />
+
+            <TextView
+                android:id="@+id/txtStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:text="Ready"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
 
+        <!-- ================================================= -->
+        <!-- CONTACT LIST -->
+        <!-- ================================================= -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerContacts"
+            android:layout_width="match_parent"
+            android:layout_height="350dp"
+            android:layout_marginTop="4dp"
+            android:clipToPadding="false"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:nestedScrollingEnabled="true"
+            android:overScrollMode="ifContentScrolls" />
+
+
+        <!-- ================================================= -->
+        <!-- MESSAGE -->
+        <!--
+             IMPORTANT:
+             MainActivity controls layoutMessageSection visibility
+             according to Edit Message on Screen.
+        -->
+        <!-- ================================================= -->
+
+        <LinearLayout
+            android:id="@+id/layoutMessageBlock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/txtMessageHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/colorControlHighlight"
+                android:paddingStart="12dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="12dp"
+                android:text="▼  MESSAGE"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/layoutMessageSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <EditText
+                    android:id="@+id/edtMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:gravity="top|start"
+                    android:hint="Message"
+                    android:inputType="textMultiLine"
+                    android:padding="10dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+
+        <!-- ================================================= -->
         <!-- SEND ACTIONS -->
+        <!-- ================================================= -->
+
         <TextView
             android:id="@+id/txtSendHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:background="?attr/colorControlHighlight"
-            android:padding="10dp"
+            android:paddingStart="12dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
             android:text="▼  SEND ACTIONS"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -253,9 +346,12 @@
             android:id="@+id/layoutSendSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
 
             <!-- PREVIEW + SEND SMS -->
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -278,7 +374,8 @@
                         android:id="@+id/btnSendSms"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="SEND SMS" />
+                        android:text="SEND SMS"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/txtSendCount"
@@ -296,6 +393,7 @@
 
 
             <!-- TEST SMS + WHATSAPP -->
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -320,14 +418,20 @@
         </LinearLayout>
 
 
+        <!-- ================================================= -->
         <!-- OTHER ACTIONS -->
+        <!-- ================================================= -->
+
         <TextView
             android:id="@+id/txtOtherHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:background="?attr/colorControlHighlight"
-            android:padding="10dp"
+            android:paddingStart="12dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
             android:text="▶  OTHER ACTIONS"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -337,7 +441,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="gone"
+            android:paddingTop="4dp">
 
             <Button
                 android:id="@+id/btnReset"
