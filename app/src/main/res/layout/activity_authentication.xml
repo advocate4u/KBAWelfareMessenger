@@ -11,7 +11,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Admin • User Management"
+            android:text="Access Management"
             android:textSize="24sp"
             android:textStyle="bold" />
         <TextView
@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="ADMIN accounts can manage users. USER accounts cannot access this screen."
+            android:text="SUPER ADMIN can provide ADMIN or USER access. ADMIN can provide USER access. USER has no access to this screen."
             android:textSize="14sp"
             android:alpha="0.75" />
         <Button
@@ -27,13 +27,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="ADD USER"
+            android:text="CREATE ACCOUNT"
             android:textStyle="bold" />
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="APPLICATION USERS"
+            android:text="APPLICATION ACCOUNTS"
             android:textSize="14sp"
             android:textStyle="bold" />
         <LinearLayout
