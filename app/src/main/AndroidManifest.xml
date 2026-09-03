@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <!-- SMS -->
     <uses-permission android:name="android.permission.SEND_SMS" />
-
-    <!-- Phone/SIM verification -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
-
-    <!-- Android 13+ notification permission for Advocate Helper reminders -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -18,32 +11,15 @@
         android:roundIcon="@drawable/kba_icon"
         android:label="KBA Welfare Messenger"
         android:theme="@style/AppTheme">
-
-        <activity
-            android:name=".LoginActivity"
-            android:screenOrientation="portrait"
-            android:exported="true">
+        <activity android:name=".LoginActivity" android:screenOrientation="portrait" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".MainActivity"
-            android:screenOrientation="portrait"
-            android:exported="false" />
-
-        <activity
-            android:name=".SettingsActivity"
-            android:screenOrientation="portrait"
-            android:exported="false" />
-
-        <activity
-            android:name=".AdvocateHelperActivity"
-            android:screenOrientation="portrait"
-            android:exported="false" />
-
+        <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:screenOrientation="portrait" android:exported="false" />
+        <activity android:name=".AdvocateHelperActivity" android:screenOrientation="portrait" android:exported="false" />
+        <activity android:name=".LicenseActivity" android:screenOrientation="portrait" android:exported="false" />
     </application>
-
 </manifest>
