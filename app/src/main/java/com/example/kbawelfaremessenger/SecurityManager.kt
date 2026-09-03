@@ -35,13 +35,32 @@ object SecurityManager {
 
     fun isAdminPhoneNumber(phoneNumber: String): Boolean = normalizePhone(phoneNumber) in ADMIN_PHONE_NUMBERS
 
+    /**
+     * Creates the first local login on a device.
+     *
+     * Approved administrator numbers can initialize directly. A normal user
+     * must have a valid offline license installed for the same phone number.
+     * The password is supplied to the user by the administrator.
+     */
     fun createUser(context: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
         if (id.isBlank() || password.length < 6 || hasUser(context)) return false
+
+        val normalizedId = normalizePhone(id)
+        if (!isAdminPhoneNumber(id)) {
+            val licensedPhone = LicenseManager.getLicensedPhone(context)
+            if (licensedPhone.isNullOrBlank() || normalizePhone(licensedPhone) != normalizedId) return false
+        }
+
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
         val role = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.USER
-        val record = JSONObject().put("userId", id).put("role", role.name).put("hash", encode(hash)).put("salt", encode(salt))
+        val record = JSONObject()
+            .put("userId", id)
+            .put("role", role.name)
+            .put("hash", encode(hash))
+            .put("salt", encode(salt))
+
         preferences(context).edit()
             .putString(KEY_USERS, JSONArray().put(record).toString())
             .putString(KEY_USER_ID, id)
@@ -66,6 +85,7 @@ object SecurityManager {
         return ok
     }
 
+    /** Admin-only creation of additional local user records. */
     fun addUser(context: Context, userId: String, password: String, role: UserRole = UserRole.USER): Boolean {
         if (!isAdmin(context)) return false
         val id = userId.trim()
@@ -112,6 +132,7 @@ object SecurityManager {
 
     fun currentRole(context: Context): UserRole? = currentUser(context)?.role
 
+    /** Admin status is derived from the current user's approved phone number. */
     fun isAdmin(context: Context): Boolean = currentUserId(context)?.let { isAdminPhoneNumber(it) } == true
 
     fun logout(context: Context) { preferences(context).edit().remove(KEY_CURRENT_USER).apply() }
