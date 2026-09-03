@@ -7,54 +7,47 @@ import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-class SecurityManager(private val context: Context) {
+object SecurityManager {
 
-    companion object {
-        private const val PREFS_NAME = "secure_auth"
+    private const val PREF_NAME = "secure_auth"
 
-        private const val KEY_USER_ID = "user_id"
-        private const val KEY_PASSWORD_HASH = "password_hash"
-        private const val KEY_PASSWORD_SALT = "password_salt"
-        private const val KEY_SETUP_COMPLETE = "setup_complete"
+    private const val KEY_USER_ID = "user_id"
+    private const val KEY_PASSWORD_HASH = "password_hash"
+    private const val KEY_PASSWORD_SALT = "password_salt"
+    private const val KEY_SETUP_COMPLETE = "setup_complete"
 
-        private const val ITERATIONS = 120_000
-        private const val KEY_LENGTH = 256
-        private const val SALT_LENGTH = 32
-    }
+    private const val ITERATIONS = 120000
+    private const val KEY_LENGTH = 256
+    private const val SALT_LENGTH = 32
 
-    private val preferences =
+    private fun preferences(context: Context) =
         context.getSharedPreferences(
-            PREFS_NAME,
+            PREF_NAME,
             Context.MODE_PRIVATE
         )
 
     /**
-     * Returns true after the first user account has been created.
+     * Returns true when a local user has already been created.
      */
-    fun isSetupComplete(): Boolean {
-        return preferences.getBoolean(
+    fun hasUser(context: Context): Boolean {
+
+        val prefs =
+            preferences(context)
+
+        return prefs.getBoolean(
             KEY_SETUP_COMPLETE,
             false
         )
     }
 
     /**
-     * Returns the configured User ID.
-     */
-    fun getUserId(): String {
-        return preferences.getString(
-            KEY_USER_ID,
-            ""
-        ) ?: ""
-    }
-
-    /**
-     * Creates the first local user account.
+     * Creates the local user.
      *
-     * The actual password is never stored.
-     * Only a salted PBKDF2 hash is stored.
+     * The password is never stored directly.
+     * Only a PBKDF2 hash and random salt are stored.
      */
     fun createUser(
+        context: Context,
         userId: String,
         password: String
     ): Boolean {
@@ -63,105 +56,113 @@ class SecurityManager(private val context: Context) {
             return false
         }
 
-        if (password.isEmpty()) {
+        if (password.length < 6) {
             return false
         }
 
-        // Only one local user/password setup is allowed.
-        if (isSetupComplete()) {
-            return false
-        }
+        val salt =
+            ByteArray(SALT_LENGTH)
 
-        return try {
+        SecureRandom().nextBytes(salt)
 
-            val salt = generateSalt()
+        val hash =
+            hashPassword(
+                password,
+                salt
+            )
 
-            val passwordHash =
-                hashPassword(
-                    password = password,
-                    salt = salt
-                )
+        preferences(context)
+            .edit()
+            .putString(
+                KEY_USER_ID,
+                userId.trim()
+            )
+            .putString(
+                KEY_PASSWORD_HASH,
+                encode(salt = hash)
+            )
+            .putString(
+                KEY_PASSWORD_SALT,
+                encode(salt = salt)
+            )
+            .putBoolean(
+                KEY_SETUP_COMPLETE,
+                true
+            )
+            .apply()
 
-            preferences.edit()
-                .putString(
-                    KEY_USER_ID,
-                    userId.trim()
-                )
-                .putString(
-                    KEY_PASSWORD_SALT,
-                    encode(salt)
-                )
-                .putString(
-                    KEY_PASSWORD_HASH,
-                    encode(passwordHash)
-                )
-                .putBoolean(
-                    KEY_SETUP_COMPLETE,
-                    true
-                )
-                .apply()
-
-            true
-
-        } catch (_: Exception) {
-            false
-        }
+        return true
     }
 
     /**
-     * Authenticates the supplied User ID and password.
+     * Authenticates the local user.
      */
     fun authenticate(
+        context: Context,
         userId: String,
         password: String
     ): Boolean {
 
-        if (!isSetupComplete()) {
-            return false
-        }
+        val prefs =
+            preferences(context)
 
-        if (userId.isBlank() || password.isEmpty()) {
-            return false
-        }
-
-        val savedUserId =
-            preferences.getString(
-                KEY_USER_ID,
-                null
-            ) ?: return false
-
-        if (!savedUserId.equals(
-                userId.trim(),
-                ignoreCase = true
+        if (
+            !prefs.getBoolean(
+                KEY_SETUP_COMPLETE,
+                false
             )
         ) {
             return false
         }
 
-        val savedSalt =
-            preferences.getString(
-                KEY_PASSWORD_SALT,
+        val savedUserId =
+            prefs.getString(
+                KEY_USER_ID,
                 null
-            ) ?: return false
+            )
+                ?: return false
+
+        if (
+            !savedUserId.equals(
+                userId.trim(),
+                ignoreCase = false
+            )
+        ) {
+            return false
+        }
 
         val savedHash =
-            preferences.getString(
+            prefs.getString(
                 KEY_PASSWORD_HASH,
                 null
-            ) ?: return false
+            )
+                ?: return false
+
+        val savedSalt =
+            prefs.getString(
+                KEY_PASSWORD_SALT,
+                null
+            )
+                ?: return false
 
         return try {
 
             val salt =
-                decode(savedSalt)
+                Base64.decode(
+                    savedSalt,
+                    Base64.NO_WRAP
+                )
 
             val expectedHash =
-                decode(savedHash)
+                Base64.decode(
+                    savedHash,
+                    Base64.NO_WRAP
+                )
 
             val actualHash =
                 hashPassword(
-                    password = password,
-                    salt = salt
+                    password,
+                    salt
                 )
 
             MessageDigest.isEqual(
@@ -169,30 +170,20 @@ class SecurityManager(private val context: Context) {
                 actualHash
             )
 
-        } catch (_: Exception) {
+        } catch (
+            e: Exception
+        ) {
+
             false
         }
     }
 
-    /**
-     * Generates a cryptographically secure random salt.
-     */
-    private fun generateSalt(): ByteArray {
-
-        return ByteArray(SALT_LENGTH).also {
-            SecureRandom().nextBytes(it)
-        }
-    }
-
-    /**
-     * Creates a PBKDF2-HMAC-SHA256 password hash.
-     */
     private fun hashPassword(
         password: String,
         salt: ByteArray
     ): ByteArray {
 
-        val keySpec =
+        val spec =
             PBEKeySpec(
                 password.toCharArray(),
                 salt,
@@ -206,37 +197,21 @@ class SecurityManager(private val context: Context) {
                 .getInstance(
                     "PBKDF2WithHmacSHA256"
                 )
-                .generateSecret(keySpec)
+                .generateSecret(spec)
                 .encoded
 
         } finally {
 
-            keySpec.clearPassword()
+            spec.clearPassword()
         }
     }
 
-    /**
-     * Android-compatible Base64 encoding.
-     */
     private fun encode(
-        value: ByteArray
+        salt: ByteArray
     ): String {
 
         return Base64.encodeToString(
-            value,
-            Base64.NO_WRAP
-        )
-    }
-
-    /**
-     * Android-compatible Base64 decoding.
-     */
-    private fun decode(
-        value: String
-    ): ByteArray {
-
-        return Base64.decode(
-            value,
+            salt,
             Base64.NO_WRAP
         )
     }
