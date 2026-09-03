@@ -11,9 +11,28 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <!-- ================================================= -->
-        <!-- CSV SETTINGS -->
-        <!-- ================================================= -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Advocate Helper"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Manage cases, hearing dates, updates and fees."
+            android:textSize="14sp"
+            android:alpha="0.75"
+            android:paddingBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnAdvocateHelper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="OPEN ADVOCATE HELPER"
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
@@ -21,6 +40,7 @@
             android:text="CSV Settings"
             android:textSize="20sp"
             android:textStyle="bold"
+            android:layout_marginTop="24dp"
             android:paddingBottom="12dp" />
 
         <TextView
@@ -52,11 +72,6 @@
             android:inputType="text"
             android:singleLine="true" />
 
-
-        <!-- ================================================= -->
-        <!-- AUTHENTICATION -->
-        <!-- ================================================= -->
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -80,11 +95,6 @@
             android:layout_height="wrap_content"
             android:text="AUTHENTICATION"
             android:textStyle="bold" />
-
-
-        <!-- ================================================= -->
-        <!-- MESSAGE SETTINGS -->
-        <!-- ================================================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -118,11 +128,6 @@
             android:textSize="16sp"
             android:paddingTop="8dp"
             android:paddingBottom="8dp" />
-
-
-        <!-- ================================================= -->
-        <!-- SMS SETTINGS -->
-        <!-- ================================================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -165,11 +170,6 @@
             android:paddingTop="8dp"
             android:paddingBottom="8dp" />
 
-
-        <!-- ================================================= -->
-        <!-- LOGGING -->
-        <!-- ================================================= -->
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -187,11 +187,6 @@
             android:textSize="16sp"
             android:paddingTop="8dp"
             android:paddingBottom="16dp" />
-
-
-        <!-- ================================================= -->
-        <!-- ACTIONS -->
-        <!-- ================================================= -->
 
         <Button
             android:id="@+id/btnSaveSettings"
@@ -216,5 +211,4 @@
             android:layout_marginTop="10dp" />
 
     </LinearLayout>
-
 </ScrollView>
