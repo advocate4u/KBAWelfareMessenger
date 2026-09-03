@@ -1,9 +1,7 @@
 package com.example.myadvlicensemanager
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.DatePickerDialog
-import android.content.Intent
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -48,14 +46,13 @@ class LicenseManagerActivity : Activity() {
         issue.setOnClickListener { pickDate(issue) }
         expiry.setOnClickListener { pickDate(expiry) }
 
-        findViewById<Button>(R.id.importKeyButton).setOnClickListener { importKey() }
         findViewById<Button>(R.id.generateButton).setOnClickListener { generate() }
         findViewById<Button>(R.id.shareButton).setOnClickListener { shareLicense() }
 
         status.text = if (LicenseAuthority.hasKey(this)) {
-            "Signing authority: READY"
+            "Signing authority: READY (built in)"
         } else {
-            "Signing authority: NOT INSTALLED"
+            "Signing authority: NOT AVAILABLE IN THIS BUILD"
         }
     }
 
@@ -73,52 +70,9 @@ class LicenseManagerActivity : Activity() {
         ).show()
     }
 
-    private fun importKey() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "application/x-pkcs12"
-            addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        startActivityForResult(intent, REQUEST_IMPORT_KEY)
-    }
-
-    @Deprecated("Android activity result API retained for broad project compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_IMPORT_KEY || resultCode != RESULT_OK || data?.data == null) return
-
-        val uri = data.data!!
-        val password = EditText(this).apply {
-            hint = "P12/PFX password"
-            inputType = 0x00000081
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("Signing authority")
-            .setMessage("Enter the signing-file password once. It is not stored by MyAdvAM.")
-            .setView(password)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Import") { _, _ ->
-                val ok = contentResolver.openInputStream(uri)?.use { input ->
-                    LicenseAuthority.installSigningKey(
-                        this,
-                        input,
-                        password.text.toString().toCharArray()
-                    )
-                } == true
-
-                status.text = if (ok) {
-                    "Signing authority: READY"
-                } else {
-                    "Signing authority: IMPORT FAILED"
-                }
-                toast(if (ok) "Signing authority installed." else "Unable to import signing authority.")
-            }
-            .show()
-    }
-
     private fun generate() {
         if (!LicenseAuthority.hasKey(this)) {
-            toast("Import the signing authority first.")
+            toast("Signing authority is unavailable in this build.")
             return
         }
 
