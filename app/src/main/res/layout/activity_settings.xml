@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="CSV Settings"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Name Column"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/edtNameColumn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Example: Name"
+            android:inputType="text"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Phone Column"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp" />
+
+        <EditText
+            android:id="@+id/edtPhoneColumn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Example: Phone 1 - Value"
+            android:inputType="text"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Message Settings"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Default Message"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/edtDefaultMessage"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:gravity="top|start"
+            android:hint="Enter default message"
+            android:inputType="textMultiLine"
+            android:padding="10dp" />
+
+        <Switch
+            android:id="@+id/switchEditMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Edit Message on Screen"
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SMS Settings"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:paddingBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SMS Delay (milliseconds)"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/edtSmsDelay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Example: 500"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <Switch
+            android:id="@+id/switchSkipSent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Skip Already Sent Numbers"
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <Switch
+            android:id="@+id/switchConfirmSend"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Confirm Before Bulk Send"
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logging"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:paddingBottom="12dp" />
+
+        <Switch
+            android:id="@+id/switchLogging"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable Private Logging"
+            android:textSize="16sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnSaveSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SAVE SETTINGS"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnClearLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="CLEAR LOGS"
+            android:layout_marginTop="10dp" />
+
+    </LinearLayout>
+
+</ScrollView>
