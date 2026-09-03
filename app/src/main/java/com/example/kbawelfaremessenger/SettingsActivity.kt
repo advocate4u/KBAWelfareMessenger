@@ -17,7 +17,9 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var switchLogging: Switch
 
     private lateinit var btnSaveSettings: Button
+    private lateinit var btnViewLogs: Button
     private lateinit var btnClearLogs: Button
+    private lateinit var btnAuthentication: Button
 
     private lateinit var settings: AppSettings
 
@@ -47,7 +49,9 @@ class SettingsActivity : AppCompatActivity() {
         switchLogging = findViewById(R.id.switchLogging)
 
         btnSaveSettings = findViewById(R.id.btnSaveSettings)
+        btnViewLogs = findViewById(R.id.btnViewLogs)
         btnClearLogs = findViewById(R.id.btnClearLogs)
+        btnAuthentication = findViewById(R.id.btnAuthentication)
     }
 
     private fun loadSettings() {
@@ -60,19 +64,40 @@ class SettingsActivity : AppCompatActivity() {
 
         edtSmsDelay.setText(settings.smsDelayMs.toString())
 
-        switchEditMessage.isChecked = settings.editMessageOnScreen
-        switchSkipSent.isChecked = settings.skipAlreadySent
-        switchConfirmSend.isChecked = settings.confirmBeforeBulkSend
-        switchLogging.isChecked = settings.loggingEnabled
+        switchEditMessage.isChecked =
+            settings.editMessageOnScreen
+
+        switchSkipSent.isChecked =
+            settings.skipAlreadySent
+
+        switchConfirmSend.isChecked =
+            settings.confirmBeforeBulkSend
+
+        switchLogging.isChecked =
+            settings.loggingEnabled
     }
 
     private fun setupButtons() {
 
+        btnAuthentication.setOnClickListener {
+
+            Toast.makeText(
+                this,
+                "Authentication settings will be connected to SecurityManager.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         btnSaveSettings.setOnClickListener {
 
-            val nameColumn = edtNameColumn.text.toString().trim()
-            val phoneColumn = edtPhoneColumn.text.toString().trim()
-            val defaultMessage = edtDefaultMessage.text.toString().trim()
+            val nameColumn =
+                edtNameColumn.text.toString().trim()
+
+            val phoneColumn =
+                edtPhoneColumn.text.toString().trim()
+
+            val defaultMessage =
+                edtDefaultMessage.text.toString().trim()
 
             if (nameColumn.isEmpty()) {
                 edtNameColumn.error = "Enter Name column"
@@ -92,12 +117,15 @@ class SettingsActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val smsDelay = edtSmsDelay.text.toString()
-                .trim()
-                .toLongOrNull()
+            val smsDelay =
+                edtSmsDelay.text.toString()
+                    .trim()
+                    .toLongOrNull()
 
             if (smsDelay == null || smsDelay < 0) {
-                edtSmsDelay.error = "Enter a valid delay in milliseconds"
+                edtSmsDelay.error =
+                    "Enter a valid delay in milliseconds"
+
                 edtSmsDelay.requestFocus()
                 return@setOnClickListener
             }
@@ -107,10 +135,14 @@ class SettingsActivity : AppCompatActivity() {
                 phoneColumn = phoneColumn,
                 defaultMessage = defaultMessage,
                 smsDelayMs = smsDelay,
-                editMessageOnScreen = switchEditMessage.isChecked,
-                skipAlreadySent = switchSkipSent.isChecked,
-                confirmBeforeBulkSend = switchConfirmSend.isChecked,
-                loggingEnabled = switchLogging.isChecked
+                editMessageOnScreen =
+                    switchEditMessage.isChecked,
+                skipAlreadySent =
+                    switchSkipSent.isChecked,
+                confirmBeforeBulkSend =
+                    switchConfirmSend.isChecked,
+                loggingEnabled =
+                    switchLogging.isChecked
             )
 
             AppSettingsManager.save(this, settings)
@@ -128,6 +160,15 @@ class SettingsActivity : AppCompatActivity() {
             ).show()
 
             finish()
+        }
+
+        btnViewLogs.setOnClickListener {
+
+            Toast.makeText(
+                this,
+                "Log viewer",
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
         btnClearLogs.setOnClickListener {
