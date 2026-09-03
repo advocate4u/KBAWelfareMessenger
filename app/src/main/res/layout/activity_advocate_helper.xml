@@ -1,326 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:clipToPadding="false">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Helper" android:textSize="24sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Your quick case, hearing and fee dashboard" android:alpha="0.7" android:paddingBottom="12dp" />
 
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:clipToPadding="false">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Advocate Helper"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Your quick case, hearing and fee dashboard"
-            android:alpha="0.7"
-            android:paddingBottom="12dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DASHBOARD"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:paddingBottom="6dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="92dp"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="8dp"
-                android:background="#EEEEEE">
-
-                <TextView
-                    android:id="@+id/txtTotalCases"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Total Cases" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DASHBOARD" android:textSize="14sp" android:textStyle="bold" android:paddingBottom="6dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <LinearLayout android:layout_width="0dp" android:layout_height="92dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:padding="8dp" android:background="#EEEEEE">
+                <TextView android:id="@+id/txtTotalCases" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="26sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Total Cases" />
             </LinearLayout>
-
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="1dp" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="92dp"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="8dp"
-                android:background="#EEEEEE">
-
-                <TextView
-                    android:id="@+id/txtTodayHearings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Today's Hearings" />
+            <Space android:layout_width="8dp" android:layout_height="1dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="92dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:padding="8dp" android:background="#EEEEEE">
+                <TextView android:id="@+id/txtTodayHearings" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="26sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Today's Hearings" />
+            </LinearLayout>
+        </LinearLayout>
+        <Space android:layout_width="1dp" android:layout_height="8dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <LinearLayout android:layout_width="0dp" android:layout_height="92dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:padding="8dp" android:background="#EEEEEE">
+                <TextView android:id="@+id/txtUpcomingHearings" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="26sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Upcoming Hearings" />
+            </LinearLayout>
+            <Space android:layout_width="8dp" android:layout_height="1dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="92dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:padding="8dp" android:background="#EEEEEE">
+                <TextView android:id="@+id/txtPendingFees" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₹0" android:textSize="22sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pending Fees" />
             </LinearLayout>
         </LinearLayout>
 
-        <Space
-            android:layout_width="1dp"
-            android:layout_height="8dp" />
+        <TextView android:id="@+id/txtLicenseStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="License: Checking..." android:textStyle="bold" android:padding="12dp" android:layout_marginTop="12dp" android:background="#EEEEEE" />
+        <Button android:id="@+id/btnReminderSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="HEARING REMINDER SETTINGS" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CASE DETAILS" android:textSize="14sp" android:textStyle="bold" android:paddingTop="18dp" android:paddingBottom="6dp" />
+        <EditText android:id="@+id/edtCaseNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Case Number *" android:inputType="text" android:singleLine="true" />
+        <EditText android:id="@+id/edtClientName" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Client Name *" android:inputType="textCapWords" android:singleLine="true" />
+        <EditText android:id="@+id/edtClientPhone" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Client Phone" android:inputType="phone" android:singleLine="true" />
+        <EditText android:id="@+id/edtCourtName" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Court" android:inputType="textCapWords" android:singleLine="true" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="92dp"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="8dp"
-                android:background="#EEEEEE">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hearing Dates" android:textSize="18sp" android:textStyle="bold" android:paddingTop="14dp" android:paddingBottom="4dp" />
+        <EditText android:id="@+id/edtPreviousDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Previous Date" android:focusable="false" android:clickable="true" />
+        <EditText android:id="@+id/edtCurrentDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Current Date" android:focusable="false" android:clickable="true" />
+        <EditText android:id="@+id/edtNextDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Next Date" android:focusable="false" android:clickable="true" />
+        <Button android:id="@+id/btnSendNextDateMessage" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="MESSAGE CLIENT ABOUT NEXT DATE" />
 
-                <TextView
-                    android:id="@+id/txtUpcomingHearings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Case Update" android:textSize="18sp" android:textStyle="bold" android:paddingTop="14dp" android:paddingBottom="4dp" />
+        <EditText android:id="@+id/edtCurrentUpdate" android:layout_width="match_parent" android:layout_height="100dp" android:gravity="top|start" android:hint="Current Update" android:inputType="textMultiLine" />
+        <EditText android:id="@+id/edtNewUpdate" android:layout_width="match_parent" android:layout_height="100dp" android:gravity="top|start" android:hint="New Update" android:inputType="textMultiLine" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Upcoming Hearings" />
-            </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Fee Tracking" android:textSize="18sp" android:textStyle="bold" android:paddingTop="14dp" android:paddingBottom="4dp" />
+        <EditText android:id="@+id/edtTotalFee" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Total Fee" android:inputType="numberDecimal" android:singleLine="true" />
+        <EditText android:id="@+id/edtAmountReceived" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Amount Received" android:inputType="numberDecimal" android:singleLine="true" />
+        <TextView android:id="@+id/txtCurrentBalance" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Balance: ₹0" android:textStyle="bold" android:padding="8dp" />
+        <Button android:id="@+id/btnPaymentReminder" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="MESSAGE CLIENT FOR PAYMENT" />
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="1dp" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="92dp"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="8dp"
-                android:background="#EEEEEE">
-
-                <TextView
-                    android:id="@+id/txtPendingFees"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="₹0"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Pending Fees" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="CASE DETAILS"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:paddingTop="18dp"
-            android:paddingBottom="6dp" />
-
-        <EditText
-            android:id="@+id/edtCaseNumber"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Case Number *"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/edtClientName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Client Name *"
-            android:inputType="textCapWords"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/edtClientPhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Client Phone"
-            android:inputType="phone"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/edtCourtName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Court"
-            android:inputType="textCapWords"
-            android:singleLine="true" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Hearing Dates"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:paddingTop="14dp"
-            android:paddingBottom="4dp" />
-
-        <EditText
-            android:id="@+id/edtPreviousDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Previous Date"
-            android:focusable="false"
-            android:clickable="true" />
-
-        <EditText
-            android:id="@+id/edtCurrentDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Current Date"
-            android:focusable="false"
-            android:clickable="true" />
-
-        <EditText
-            android:id="@+id/edtNextDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Next Date"
-            android:focusable="false"
-            android:clickable="true" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Case Update"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:paddingTop="14dp"
-            android:paddingBottom="4dp" />
-
-        <EditText
-            android:id="@+id/edtCurrentUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:gravity="top|start"
-            android:hint="Current Update"
-            android:inputType="textMultiLine" />
-
-        <EditText
-            android:id="@+id/edtNewUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:gravity="top|start"
-            android:hint="New Update"
-            android:inputType="textMultiLine" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Fee Tracking"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:paddingTop="14dp"
-            android:paddingBottom="4dp" />
-
-        <EditText
-            android:id="@+id/edtTotalFee"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Total Fee"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/edtAmountReceived"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Amount Received"
-            android:inputType="numberDecimal"
-            android:singleLine="true" />
-
-        <Button
-            android:id="@+id/btnSaveCase"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="SAVE CASE"
-            android:textStyle="bold"
-            android:layout_marginTop="10dp" />
-
-        <Button
-            android:id="@+id/btnClearForm"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="CLEAR FORM" />
-
-        <TextView
-            android:id="@+id/txtCaseListHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Saved Cases"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:paddingTop="20dp"
-            android:paddingBottom="8dp" />
-
-        <EditText
-            android:id="@+id/edtCaseSearch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Search case, client, phone or court"
-            android:inputType="text"
-            android:singleLine="true" />
-
-        <TextView
-            android:id="@+id/txtEmptyCases"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="No cases saved yet."
-            android:gravity="center"
-            android:padding="24dp"
-            android:alpha="0.65" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerCases"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:nestedScrollingEnabled="false"
-            android:overScrollMode="ifContentScrolls" />
-
+        <Button android:id="@+id/btnSaveCase" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SAVE CASE" android:textStyle="bold" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnClearForm" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CLEAR FORM" />
+        <TextView android:id="@+id/txtCaseListHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Saved Cases" android:textSize="20sp" android:textStyle="bold" android:paddingTop="20dp" android:paddingBottom="8dp" />
+        <EditText android:id="@+id/edtCaseSearch" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Search case, client, phone or court" android:inputType="text" android:singleLine="true" />
+        <TextView android:id="@+id/txtEmptyCases" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No cases saved yet." android:gravity="center" android:padding="24dp" android:alpha="0.65" />
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerCases" android:layout_width="match_parent" android:layout_height="wrap_content" android:nestedScrollingEnabled="false" android:overScrollMode="ifContentScrolls" />
     </LinearLayout>
 </ScrollView>
