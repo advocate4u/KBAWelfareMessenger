@@ -8,11 +8,24 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        // Keep the applicationId unchanged so existing MyAdv/KBAWelfareMessenger
+        // installations can receive updates instead of becoming a second app.
         applicationId = "com.example.kbawelfaremessenger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "2.1"
+    }
+
+    buildTypes {
+        release {
+            // Sideload/update build: use the same debug signing key as the
+            // existing debug APK so an already-installed debug build can update
+            // without a signature-conflict error. For Play Store publishing,
+            // replace this with a permanent release keystore.
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     compileOptions {
