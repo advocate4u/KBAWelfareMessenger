@@ -17,10 +17,7 @@
         android:paddingTop="8dp"
         android:paddingBottom="12dp">
 
-        <!-- ================================================= -->
         <!-- TOP BAR -->
-        <!-- ================================================= -->
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -48,7 +45,6 @@
                     android:text="Advocate Welfare &amp; Communication"
                     android:textSize="12sp"
                     android:alpha="0.65" />
-
             </LinearLayout>
 
             <Button
@@ -60,14 +56,9 @@
                 android:text="⚙"
                 android:textSize="20sp"
                 android:contentDescription="Settings" />
-
         </LinearLayout>
 
-
-        <!-- ================================================= -->
         <!-- CSV / CONTACTS -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtCsvHeader"
             android:layout_width="match_parent"
@@ -135,16 +126,25 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="UNSELECT ALL" />
-
             </LinearLayout>
+
+            <!-- CONTACT LIST: kept inside CSV / CONTACTS so the existing
+                 collapse header also collapses the full contact list. -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerContacts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:minHeight="120dp"
+                android:clipToPadding="false"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="ifContentScrolls" />
 
         </LinearLayout>
 
-
-        <!-- ================================================= -->
         <!-- RANGE SELECTION -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtRangeHeader"
             android:layout_width="match_parent"
@@ -191,7 +191,6 @@
                     android:hint="To"
                     android:inputType="number"
                     android:singleLine="true" />
-
             </LinearLayout>
 
             <LinearLayout
@@ -212,16 +211,10 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="UNSELECT RANGE" />
-
             </LinearLayout>
-
         </LinearLayout>
 
-
-        <!-- ================================================= -->
         <!-- COUNTS / STATUS -->
-        <!-- ================================================= -->
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -254,35 +247,9 @@
                 android:paddingTop="4dp"
                 android:text="Ready"
                 android:textStyle="bold" />
-
         </LinearLayout>
 
-
-        <!-- ================================================= -->
-        <!-- CONTACT LIST -->
-        <!-- ================================================= -->
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerContacts"
-            android:layout_width="match_parent"
-            android:layout_height="350dp"
-            android:layout_marginTop="4dp"
-            android:clipToPadding="false"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:nestedScrollingEnabled="true"
-            android:overScrollMode="ifContentScrolls" />
-
-
-        <!-- ================================================= -->
         <!-- MESSAGE -->
-        <!--
-             IMPORTANT:
-             MainActivity controls layoutMessageSection visibility
-             according to Edit Message on Screen.
-        -->
-        <!-- ================================================= -->
-
         <LinearLayout
             android:id="@+id/layoutMessageBlock"
             android:layout_width="match_parent"
@@ -318,16 +285,10 @@
                     android:hint="Message"
                     android:inputType="textMultiLine"
                     android:padding="10dp" />
-
             </LinearLayout>
-
         </LinearLayout>
 
-
-        <!-- ================================================= -->
         <!-- SEND ACTIONS -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtSendHeader"
             android:layout_width="match_parent"
@@ -349,8 +310,6 @@
             android:orientation="vertical"
             android:paddingTop="4dp"
             android:paddingBottom="4dp">
-
-            <!-- PREVIEW + SEND SMS -->
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -386,13 +345,8 @@
                         android:text="Sent: 0"
                         android:textSize="13sp"
                         android:textStyle="bold" />
-
                 </LinearLayout>
-
             </LinearLayout>
-
-
-            <!-- TEST SMS + WHATSAPP -->
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -412,16 +366,10 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="WHATSAPP" />
-
             </LinearLayout>
-
         </LinearLayout>
 
-
-        <!-- ================================================= -->
         <!-- OTHER ACTIONS -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtOtherHeader"
             android:layout_width="match_parent"
@@ -455,9 +403,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="CLEAR DATA" />
-
         </LinearLayout>
 
     </LinearLayout>
-
 </ScrollView>
