@@ -4,6 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
     context,
@@ -46,77 +49,44 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         val args = if (q.isEmpty()) null else arrayOf(pattern, pattern, pattern, pattern, pattern)
 
         db.query("advocate_cases", null, selection, args, null, null, "updated_at DESC, id DESC").use { c ->
-            while (c.moveToNext()) {
-                result += AdvocateCase(
-                    id = c.getLong(c.getColumnIndexOrThrow("id")),
-                    caseNumber = c.getString(c.getColumnIndexOrThrow("case_number")),
-                    clientName = c.getString(c.getColumnIndexOrThrow("client_name")),
-                    clientPhone = c.getString(c.getColumnIndexOrThrow("client_phone")),
-                    courtName = c.getString(c.getColumnIndexOrThrow("court_name")),
-                    previousDate = c.getString(c.getColumnIndexOrThrow("previous_date")),
-                    currentDate = c.getString(c.getColumnIndexOrThrow("current_date")),
-                    nextDate = c.getString(c.getColumnIndexOrThrow("next_date")),
-                    currentUpdate = c.getString(c.getColumnIndexOrThrow("current_update")),
-                    newUpdate = c.getString(c.getColumnIndexOrThrow("new_update")),
-                    totalFee = c.getDouble(c.getColumnIndexOrThrow("total_fee")),
-                    amountReceived = c.getDouble(c.getColumnIndexOrThrow("amount_received")),
-                    createdAt = c.getLong(c.getColumnIndexOrThrow("created_at")),
-                    updatedAt = c.getLong(c.getColumnIndexOrThrow("updated_at"))
-                )
-            }
+            while (c.moveToNext()) result += readCase(c)
         }
         return result
     }
 
-    fun getTotalCaseCount(): Int {
-        readableDatabase.rawQuery("SELECT COUNT(*) FROM advocate_cases", null).use { c ->
-            return if (c.moveToFirst()) c.getInt(0) else 0
+    fun getTotalCaseCount(): Int = readableDatabase.rawQuery(
+        "SELECT COUNT(*) FROM advocate_cases", null
+    ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
+    fun getPendingFeeTotal(): Double = readableDatabase.rawQuery(
+        "SELECT COALESCE(SUM(CASE WHEN total_fee > amount_received THEN total_fee - amount_received ELSE 0 END), 0) FROM advocate_cases",
+        null
+    ).use { c -> if (c.moveToFirst()) c.getDouble(0) else 0.0 }
+
+    fun getTodayHearingCount(): Int {
+        val today = dateFormat.format(Calendar.getInstance().time)
+        return readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM advocate_cases WHERE next_date = ?",
+            arrayOf(today)
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+    }
+
+    fun getUpcomingHearingCount(days: Int = 30): Int {
+        val today = startOfDay(Calendar.getInstance())
+        val end = startOfDay(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, days) })
+        return getAllCases().count { item ->
+            val date = parseDate(item.nextDate) ?: return@count false
+            date >= today && date <= end
         }
     }
 
-    fun getPendingFeeTotal(): Double {
-        readableDatabase.rawQuery(
-            "SELECT COALESCE(SUM(CASE WHEN total_fee > amount_received THEN total_fee - amount_received ELSE 0 END), 0) FROM advocate_cases",
-            null
-        ).use { c ->
-            return if (c.moveToFirst()) c.getDouble(0) else 0.0
+    fun getCasesDueForReminder(): List<AdvocateCase> {
+        val today = startOfDay(Calendar.getInstance())
+        val tomorrow = startOfDay(Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) })
+        return getAllCases().filter { item ->
+            val date = parseDate(item.nextDate) ?: return@filter false
+            date == today || date == tomorrow
         }
-    }
-
-    fun getUpcomingCases(): List<AdvocateCase> {
-        val today = todayStart()
-        return getAllCases()
-            .mapNotNull { item -> parseDate(item.nextDate)?.let { date -> item to date } }
-            .filter { it.second >= today }
-            .sortedBy { it.second }
-            .map { it.first }
-    }
-
-    private fun parseDate(value: String): Long? {
-        return try {
-            val parts = value.split("-")
-            if (parts.size != 3) return null
-            java.util.Calendar.getInstance().apply {
-                set(java.util.Calendar.YEAR, parts[2].toInt())
-                set(java.util.Calendar.MONTH, parts[1].toInt() - 1)
-                set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
-                set(java.util.Calendar.HOUR_OF_DAY, 0)
-                set(java.util.Calendar.MINUTE, 0)
-                set(java.util.Calendar.SECOND, 0)
-                set(java.util.Calendar.MILLISECOND, 0)
-            }.timeInMillis
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun todayStart(): Long {
-        return java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }.timeInMillis
     }
 
     fun insertCase(item: AdvocateCase): Long = writableDatabase.insertOrThrow(
@@ -134,6 +104,23 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         "advocate_cases", "id = ?", arrayOf(id.toString())
     )
 
+    private fun readCase(c: android.database.Cursor) = AdvocateCase(
+        id = c.getLong(c.getColumnIndexOrThrow("id")),
+        caseNumber = c.getString(c.getColumnIndexOrThrow("case_number")),
+        clientName = c.getString(c.getColumnIndexOrThrow("client_name")),
+        clientPhone = c.getString(c.getColumnIndexOrThrow("client_phone")),
+        courtName = c.getString(c.getColumnIndexOrThrow("court_name")),
+        previousDate = c.getString(c.getColumnIndexOrThrow("previous_date")),
+        currentDate = c.getString(c.getColumnIndexOrThrow("current_date")),
+        nextDate = c.getString(c.getColumnIndexOrThrow("next_date")),
+        currentUpdate = c.getString(c.getColumnIndexOrThrow("current_update")),
+        newUpdate = c.getString(c.getColumnIndexOrThrow("new_update")),
+        totalFee = c.getDouble(c.getColumnIndexOrThrow("total_fee")),
+        amountReceived = c.getDouble(c.getColumnIndexOrThrow("amount_received")),
+        createdAt = c.getLong(c.getColumnIndexOrThrow("created_at")),
+        updatedAt = c.getLong(c.getColumnIndexOrThrow("updated_at"))
+    )
+
     private fun values(item: AdvocateCase, includeId: Boolean) = ContentValues().apply {
         if (includeId) put("id", item.id)
         put("case_number", item.caseNumber)
@@ -149,5 +136,27 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         put("amount_received", item.amountReceived)
         put("created_at", item.createdAt)
         put("updated_at", item.updatedAt)
+    }
+
+    private fun parseDate(value: String): Long? = try {
+        dateFormat.parse(value)?.let { startOfDay(it.time) }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun startOfDay(calendar: Calendar): Long = startOfDay(calendar.timeInMillis)
+
+    private fun startOfDay(time: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = time
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    companion object {
+        private val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
+            isLenient = false
+        }
     }
 }
