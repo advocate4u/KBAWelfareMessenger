@@ -129,16 +129,25 @@ class MainActivity : AppCompatActivity() {
 
     private val contacts = mutableListOf<Contact>()
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler =
+        Handler(Looper.getMainLooper())
 
-    private val requestToPhone = mutableMapOf<Int, String>()
-    private val pendingSms = mutableMapOf<String, SmsProgress>()
-    private val operationResults = linkedMapOf<String, SmsResult>()
+    private val requestToPhone =
+        mutableMapOf<Int, String>()
+
+    private val pendingSms =
+        mutableMapOf<String, SmsProgress>()
+
+    private val operationResults =
+        linkedMapOf<String, SmsResult>()
 
     private var requestIdCounter = 1000
 
     private var smsOperationActive = false
-    private var sendQueue = emptyList<Contact>()
+
+    private var sendQueue =
+        emptyList<Contact>()
+
     private var queueIndex = 0
 
     private var smsReceiverRegistered = false
@@ -169,8 +178,11 @@ class MainActivity : AppCompatActivity() {
         ) { granted ->
 
             if (granted) {
+
                 startSmsAfterPermission()
+
             } else {
+
                 showAlert(
                     "SMS Permission",
                     "SMS permission is required to send messages."
@@ -205,8 +217,9 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val phone =
-                    requestToPhone.remove(requestId)
-                        ?: return
+                    requestToPhone.remove(
+                        requestId
+                    ) ?: return
 
                 val progress =
                     pendingSms[phone]
@@ -215,14 +228,20 @@ class MainActivity : AppCompatActivity() {
                 val resultCode =
                     getResultCode()
 
-                if (resultCode == Activity.RESULT_OK) {
+                if (
+                    resultCode ==
+                    Activity.RESULT_OK
+                ) {
 
                     progress.completedParts++
 
                 } else {
 
                     progress.failed = true
-                    progress.errorCode = resultCode
+
+                    progress.errorCode =
+                        resultCode
+
                     progress.completedParts++
                 }
 
@@ -254,6 +273,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 updateCounts()
+
                 checkSmsOperationFinished()
             }
         }
@@ -266,7 +286,9 @@ class MainActivity : AppCompatActivity() {
         savedInstanceState: Bundle?
     ) {
 
-        super.onCreate(savedInstanceState)
+        super.onCreate(
+            savedInstanceState
+        )
 
         setContentView(
             R.layout.activity_main
@@ -427,10 +449,17 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.adapter =
             adapter
 
+        /*
+         * RecyclerView is inside the main ScrollView.
+         * Let the parent ScrollView handle the main
+         * vertical scrolling for smoother movement.
+         */
         recyclerContacts.isNestedScrollingEnabled =
-            true
+            false
 
-        recyclerContacts.setHasFixedSize(false)
+        recyclerContacts.setHasFixedSize(
+            false
+        )
 
         recyclerContacts.overScrollMode =
             View.OVER_SCROLL_IF_CONTENT_SCROLLS
@@ -483,7 +512,9 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            if (adapter.getVisibleCount() == 0) {
+            if (
+                adapter.getVisibleCount() == 0
+            ) {
 
                 showAlert(
                     "Select All",
@@ -584,7 +615,8 @@ class MainActivity : AppCompatActivity() {
             adapter.unselectAll()
 
             contacts.forEach {
-                it.smsStatus = SmsStatus.NONE
+                it.smsStatus =
+                    SmsStatus.NONE
             }
 
             adapter.notifyDataSetChanged()
@@ -688,7 +720,8 @@ class MainActivity : AppCompatActivity() {
         header.setOnClickListener {
 
             val expanded =
-                section.visibility == View.VISIBLE
+                section.visibility ==
+                        View.VISIBLE
 
             setSectionState(
                 header,
@@ -868,7 +901,14 @@ class MainActivity : AppCompatActivity() {
 
         if (appSettings.editMessageOnScreen) {
 
-            edtMessage.visibility =
+            /*
+             * Toggle ON:
+             * Show both the MESSAGE header and editor.
+             */
+            txtMessageHeader.visibility =
+                View.VISIBLE
+
+            layoutMessageSection.visibility =
                 View.VISIBLE
 
             if (
@@ -885,7 +925,15 @@ class MainActivity : AppCompatActivity() {
 
         } else {
 
-            edtMessage.visibility =
+            /*
+             * Toggle OFF:
+             * Hide the COMPLETE MESSAGE block,
+             * including its collapsible header.
+             */
+            txtMessageHeader.visibility =
+                View.GONE
+
+            layoutMessageSection.visibility =
                 View.GONE
         }
     }
@@ -948,7 +996,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupSmsReceiver() {
 
         val filter =
-            IntentFilter(SMS_SENT_ACTION)
+            IntentFilter(
+                SMS_SENT_ACTION
+            )
 
         if (
             Build.VERSION.SDK_INT >=
@@ -979,17 +1029,64 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupButtonColors() {
 
-        setButtonColor(btnUpload, "#1976D2")
-        setButtonColor(btnSelectAll, "#455A64")
-        setButtonColor(btnUnselectAll, "#757575")
-        setButtonColor(btnSelectRange, "#5E35B1")
-        setButtonColor(btnUnselectRange, "#8E24AA")
-        setButtonColor(btnPreview, "#7B1FA2")
-        setButtonColor(btnTestSms, "#F9A825")
-        setButtonColor(btnSendSms, "#2E7D32")
-        setButtonColor(btnWhatsApp, "#00897B")
-        setButtonColor(btnReset, "#EF6C00")
-        setButtonColor(btnClearData, "#C62828")
+        /*
+         * Restrained professional palette.
+         */
+
+        setButtonColor(
+            btnUpload,
+            "#315A7D"
+        )
+
+        setButtonColor(
+            btnSelectAll,
+            "#526777"
+        )
+
+        setButtonColor(
+            btnUnselectAll,
+            "#71808C"
+        )
+
+        setButtonColor(
+            btnSelectRange,
+            "#4F6280"
+        )
+
+        setButtonColor(
+            btnUnselectRange,
+            "#68798F"
+        )
+
+        setButtonColor(
+            btnPreview,
+            "#596B7A"
+        )
+
+        setButtonColor(
+            btnTestSms,
+            "#9A7B32"
+        )
+
+        setButtonColor(
+            btnSendSms,
+            "#34704A"
+        )
+
+        setButtonColor(
+            btnWhatsApp,
+            "#36796D"
+        )
+
+        setButtonColor(
+            btnReset,
+            "#9A6840"
+        )
+
+        setButtonColor(
+            btnClearData,
+            "#9A4C4C"
+        )
     }
 
     private fun setButtonColor(
@@ -1142,8 +1239,9 @@ class MainActivity : AppCompatActivity() {
                             rowsChecked++
 
                             if (
-                                normalizePhone(value)
-                                    .isNotEmpty()
+                                normalizePhone(
+                                    value
+                                ).isNotEmpty()
                             ) {
 
                                 phoneMatches++
@@ -1209,7 +1307,9 @@ class MainActivity : AppCompatActivity() {
                         .orEmpty()
 
                 val phone =
-                    normalizePhone(rawPhone)
+                    normalizePhone(
+                        rawPhone
+                    )
 
                 if (phone.isEmpty()) {
 
@@ -1242,10 +1342,11 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 val displayName =
-                    cleanName(rawName)
-                        .ifBlank {
-                            "Contact ${contacts.size + 1}"
-                        }
+                    cleanName(
+                        rawName
+                    ).ifBlank {
+                        "Contact ${contacts.size + 1}"
+                    }
 
                 val fields =
                     linkedMapOf<String, String>()
@@ -1482,11 +1583,13 @@ class MainActivity : AppCompatActivity() {
                 )
 
             if (number.startsWith("+")) {
+
                 number =
                     number.substring(1)
             }
 
             if (number.startsWith("00")) {
+
                 number =
                     number.substring(2)
             }
@@ -1527,6 +1630,7 @@ class MainActivity : AppCompatActivity() {
             adapter.getSelectedPhones()
 
         return contacts.filter {
+
             selectedPhones.contains(
                 it.phone
             )
@@ -1657,11 +1761,14 @@ class MainActivity : AppCompatActivity() {
 
         val scroll =
             ScrollView(this).apply {
+
                 addView(textView)
             }
 
         AlertDialog.Builder(this)
-            .setTitle("Message Preview")
+            .setTitle(
+                "Message Preview"
+            )
             .setView(scroll)
             .setPositiveButton(
                 "Close",
@@ -1716,7 +1823,9 @@ class MainActivity : AppCompatActivity() {
 
         } else {
 
-            startSmsOperation(selected)
+            startSmsOperation(
+                selected
+            )
         }
     }
 
@@ -1727,6 +1836,7 @@ class MainActivity : AppCompatActivity() {
 
         val alreadySent =
             selected.count {
+
                 it.smsStatus ==
                         SmsStatus.SENT
             }
@@ -1737,6 +1847,7 @@ class MainActivity : AppCompatActivity() {
             ) {
 
                 selected.count {
+
                     it.smsStatus !=
                             SmsStatus.SENT
                 }
@@ -1750,8 +1861,11 @@ class MainActivity : AppCompatActivity() {
             if (
                 appSettings.skipAlreadySent
             ) {
+
                 alreadySent
+
             } else {
+
                 0
             }
 
@@ -1820,6 +1934,7 @@ Do you want to continue?
             ) {
 
                 selected.filter {
+
                     it.smsStatus !=
                             SmsStatus.SENT
                 }
@@ -1835,6 +1950,7 @@ Do you want to continue?
 
             selected
                 .filter {
+
                     it.smsStatus ==
                             SmsStatus.SENT
                 }
@@ -1875,6 +1991,7 @@ Do you want to continue?
             0
 
         pendingSms.clear()
+
         requestToPhone.clear()
 
         btnSendSms.isEnabled =
@@ -1925,10 +2042,13 @@ Do you want to continue?
         )
 
         updateCounts()
+
         updateSendCount()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         try {
 
@@ -2091,6 +2211,7 @@ Do you want to continue?
         )
 
         updateCounts()
+
         updateSendCount()
 
         txtStatus.text =
@@ -2121,6 +2242,7 @@ Do you want to continue?
                 true
 
             updateCounts()
+
             updateSendCount()
 
             txtStatus.text =
@@ -2155,17 +2277,23 @@ Do you want to continue?
 
         val sent =
             contacts.count {
-                it.smsStatus == SmsStatus.SENT
+
+                it.smsStatus ==
+                        SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
-                it.smsStatus == SmsStatus.FAILED
+
+                it.smsStatus ==
+                        SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
-                it.smsStatus == SmsStatus.SENDING
+
+                it.smsStatus ==
+                        SmsStatus.SENDING
             }
 
         txtSendCount.text =
@@ -2184,7 +2312,10 @@ Do you want to continue?
                 }
             }
 
-        if (failed > 0 || sending > 0) {
+        if (
+            failed > 0 ||
+            sending > 0
+        ) {
 
             txtSendCount.text =
                 "Sent: $sent / $selected" +
@@ -2203,21 +2334,27 @@ Do you want to continue?
 
         val results =
             contactsForResult.mapNotNull {
-                operationResults[it.phone]
+
+                operationResults[
+                    it.phone
+                ]
             }
 
         val sent =
             results.count {
+
                 it.status == "SENT"
             }
 
         val failed =
             results.count {
+
                 it.status == "FAILED"
             }
 
         val skipped =
             results.count {
+
                 it.status == "SKIPPED"
             }
 
@@ -2298,6 +2435,7 @@ Do you want to continue?
 
         val scroll =
             ScrollView(this).apply {
+
                 addView(textView)
             }
 
@@ -2336,7 +2474,9 @@ Do you want to continue?
             selected.first()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         AlertDialog.Builder(this)
             .setTitle(
@@ -2441,7 +2581,9 @@ Do you want to continue?
             selected.first()
 
         val message =
-            personaliseMessage(contact)
+            personaliseMessage(
+                contact
+            )
 
         try {
 
@@ -2481,18 +2623,21 @@ Do you want to continue?
 
         val sent =
             contacts.count {
+
                 it.smsStatus ==
                         SmsStatus.SENT
             }
 
         val failed =
             contacts.count {
+
                 it.smsStatus ==
                         SmsStatus.FAILED
             }
 
         val sending =
             contacts.count {
+
                 it.smsStatus ==
                         SmsStatus.SENDING
             }
@@ -2511,12 +2656,14 @@ Do you want to continue?
 
     private fun sentCount() =
         contacts.count {
+
             it.smsStatus ==
                     SmsStatus.SENT
         }
 
     private fun failedCount() =
         contacts.count {
+
             it.smsStatus ==
                     SmsStatus.FAILED
         }
@@ -2704,14 +2851,18 @@ Do you want to continue?
                 root.orientation =
                     LinearLayout.HORIZONTAL
 
+                /*
+                 * Center the checkbox vertically with the
+                 * contact information for a cleaner appearance.
+                 */
                 root.gravity =
-                    Gravity.TOP
+                    Gravity.CENTER_VERTICAL
 
                 root.setPadding(
-                    2,
-                    6,
                     4,
-                    6
+                    7,
+                    6,
+                    7
                 )
 
                 // -------------------------------------------------
@@ -2747,12 +2898,12 @@ Do you want to continue?
                     ).apply {
 
                         gravity =
-                            Gravity.TOP
+                            Gravity.CENTER_VERTICAL
 
                         rightMargin =
                             dp(
                                 root.context,
-                                4
+                                5
                             )
                     }
 
@@ -2891,6 +3042,7 @@ Do you want to continue?
             val details =
                 contact.fields.entries
                     .filter { entry ->
+
                         entry.key.isNotBlank() &&
                                 entry.value.isNotBlank()
                     }
@@ -3157,7 +3309,9 @@ Do you want to continue?
 
                 return (
                     value *
-                            context.resources.displayMetrics.density
+                            context.resources
+                                .displayMetrics
+                                .density
                     ).toInt()
             }
         }
