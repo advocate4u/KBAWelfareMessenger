@@ -9,6 +9,15 @@
     android:padding="28dp"
     android:background="#F5F7FA">
 
+    <ImageView
+        android:id="@+id/imgLoginAppIcon"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@drawable/kba_icon"
+        android:contentDescription="MyAdv app icon"
+        android:scaleType="fitCenter"
+        android:layout_marginBottom="16dp" />
+
     <TextView
         android:id="@+id/txtLoginTitle"
         android:layout_width="match_parent"
