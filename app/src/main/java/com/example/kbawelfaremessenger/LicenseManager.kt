@@ -2,9 +2,11 @@ package com.example.kbawelfaremessenger
 
 import android.content.Context
 import android.util.Base64
+import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.Signature
+import java.security.cert.CertificateFactory
 import java.security.spec.X509EncodedKeySpec
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -17,7 +19,7 @@ object LicenseManager {
     private const val LICENSE_PREFIX = "ANI"
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    private const val PUBLIC_KEY_PEM = """
+    private val PUBLIC_KEY_PEM = """
 -----BEGIN CERTIFICATE-----
 MIIFSTCCAzGgAwIBAgIIGt1ndg0Nz0AwDQYJKoZIhvcNAQEMBQAwUjELMAkGA1UE
 BhMCSU4xEzARBgNVBAoTCkFkdm9jYXRlNFUxLjAsBgNVBAMTJUtCQVdlbGZhcmVN
@@ -70,12 +72,16 @@ yn90df4QmpIDXBKWYA==
         LicenseCheckResult(false, "Unable to install license.")
     }
 
-    fun getInstalledLicense(context: Context): License? = try {
-        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
-        val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
-        verifySignedToken(normaliseLicenseId(id), token)
-    } catch (_: Exception) { null }
+    fun getInstalledLicense(context: Context): License? {
+        return try {
+            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
+            val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
+            verifySignedToken(normaliseLicenseId(id), token)
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     fun getValidLicense(context: Context): License? = getInstalledLicense(context)?.takeIf { !LocalDate.now().isAfter(it.expiryDate) }
     fun getLicensedPhone(context: Context): String? = getValidLicense(context)?.phone
@@ -127,11 +133,13 @@ yn90df4QmpIDXBKWYA==
 
     private fun loadPublicKey() = run {
         val cleaned = PUBLIC_KEY_PEM
-            .replace("-----BEGIN PUBLIC KEY-----", "")
-            .replace("-----END PUBLIC KEY-----", "")
+            .replace("-----BEGIN CERTIFICATE-----", "")
+            .replace("-----END CERTIFICATE-----", "")
             .replace(Regex("\\s"), "")
-        val bytes = Base64.decode(cleaned, Base64.DEFAULT)
-        KeyFactory.getInstance("RSA").generatePublic(X509EncodedKeySpec(bytes))
+        val certificateBytes = Base64.decode(cleaned, Base64.DEFAULT)
+        val certificate = CertificateFactory.getInstance("X.509")
+            .generateCertificate(ByteArrayInputStream(certificateBytes))
+        certificate.publicKey
     }
 
     private fun normaliseLicenseId(value: String): String = value.trim().uppercase().replace(" ", "")
