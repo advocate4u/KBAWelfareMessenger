@@ -1,0 +1,53 @@
+name: Generate Admin License Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-key:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Generate RSA admin signing key pair
+        run: |
+          set -e
+
+          keytool -genkeypair \
+            -alias admin-license \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 10000 \
+            -storetype PKCS12 \
+            -keystore admin-license-private.p12 \
+            -storepass temp-password \
+            -keypass temp-password \
+            -dname "CN=KBAWelfareMessenger License Authority, O=Advocate4U, C=IN"
+
+          keytool -exportcert \
+            -rfc \
+            -keystore admin-license-private.p12 \
+            -storepass temp-password \
+            -alias admin-license \
+            -file admin-license-public.pem
+
+          base64 -w 0 admin-license-private.p12 > ADMIN_LICENSE_PRIVATE_KEY_BASE64.txt
+
+          echo "Admin key pair generated."
+          echo "The private key file is protected by the temporary container password inside the workflow artifact."
+          echo "The public key can be safely placed in the Android app."
+
+      - name: Package admin license key material
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-license-key-material
+          path: |
+            admin-license-private.p12
+            admin-license-public.pem
+            ADMIN_LICENSE_PRIVATE_KEY_BASE64.txt
+          retention-days: 1
