@@ -35,10 +35,11 @@ class LicenseManagerActivity : Activity() {
         token = findViewById(R.id.signedToken)
         status = findViewById(R.id.statusText)
 
+        // MyAdvAM issues all supported MyAdv license roles.
         role.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            arrayOf("ADMIN", "SUPER_ADMIN")
+            arrayOf("USER", "ADMIN", "SUPER_ADMIN")
         )
 
         val today = LocalDate.now()
@@ -86,6 +87,7 @@ class LicenseManagerActivity : Activity() {
         }
 
         val selectedRole = when (role.selectedItem?.toString()) {
+            "USER" -> LicenseAuthority.ManagerRole.USER
             "SUPER_ADMIN" -> LicenseAuthority.ManagerRole.SUPER_ADMIN
             else -> LicenseAuthority.ManagerRole.ADMIN
         }
