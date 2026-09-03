@@ -1,20 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.SEND_SMS" />
 
     <application
-        android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
         android:label="KBA Welfare Messenger"
-        android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity
-            android:name=".MainActivity"
-            android:screenOrientation="portrait"
-            android:exported="false" />
-
+        <!-- Login screen -->
         <activity
             android:name=".LoginActivity"
             android:screenOrientation="portrait"
@@ -26,6 +21,18 @@
             </intent-filter>
 
         </activity>
+
+        <!-- Main application screen -->
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
+        <!-- Settings screen -->
+        <activity
+            android:name=".SettingsActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
 
     </application>
 
