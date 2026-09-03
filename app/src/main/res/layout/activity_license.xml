@@ -11,16 +11,18 @@
         android:padding="20dp">
 
         <TextView
+            android:id="@+id/txtLicenseTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="MyAdv Admin License Center"
+            android:text="MyAdv License Center"
             android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/txtLicenseDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Offline license generation is available only to approved administrator phone numbers."
+            android:text="Offline license activation."
             android:alpha="0.7"
             android:paddingTop="6dp"
             android:paddingBottom="16dp" />
@@ -49,6 +51,7 @@
             android:text="SECURELY SAVE ADMIN KEY" />
 
         <TextView
+            android:id="@+id/txtAdminKeyInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="The private key is encrypted with Android Keystore on this device. It is never compiled into the APK."
@@ -57,6 +60,7 @@
             android:paddingBottom="18dp" />
 
         <TextView
+            android:id="@+id/txtGenerateSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="GENERATE ADVOCATE LICENSE"
@@ -104,6 +108,7 @@
             android:text="SHARE LICENSE" />
 
         <TextView
+            android:id="@+id/txtInstallSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="INSTALL LICENSE ON THIS DEVICE"
