@@ -48,8 +48,20 @@ jobs:
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease
-
+          ADMIN_LICENSE_P12_BASE64: ${{ secrets.ADMIN_LICENSE_P12_BASE64 }}
+          ADMIN_LICENSE_P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ERROR: ADMIN_LICENSE_P12_BASE64 secret is missing."; exit 1; }
+          test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ERROR: ADMIN_LICENSE_P12_PASSWORD secret is missing."; exit 1; }
+          umask 077
+          printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
+          test -s admin-license-private.p12
+          MYADV_LICENSE_PRIVATE_KEY_B64="$(openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes -passin pass:"$ADMIN_LICENSE_P12_PASSWORD" | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w 0)
+          test -n "$MYADV_LICENSE_PRIVATE_KEY_B64"
+          export MYADV_LICENSE_PRIVATE_KEY_B64
+          ./gradlew :app:assembleRelease :licensemanager:assembleRelease
+          rm -f admin-license-private.p12
       - name: Verify APK outputs
         run: |
           set -e
