@@ -4,10 +4,8 @@ import android.content.Context
 import android.util.Base64
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
-import java.security.KeyFactory
 import java.security.Signature
 import java.security.cert.CertificateFactory
-import java.security.spec.X509EncodedKeySpec
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -47,7 +45,7 @@ eKubDgvLPkpD+7Cc8mvpAlR1LDF9NktZsThP9C/jbn2c0Udvo0OXnopK95h3M6wI
 V6UcM+zJQ7f7Yd5Ul0Ee4I0HIQn1naqCvvcnQRhrC4Q8vPhRuVc6Wo5ZBKHlYhjZ
 C0hr6ULOovyR95o/NVHdBjALfm8+024n8+IouOtWeokuss/rTzcntik0sT7Hb5Y9
 j4zFS5wsMu9HQ8cmEznD6CJ8KwJF+CMCx9Qn04ZPEV5QFv9ax+IGGQEEJBAQKw2w
-5CYbI17zNCvV6wn21WsHTfdIEciKEFAvalQCHj9oH+HZmCVCRqBny4K/eC90ld1I
+5CYbI17zNCvV6wn21WsHTfdIEciKEFAvalQCHj9o+HZmCVCRqBny4K/eC90ld1I
 S9aingWN6kAbWpCjYb3WT2hVmUMhr/Njs8P4Q6DPcBnVwgAbwQfgIC3FXipQbcQB
 yn90df4QmpIDXBKWYA==
 -----END CERTIFICATE-----
@@ -56,20 +54,27 @@ yn90df4QmpIDXBKWYA==
     data class License(val licenseId: String, val phone: String, val expiryDate: LocalDate)
     data class LicenseCheckResult(val allowed: Boolean, val message: String)
 
-    fun installLicense(context: Context, licenseId: String, signedToken: String): LicenseCheckResult = try {
-        val cleanId = normaliseLicenseId(licenseId)
-        if (!isValidLicenseIdFormat(cleanId)) return LicenseCheckResult(false, "Invalid license key format.")
-        val license = verifySignedToken(cleanId, signedToken) ?: return LicenseCheckResult(false, "License verification failed.")
-        if (LocalDate.now().isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
-        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-            .putString(KEY_LICENSE_ID, license.licenseId)
-            .putString(KEY_LICENSE_TOKEN, signedToken.trim())
-            .apply()
-        AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
-        LicenseCheckResult(true, "License activated successfully.")
-    } catch (e: Exception) {
-        AppLogger.error(context, "LICENSE", "License installation failed: ${e.message}")
-        LicenseCheckResult(false, "Unable to install license.")
+    fun installLicense(context: Context, licenseId: String, signedToken: String): LicenseCheckResult {
+        return try {
+            val cleanId = normaliseLicenseId(licenseId)
+            if (!isValidLicenseIdFormat(cleanId)) {
+                return LicenseCheckResult(false, "Invalid license key format.")
+            }
+            val license = verifySignedToken(cleanId, signedToken)
+                ?: return LicenseCheckResult(false, "License verification failed.")
+            if (LocalDate.now().isAfter(license.expiryDate)) {
+                return LicenseCheckResult(false, "This license has expired.")
+            }
+            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
+                .putString(KEY_LICENSE_ID, license.licenseId)
+                .putString(KEY_LICENSE_TOKEN, signedToken.trim())
+                .apply()
+            AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
+            LicenseCheckResult(true, "License activated successfully.")
+        } catch (e: Exception) {
+            AppLogger.error(context, "LICENSE", "License installation failed: ${e.message}")
+            LicenseCheckResult(false, "Unable to install license.")
+        }
     }
 
     fun getInstalledLicense(context: Context): License? {
