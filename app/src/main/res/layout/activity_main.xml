@@ -11,10 +11,7 @@
         android:orientation="vertical"
         android:padding="10dp">
 
-        <!-- ================================================= -->
         <!-- TOP BAR -->
-        <!-- ================================================= -->
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -39,10 +36,7 @@
         </LinearLayout>
 
 
-        <!-- ================================================= -->
-        <!-- CSV SECTION -->
-        <!-- ================================================= -->
-
+        <!-- CSV / CONTACTS -->
         <TextView
             android:id="@+id/txtCsvHeader"
             android:layout_width="match_parent"
@@ -106,10 +100,7 @@
         </LinearLayout>
 
 
-        <!-- ================================================= -->
-        <!-- RANGE SECTION -->
-        <!-- ================================================= -->
-
+        <!-- RANGE SELECTION -->
         <TextView
             android:id="@+id/txtRangeHeader"
             android:layout_width="match_parent"
@@ -178,47 +169,47 @@
         </LinearLayout>
 
 
-        <!-- ================================================= -->
-        <!-- CONTACT STATUS -->
-        <!-- ================================================= -->
-
+        <!-- COUNTS -->
         <TextView
             android:id="@+id/txtSelected"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="5dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="2dp"
             android:text="Selected: 0"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/txtStats"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0" />
+            android:paddingBottom="4dp"
+            android:text="Total: 0 | Sent: 0 | Failed: 0 | Pending/Sending: 0"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
+
+        <!-- STATUS -->
         <TextView
             android:id="@+id/txtStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingBottom="4dp"
             android:text="Ready"
             android:textStyle="bold" />
 
 
-        <!-- ================================================= -->
         <!-- CONTACT LIST -->
-        <!-- ================================================= -->
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerContacts"
             android:layout_width="match_parent"
             android:layout_height="350dp"
-            android:layout_marginTop="5dp" />
+            android:layout_marginTop="5dp"
+            android:nestedScrollingEnabled="true" />
 
 
-        <!-- ================================================= -->
-        <!-- MESSAGE SECTION -->
-        <!-- ================================================= -->
-
+        <!-- MESSAGE -->
         <TextView
             android:id="@+id/txtMessageHeader"
             android:layout_width="match_parent"
@@ -244,34 +235,10 @@
                 android:inputType="textMultiLine"
                 android:padding="10dp" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnPreview"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="PREVIEW" />
-
-                <Button
-                    android:id="@+id/btnTestSms"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="TEST SMS" />
-
-            </LinearLayout>
-
         </LinearLayout>
 
 
-        <!-- ================================================= -->
         <!-- SEND ACTIONS -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtSendHeader"
             android:layout_width="match_parent"
@@ -288,25 +255,72 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btnSendSms"
+            <!-- PREVIEW + SEND SMS -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="SEND SMS" />
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/btnWhatsApp"
+                <Button
+                    android:id="@+id/btnPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="PREVIEW" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <Button
+                        android:id="@+id/btnSendSms"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="SEND SMS" />
+
+                    <TextView
+                        android:id="@+id/txtSendCount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingBottom="2dp"
+                        android:text="Sent: 0"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+
+            <!-- TEST SMS + WHATSAPP -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="WHATSAPP" />
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnTestSms"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="TEST SMS" />
+
+                <Button
+                    android:id="@+id/btnWhatsApp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="WHATSAPP" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
 
-        <!-- ================================================= -->
         <!-- OTHER ACTIONS -->
-        <!-- ================================================= -->
-
         <TextView
             android:id="@+id/txtOtherHeader"
             android:layout_width="match_parent"
