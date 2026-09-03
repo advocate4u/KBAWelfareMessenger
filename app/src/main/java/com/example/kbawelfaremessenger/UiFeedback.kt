@@ -79,4 +79,3 @@ object UiFeedback {
         long: Boolean = false
     ) = show(context, message, Type.INFO, long)
 }
-```
