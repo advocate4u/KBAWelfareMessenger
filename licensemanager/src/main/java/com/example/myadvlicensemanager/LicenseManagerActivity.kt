@@ -38,7 +38,7 @@ class LicenseManagerActivity : Activity() {
         role.adapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            arrayOf("USER", "ADMIN", "SUPER_ADMIN")
+            arrayOf("ADMIN", "SUPER_ADMIN")
         )
 
         val today = LocalDate.now()
@@ -72,11 +72,6 @@ class LicenseManagerActivity : Activity() {
     }
 
     private fun generate() {
-        if (!LicenseAuthority.hasKey(this)) {
-            toast("Signing authority is unavailable in this build.")
-            return
-        }
-
         val target = phone.text.toString().trim()
         val issueDate = runCatching { LocalDate.parse(issue.text.toString(), fmt) }.getOrNull()
         val expiryDate = runCatching { LocalDate.parse(expiry.text.toString(), fmt) }.getOrNull()
@@ -91,9 +86,8 @@ class LicenseManagerActivity : Activity() {
         }
 
         val selectedRole = when (role.selectedItem?.toString()) {
-            "ADMIN" -> LicenseAuthority.ManagerRole.ADMIN
             "SUPER_ADMIN" -> LicenseAuthority.ManagerRole.SUPER_ADMIN
-            else -> LicenseAuthority.ManagerRole.SUPER_ADMIN
+            else -> LicenseAuthority.ManagerRole.ADMIN
         }
 
         fun checked(id: Int): Boolean = findViewById<CheckBox>(id).isChecked
@@ -123,7 +117,7 @@ class LicenseManagerActivity : Activity() {
         )
 
         if (license == null) {
-            toast("Could not generate license. Check signing authority, dates and mobile number.")
+            toast("Could not generate license. Check dates and mobile number.")
             return
         }
 
@@ -154,5 +148,4 @@ class LicenseManagerActivity : Activity() {
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
-
 }
