@@ -3,7 +3,6 @@ package com.example.kbawelfaremessenger
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.Editable
@@ -57,7 +56,6 @@ class AdvocateHelperActivity : AppCompatActivity() {
         supportActionBar?.title = "Advocate Helper"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         db = AdvocateCaseDbHelper(this)
-
         caseNumber = findViewById(R.id.edtCaseNumber)
         clientName = findViewById(R.id.edtClientName)
         clientPhone = findViewById(R.id.edtClientPhone)
@@ -76,30 +74,39 @@ class AdvocateHelperActivity : AppCompatActivity() {
         todayHearings = findViewById(R.id.txtTodayHearings)
         upcomingHearings = findViewById(R.id.txtUpcomingHearings)
         pendingFees = findViewById(R.id.txtPendingFees)
-
         previousDate.setOnClickListener { pick(previousDate) }
         currentDate.setOnClickListener { pick(currentDate) }
         nextDate.setOnClickListener { pick(nextDate) }
         findViewById<Button>(R.id.btnClearForm).setOnClickListener { clearForm() }
-        findViewById<Button>(R.id.btnReminderSettings).setOnClickListener { openNotificationSettings() }
-        findViewById<Button>(R.id.btnSendNextDateMessage).setOnClickListener { sendNextDateMessage() }
         save.setOnClickListener { saveCase() }
-
         adapter = AdvocateCaseAdapter(emptyList(), { fill(it) }, { remove(it) })
         findViewById<RecyclerView>(R.id.recyclerCases).apply {
             layoutManager = LinearLayoutManager(this@AdvocateHelperActivity)
             adapter = this@AdvocateHelperActivity.adapter
             isNestedScrollingEnabled = false
         }
-
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) { load(s.toString()) }
             override fun afterTextChanged(s: Editable?) = Unit
         })
-
+        addReminderButtons()
         scheduleReminderWorker()
         load()
+    }
+
+    private fun addReminderButtons() {
+        val parent = nextDate.parent as? android.view.ViewGroup ?: return
+        val messageButton = Button(this).apply {
+            text = "MESSAGE CLIENT ABOUT NEXT DATE"
+            setOnClickListener { sendNextDateMessage() }
+        }
+        parent.addView(messageButton, parent.indexOfChild(nextDate) + 1)
+        val settingsButton = Button(this).apply {
+            text = "HEARING REMINDER SETTINGS"
+            setOnClickListener { openNotificationSettings() }
+        }
+        parent.addView(settingsButton, parent.indexOfChild(messageButton) + 1)
     }
 
     override fun onResume() {
@@ -109,10 +116,7 @@ class AdvocateHelperActivity : AppCompatActivity() {
 
     private fun pick(target: EditText) {
         val c = Calendar.getInstance()
-        DatePickerDialog(this, { _, y, m, d ->
-            c.set(y, m, d)
-            target.setText(format.format(c.time))
-        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+        DatePickerDialog(this, { _, y, m, d -> c.set(y, m, d); target.setText(format.format(c.time)) }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
     }
 
     private fun saveCase() {
@@ -122,20 +126,10 @@ class AdvocateHelperActivity : AppCompatActivity() {
         val paid = received.text.toString().trim().toDoubleOrNull() ?: 0.0
         if (cn.isEmpty()) { caseNumber.error = "Enter case number"; return }
         if (client.isEmpty()) { clientName.error = "Enter client name"; return }
-        if (fee < 0 || paid < 0 || (fee > 0 && paid > fee)) {
-            Toast.makeText(this, "Invalid fee amounts.", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (fee < 0 || paid < 0 || (fee > 0 && paid > fee)) { Toast.makeText(this, "Invalid fee amounts.", Toast.LENGTH_SHORT).show(); return }
         val now = System.currentTimeMillis()
         val createdAt = if (editingId == 0L || editingCreatedAt == 0L) now else editingCreatedAt
-        val item = AdvocateCase(
-            id = editingId, caseNumber = cn, clientName = client,
-            clientPhone = clientPhone.text.toString().trim(), courtName = court.text.toString().trim(),
-            previousDate = previousDate.text.toString().trim(), currentDate = currentDate.text.toString().trim(),
-            nextDate = nextDate.text.toString().trim(), currentUpdate = currentUpdate.text.toString().trim(),
-            newUpdate = newUpdate.text.toString().trim(), totalFee = fee, amountReceived = paid,
-            createdAt = createdAt, updatedAt = now
-        )
+        val item = AdvocateCase(editingId, cn, client, clientPhone.text.toString().trim(), court.text.toString().trim(), previousDate.text.toString().trim(), currentDate.text.toString().trim(), nextDate.text.toString().trim(), currentUpdate.text.toString().trim(), newUpdate.text.toString().trim(), fee, paid, createdAt, now)
         if (editingId == 0L) db.insertCase(item) else db.updateCase(item)
         Toast.makeText(this, if (editingId == 0L) "Case saved." else "Case updated.", Toast.LENGTH_SHORT).show()
         clearForm()
@@ -143,96 +137,49 @@ class AdvocateHelperActivity : AppCompatActivity() {
     }
 
     private fun fill(item: AdvocateCase) {
-        editingId = item.id
-        editingCreatedAt = item.createdAt
-        caseNumber.setText(item.caseNumber)
-        clientName.setText(item.clientName)
-        clientPhone.setText(item.clientPhone)
-        court.setText(item.courtName)
-        previousDate.setText(item.previousDate)
-        currentDate.setText(item.currentDate)
-        nextDate.setText(item.nextDate)
-        currentUpdate.setText(item.currentUpdate)
-        newUpdate.setText(item.newUpdate)
-        totalFee.setText(if (item.totalFee == 0.0) "" else item.totalFee.toString())
-        received.setText(if (item.amountReceived == 0.0) "" else item.amountReceived.toString())
-        save.text = "UPDATE CASE"
+        editingId = item.id; editingCreatedAt = item.createdAt
+        caseNumber.setText(item.caseNumber); clientName.setText(item.clientName); clientPhone.setText(item.clientPhone); court.setText(item.courtName)
+        previousDate.setText(item.previousDate); currentDate.setText(item.currentDate); nextDate.setText(item.nextDate); currentUpdate.setText(item.currentUpdate); newUpdate.setText(item.newUpdate)
+        totalFee.setText(if (item.totalFee == 0.0) "" else item.totalFee.toString()); received.setText(if (item.amountReceived == 0.0) "" else item.amountReceived.toString()); save.text = "UPDATE CASE"
         caseNumber.requestFocus()
     }
 
     private fun remove(item: AdvocateCase) {
-        AlertDialog.Builder(this)
-            .setTitle("Delete Case")
-            .setMessage("Delete ${item.caseNumber} for ${item.clientName}?")
-            .setNegativeButton("CANCEL", null)
-            .setPositiveButton("DELETE") { _, _ ->
-                db.deleteCase(item.id)
-                load(search.text.toString())
-            }.show()
+        AlertDialog.Builder(this).setTitle("Delete Case").setMessage("Delete ${item.caseNumber} for ${item.clientName}?").setNegativeButton("CANCEL", null).setPositiveButton("DELETE") { _, _ -> db.deleteCase(item.id); load(search.text.toString()) }.show()
     }
 
     private fun clearForm() {
-        editingId = 0L
-        editingCreatedAt = 0L
-        listOf(caseNumber, clientName, clientPhone, court, previousDate, currentDate, nextDate, currentUpdate, newUpdate, totalFee, received)
-            .forEach { it.text.clear() }
+        editingId = 0L; editingCreatedAt = 0L
+        listOf(caseNumber, clientName, clientPhone, court, previousDate, currentDate, nextDate, currentUpdate, newUpdate, totalFee, received).forEach { it.text.clear() }
         save.text = "SAVE CASE"
     }
 
     private fun load(q: String = "") {
-        val items = db.getAllCases(q)
-        adapter.submitList(items)
-        empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        refreshDashboard()
+        val items = db.getAllCases(q); adapter.submitList(items); empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE; refreshDashboard()
     }
 
     private fun refreshDashboard() {
-        totalCases.text = db.getTotalCaseCount().toString()
-        todayHearings.text = db.getTodayHearingCount().toString()
-        upcomingHearings.text = db.getUpcomingHearingCount(30).toString()
-        pendingFees.text = currencyFormat.format(db.getPendingFeeTotal())
+        totalCases.text = db.getTotalCaseCount().toString(); todayHearings.text = db.getTodayHearingCount().toString(); upcomingHearings.text = db.getUpcomingHearingCount(30).toString(); pendingFees.text = currencyFormat.format(db.getPendingFeeTotal())
     }
 
     private fun sendNextDateMessage() {
-        val phone = clientPhone.text.toString().trim()
-        val name = clientName.text.toString().trim()
-        val date = nextDate.text.toString().trim()
-        val caseNo = caseNumber.text.toString().trim()
+        val phone = clientPhone.text.toString().trim(); val name = clientName.text.toString().trim(); val date = nextDate.text.toString().trim(); val caseNo = caseNumber.text.toString().trim()
         if (phone.isEmpty()) { clientPhone.error = "Enter client phone"; return }
         if (date.isEmpty()) { nextDate.error = "Enter next date"; return }
         val message = "Dear $name, your next hearing for Case No. $caseNo is scheduled on $date. Please be available as required. - KBA Welfare Messenger"
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = android.net.Uri.parse("smsto:${phone.replace(Regex("[^0-9+]"), "")}")
-            putExtra("sms_body", message)
-        }
-        try {
-            startActivity(intent)
-        } catch (_: Exception) {
-            Toast.makeText(this, "No SMS app is available.", Toast.LENGTH_SHORT).show()
-        }
+        val intent = Intent(Intent.ACTION_SENDTO).apply { data = android.net.Uri.parse("smsto:${phone.replace(Regex("[^0-9+]"), "")}"); putExtra("sms_body", message) }
+        try { startActivity(intent) } catch (_: Exception) { Toast.makeText(this, "No SMS app is available.", Toast.LENGTH_SHORT).show() }
     }
 
     private fun scheduleReminderWorker() {
         val request = PeriodicWorkRequestBuilder<AdvocateReminderWorker>(1, TimeUnit.DAYS).build()
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "advocate_hearing_reminders",
-            ExistingPeriodicWorkPolicy.KEEP,
-            request
-        )
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork("advocate_hearing_reminders", ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
     private fun openNotificationSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            })
-        }
+        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply { putExtra(Settings.EXTRA_APP_PACKAGE, packageName) })
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
-
-    override fun onDestroy() {
-        db.close()
-        super.onDestroy()
-    }
+    override fun onDestroy() { db.close(); super.onDestroy() }
 }
