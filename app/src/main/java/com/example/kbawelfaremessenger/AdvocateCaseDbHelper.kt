@@ -68,6 +68,51 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         return result
     }
 
+    fun getTotalCaseCount(): Int {
+        readableDatabase.rawQuery("SELECT COUNT(*) FROM advocate_cases", null).use { c ->
+            return if (c.moveToFirst()) c.getInt(0) else 0
+        }
+    }
+
+    fun getPendingFeeTotal(): Double {
+        readableDatabase.rawQuery(
+            "SELECT COALESCE(SUM(CASE WHEN total_fee > amount_received THEN total_fee - amount_received ELSE 0 END), 0) FROM advocate_cases",
+            null
+        ).use { c ->
+            return if (c.moveToFirst()) c.getDouble(0) else 0.0
+        }
+    }
+
+    fun getUpcomingCases(): List<AdvocateCase> = getAllCases().filter {
+        it.nextDate.isNotBlank() && parseDate(it.nextDate) != null
+    }.sortedBy { parseDate(it.nextDate) }.filter { parseDate(it.nextDate)!! >= todayStart() }
+
+    private fun parseDate(value: String): Long? = try {
+        val parts = value.split("-")
+        if (parts.size != 3) return null
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.YEAR, parts[2].toInt())
+            set(java.util.Calendar.MONTH, parts[1].toInt() - 1)
+            set(java.util.Calendar.DAY_OF_MONTH, parts[0].toInt())
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        calendar.timeInMillis
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun todayStart(): Long {
+        return java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+
     fun insertCase(item: AdvocateCase): Long = writableDatabase.insertOrThrow(
         "advocate_cases", null, values(item, false)
     )
