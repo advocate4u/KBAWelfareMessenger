@@ -19,6 +19,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -154,6 +155,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appSettings: AppSettings
 
+    /*
+     * If SMS permissions are requested, this stores the action
+     * that should continue after all required permissions are granted.
+     */
+    private var pendingSmsPermissionAction:
+            (() -> Unit)? = null
+
     // ---------------------------------------------------------
     // CSV picker
     // ---------------------------------------------------------
@@ -169,23 +177,59 @@ class MainActivity : AppCompatActivity() {
         }
 
     // ---------------------------------------------------------
-    // SMS permission
+    // SMS + phone permissions
     // ---------------------------------------------------------
 
     private val smsPermissionLauncher =
         registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { granted ->
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
 
-            if (granted) {
+            val sendSmsGranted =
+                permissions[
+                    Manifest.permission.SEND_SMS
+                ] == true
 
-                startSmsAfterPermission()
+            val phoneStateGranted =
+                permissions[
+                    Manifest.permission.READ_PHONE_STATE
+                ] == true
+
+            val phoneNumbersGranted =
+                permissions[
+                    Manifest.permission.READ_PHONE_NUMBERS
+                ] == true
+
+            if (
+                sendSmsGranted &&
+                phoneStateGranted &&
+                phoneNumbersGranted
+            ) {
+
+                val action =
+                    pendingSmsPermissionAction
+
+                pendingSmsPermissionAction =
+                    null
+
+                if (action != null) {
+                    action()
+                } else {
+                    startSmsAfterPermission()
+                }
 
             } else {
 
+                pendingSmsPermissionAction =
+                    null
+
                 showAlert(
-                    "SMS Permission",
-                    "SMS permission is required to send messages."
+                    "Permission Required",
+                    "The following permissions are required for secure SMS sending:\n\n" +
+                            "• Send SMS\n" +
+                            "• Read phone state\n" +
+                            "• Read phone numbers\n\n" +
+                            "SMS sending is blocked until all required permissions are granted."
                 )
             }
         }
@@ -449,11 +493,6 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.adapter =
             adapter
 
-        /*
-         * RecyclerView is inside the main ScrollView.
-         * Let the parent ScrollView handle the main
-         * vertical scrolling for smoother movement.
-         */
         recyclerContacts.isNestedScrollingEnabled =
             false
 
@@ -901,10 +940,6 @@ class MainActivity : AppCompatActivity() {
 
         if (appSettings.editMessageOnScreen) {
 
-            /*
-             * Toggle ON:
-             * Show both the MESSAGE header and editor.
-             */
             txtMessageHeader.visibility =
                 View.VISIBLE
 
@@ -925,11 +960,6 @@ class MainActivity : AppCompatActivity() {
 
         } else {
 
-            /*
-             * Toggle OFF:
-             * Hide the COMPLETE MESSAGE block,
-             * including its collapsible header.
-             */
             txtMessageHeader.visibility =
                 View.GONE
 
@@ -1028,10 +1058,6 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------------
 
     private fun setupButtonColors() {
-
-        /*
-         * Restrained professional palette.
-         */
 
         setButtonColor(
             btnUpload,
@@ -1777,27 +1803,231 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // =========================================================
+    // STRICT SMS LICENSE / SIM VERIFICATION
+    // =========================================================
+
+    private data class VerifiedSmsSubscription(
+        val subscriptionId: Int,
+        val phone: String,
+        val smsManager: SmsManager
+    )
+
+    private class SmsLicenseException(
+        message: String
+    ) : Exception(message)
+
+    /**
+     * Checks that all permissions required for strict
+     * SMS/SIM verification are granted.
+     */
+    private fun hasSmsPermissions(): Boolean {
+
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.SEND_SMS
+        ) == PackageManager.PERMISSION_GRANTED &&
+
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_PHONE_STATE
+                ) == PackageManager.PERMISSION_GRANTED &&
+
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_PHONE_NUMBERS
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Strict verification:
+     *
+     * 1. A valid signed license must exist.
+     * 2. Default SMS subscription must exist.
+     * 3. That subscription must be active.
+     * 4. Android must expose the SIM phone number.
+     * 5. SIM phone number must exactly match the licensed phone.
+     *
+     * No device ID fallback is used.
+     */
+    private fun getVerifiedSmsSubscription():
+            VerifiedSmsSubscription {
+
+        if (!hasSmsPermissions()) {
+
+            throw SmsLicenseException(
+                "Required SMS/SIM permissions are not granted."
+            )
+        }
+
+        val license =
+            LicenseManager.getValidLicense(this)
+                ?: throw SmsLicenseException(
+                    "No valid license is installed, or the license has expired."
+                )
+
+        val licensedPhone =
+            normalizePhone(
+                license.phone
+            )
+
+        if (licensedPhone.isEmpty()) {
+
+            throw SmsLicenseException(
+                "The installed license does not contain a valid phone number."
+            )
+        }
+
+        val subscriptionId =
+            SubscriptionManager
+                .getDefaultSmsSubscriptionId()
+
+        if (
+            subscriptionId ==
+            SubscriptionManager.INVALID_SUBSCRIPTION_ID
+        ) {
+
+            throw SmsLicenseException(
+                "No default SMS SIM is selected on this phone."
+            )
+        }
+
+        val subscriptionManager =
+            getSystemService(
+                SubscriptionManager::class.java
+            )
+
+        if (subscriptionManager == null) {
+
+            throw SmsLicenseException(
+                "Unable to access SIM subscription information."
+            )
+        }
+
+        val subscriptionInfo =
+            try {
+
+                subscriptionManager
+                    .getActiveSubscriptionInfo(
+                        subscriptionId
+                    )
+
+            } catch (e: SecurityException) {
+
+                throw SmsLicenseException(
+                    "Android denied access to the SIM phone number."
+                )
+            }
+
+        if (subscriptionInfo == null) {
+
+            throw SmsLicenseException(
+                "The selected SMS SIM is not active."
+            )
+        }
+
+        val rawSimPhone =
+            subscriptionInfo.number
+                ?.trim()
+                .orEmpty()
+
+        if (rawSimPhone.isEmpty()) {
+
+            /*
+             * VERY IMPORTANT:
+             *
+             * Do NOT fall back to device ID, SIM serial,
+             * subscription ID or any other identifier.
+             *
+             * User requirement is strict phone-number binding.
+             */
+            throw SmsLicenseException(
+                "Android could not verify the phone number of the selected SMS SIM.\n\n" +
+                        "For security reasons SMS sending is blocked."
+            )
+        }
+
+        val actualSimPhone =
+            normalizePhone(
+                rawSimPhone
+            )
+
+        if (actualSimPhone.isEmpty()) {
+
+            throw SmsLicenseException(
+                "The selected SMS SIM returned an invalid phone number.\n\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+        if (actualSimPhone != licensedPhone) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Licensed phone does not match selected SMS SIM."
+            )
+
+            throw SmsLicenseException(
+                "License/SIM mismatch.\n\n" +
+                        "Licensed phone: $licensedPhone\n" +
+                        "Selected SMS SIM: $actualSimPhone\n\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+        val smsManager =
+            try {
+
+                SmsManager.getSmsManagerForSubscriptionId(
+                    subscriptionId
+                )
+
+            } catch (e: Exception) {
+
+                throw SmsLicenseException(
+                    "Unable to access the SMS service for the licensed SIM."
+                )
+            }
+
+        AppLogger.info(
+            this,
+            "LICENSE",
+            "License/SIM verification successful."
+        )
+
+        return VerifiedSmsSubscription(
+            subscriptionId = subscriptionId,
+            phone = actualSimPhone,
+            smsManager = smsManager
+        )
+    }
+
     // ---------------------------------------------------------
     // SMS permission
     // ---------------------------------------------------------
 
     private fun checkSmsPermissionAndStart() {
 
-        if (
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.SEND_SMS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-
-            smsPermissionLauncher.launch(
-                Manifest.permission.SEND_SMS
-            )
-
-        } else {
+        if (hasSmsPermissions()) {
 
             startSmsAfterPermission()
+
+            return
         }
+
+        pendingSmsPermissionAction =
+            {
+                startSmsAfterPermission()
+            }
+
+        smsPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.SEND_SMS,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.READ_PHONE_NUMBERS
+            )
+        )
     }
 
     private fun startSmsAfterPermission() {
@@ -1810,6 +2040,32 @@ class MainActivity : AppCompatActivity() {
             showAlert(
                 "No Contacts Selected",
                 "Please select at least one contact."
+            )
+
+            return
+        }
+
+        /*
+         * First strict license/SIM preflight.
+         * No confirmation dialog is shown until the
+         * licensed SIM has been verified.
+         */
+        try {
+
+            getVerifiedSmsSubscription()
+
+        } catch (e: SmsLicenseException) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Bulk SMS blocked: ${e.message}"
+            )
+
+            showAlert(
+                "SMS Not Allowed",
+                e.message
+                    ?: "License/SIM verification failed."
             )
 
             return
@@ -1923,6 +2179,31 @@ Do you want to continue?
             smsOperationActive ||
             selected.isEmpty()
         ) {
+            return
+        }
+
+        /*
+         * SECOND strict verification immediately before
+         * starting the bulk operation.
+         */
+        try {
+
+            getVerifiedSmsSubscription()
+
+        } catch (e: SmsLicenseException) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Bulk SMS operation blocked: ${e.message}"
+            )
+
+            showAlert(
+                "SMS Not Allowed",
+                e.message
+                    ?: "License/SIM verification failed."
+            )
+
             return
         }
 
@@ -2057,6 +2338,29 @@ Do you want to continue?
                 message
             )
 
+        } catch (e: SmsLicenseException) {
+
+            /*
+             * License/SIM changed or became unverifiable
+             * while a bulk operation was running.
+             *
+             * Do NOT mark the contact as FAILED because
+             * this is a security block, not an SMS failure.
+             */
+            contact.smsStatus =
+                SmsStatus.NONE
+
+            adapter.notifyContactStatusChanged(
+                contact.phone
+            )
+
+            abortSmsOperation(
+                e.message
+                    ?: "License/SIM verification failed."
+            )
+
+            return
+
         } catch (e: Exception) {
 
             completeSms(
@@ -2065,6 +2369,10 @@ Do you want to continue?
                 e.message
                     ?: "SMS sending error."
             )
+        }
+
+        if (!smsOperationActive) {
+            return
         }
 
         handler.postDelayed(
@@ -2080,8 +2388,17 @@ Do you want to continue?
         message: String
     ) {
 
+        /*
+         * CRITICAL SECURITY CHECK:
+         *
+         * This is performed immediately before the actual
+         * SMS API call for EVERY contact.
+         */
+        val verified =
+            getVerifiedSmsSubscription()
+
         val smsManager =
-            SmsManager.getDefault()
+            verified.smsManager
 
         val parts =
             smsManager.divideMessage(
@@ -2131,7 +2448,7 @@ Do you want to continue?
                         EXTRA_REQUEST_ID,
                         requestId
                     )
-                }
+            }
 
             val pendingIntent =
                 PendingIntent.getBroadcast(
@@ -2147,6 +2464,12 @@ Do you want to continue?
             )
         }
 
+        /*
+         * Do NOT use SmsManager.getDefault().
+         *
+         * The SMS Manager is explicitly bound to the
+         * verified default SMS subscription.
+         */
         if (parts.size == 1) {
 
             smsManager.sendTextMessage(
@@ -2167,6 +2490,45 @@ Do you want to continue?
                 null
             )
         }
+    }
+
+    /**
+     * Stops a running bulk operation when the license/SIM
+     * security check fails.
+     *
+     * Existing SMS callbacks are intentionally not destroyed.
+     * They may still arrive for messages already submitted.
+     */
+    private fun abortSmsOperation(
+        reason: String
+    ) {
+
+        smsOperationActive =
+            false
+
+        btnSendSms.isEnabled =
+            true
+
+        handler.removeCallbacksAndMessages(
+            null
+        )
+
+        txtStatus.text =
+            "SMS sending stopped: $reason"
+
+        updateCounts()
+        updateSendCount()
+
+        AppLogger.warning(
+            this,
+            "SMS",
+            "SMS operation stopped because of license/SIM verification: $reason"
+        )
+
+        showAlert(
+            "SMS Sending Stopped",
+            reason
+        )
     }
 
     private fun completeSms(
@@ -2478,6 +2840,30 @@ Do you want to continue?
                 contact
             )
 
+        /*
+         * Verify BEFORE showing the final Test SMS confirmation.
+         */
+        try {
+
+            getVerifiedSmsSubscription()
+
+        } catch (e: SmsLicenseException) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Test SMS blocked: ${e.message}"
+            )
+
+            showAlert(
+                "Test SMS Not Allowed",
+                e.message
+                    ?: "License/SIM verification failed."
+            )
+
+            return
+        }
+
         AlertDialog.Builder(this)
             .setTitle(
                 "Test SMS"
@@ -2496,66 +2882,109 @@ Do you want to continue?
                 "Send Test"
             ) { _, _ ->
 
-                if (
-                    ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.SEND_SMS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-
-                    Toast.makeText(
-                        this,
-                        "Please grant SMS permission and tap Test SMS again.",
-                        Toast.LENGTH_LONG
-                    ).show()
-
-                    smsPermissionLauncher.launch(
-                        Manifest.permission.SEND_SMS
-                    )
-
-                    return@setPositiveButton
-                }
-
-                try {
-
-                    SmsManager.getDefault()
-                        .sendTextMessage(
-                            contact.phone,
-                            null,
-                            message,
-                            null,
-                            null
-                        )
-
-                    AppLogger.success(
-                        this,
-                        "SMS",
-                        "Test SMS submitted."
-                    )
-
-                    showAlert(
-                        "Test SMS",
-                        "SMS request submitted.\n\n" +
-                                "Name: ${contact.name}\n" +
-                                "Number: ${contact.phone}"
-                    )
-
-                } catch (e: Exception) {
-
-                    AppLogger.error(
-                        this,
-                        "SMS",
-                        "Test SMS failed: ${e.message}"
-                    )
-
-                    showAlert(
-                        "Test SMS Failed",
-                        e.message
-                            ?: "Unable to send SMS."
-                    )
-                }
+                sendTestSmsAfterConfirmation(
+                    contact,
+                    message
+                )
             }
             .show()
+    }
+
+    private fun sendTestSmsAfterConfirmation(
+        contact: Contact,
+        message: String
+    ) {
+
+        if (!hasSmsPermissions()) {
+
+            pendingSmsPermissionAction =
+                {
+                    sendTestSmsNow(
+                        contact,
+                        message
+                    )
+                }
+
+            smsPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.READ_PHONE_STATE,
+                    Manifest.permission.READ_PHONE_NUMBERS
+                )
+            )
+
+            return
+        }
+
+        sendTestSmsNow(
+            contact,
+            message
+        )
+    }
+
+    private fun sendTestSmsNow(
+        contact: Contact,
+        message: String
+    ) {
+
+        try {
+
+            /*
+             * FINAL strict verification immediately before
+             * the actual Test SMS API call.
+             */
+            val verified =
+                getVerifiedSmsSubscription()
+
+            verified.smsManager.sendTextMessage(
+                contact.phone,
+                null,
+                message,
+                null,
+                null
+            )
+
+            AppLogger.success(
+                this,
+                "SMS",
+                "Test SMS submitted using verified subscription ${verified.subscriptionId}."
+            )
+
+            showAlert(
+                "Test SMS",
+                "SMS request submitted.\n\n" +
+                        "Name: ${contact.name}\n" +
+                        "Number: ${contact.phone}"
+            )
+
+        } catch (e: SmsLicenseException) {
+
+            AppLogger.warning(
+                this,
+                "LICENSE",
+                "Test SMS blocked at final verification: ${e.message}"
+            )
+
+            showAlert(
+                "Test SMS Not Allowed",
+                e.message
+                    ?: "License/SIM verification failed."
+            )
+
+        } catch (e: Exception) {
+
+            AppLogger.error(
+                this,
+                "SMS",
+                "Test SMS failed: ${e.message}"
+            )
+
+            showAlert(
+                "Test SMS Failed",
+                e.message
+                    ?: "Unable to send SMS."
+            )
+        }
     }
 
     // ---------------------------------------------------------
@@ -2851,10 +3280,6 @@ Do you want to continue?
                 root.orientation =
                     LinearLayout.HORIZONTAL
 
-                /*
-                 * Center the checkbox vertically with the
-                 * contact information for a cleaner appearance.
-                 */
                 root.gravity =
                     Gravity.CENTER_VERTICAL
 
@@ -2864,10 +3289,6 @@ Do you want to continue?
                     6,
                     7
                 )
-
-                // -------------------------------------------------
-                // Checkbox
-                // -------------------------------------------------
 
                 checkBox.apply {
 
@@ -2911,10 +3332,6 @@ Do you want to continue?
                     checkBox,
                     checkboxParams
                 )
-
-                // -------------------------------------------------
-                // Information area
-                // -------------------------------------------------
 
                 info.orientation =
                     LinearLayout.VERTICAL
@@ -3021,23 +3438,11 @@ Do you want to continue?
             val contact =
                 visibleContacts[position]
 
-            // -------------------------------------------------
-            // Name
-            // -------------------------------------------------
-
             holder.nameText.text =
                 "${position + 1}. ${contact.name}"
 
-            // -------------------------------------------------
-            // Phone
-            // -------------------------------------------------
-
             holder.phoneText.text =
                 "Mobile: ${contact.phone}"
-
-            // -------------------------------------------------
-            // ALL CSV DETAILS
-            // -------------------------------------------------
 
             val details =
                 contact.fields.entries
@@ -3067,10 +3472,6 @@ Do you want to continue?
                     details
             }
 
-            // -------------------------------------------------
-            // Status
-            // -------------------------------------------------
-
             holder.statusText.text =
                 when (contact.smsStatus) {
 
@@ -3086,10 +3487,6 @@ Do you want to continue?
                     SmsStatus.FAILED ->
                         "✕ FAILED"
                 }
-
-            // -------------------------------------------------
-            // Checkbox
-            // -------------------------------------------------
 
             holder.checkBox.setOnCheckedChangeListener(
                 null
@@ -3119,10 +3516,6 @@ Do you want to continue?
 
                 onSelectionChanged()
             }
-
-            // -------------------------------------------------
-            // Row click
-            // -------------------------------------------------
 
             holder.root.setOnClickListener {
 
