@@ -61,9 +61,7 @@ yn90df4QmpIDXBKWYA==
             val license = verifySignedToken(cleanId, signedToken) ?: return LicenseCheckResult(false, "License verification failed.")
             if (LocalDate.now().isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
             context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-                .putString(KEY_LICENSE_ID, license.licenseId)
-                .putString(KEY_LICENSE_TOKEN, signedToken.trim())
-                .apply()
+                .putString(KEY_LICENSE_ID, license.licenseId).putString(KEY_LICENSE_TOKEN, signedToken.trim()).apply()
             AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
             LicenseCheckResult(true, "License activated successfully for ${license.role.name}.")
         } catch (e: Exception) {
@@ -87,8 +85,7 @@ yn90df4QmpIDXBKWYA==
     fun isLicenseValid(context: Context): Boolean = getValidLicense(context) != null
 
     fun checkLicenseAndSmsPhone(context: Context, smsPhone: String?): LicenseCheckResult {
-        val license = getValidLicense(context) ?: return if (getInstalledLicense(context) != null)
-            LicenseCheckResult(false, "License has expired.") else LicenseCheckResult(false, "No valid KBA license is installed.")
+        val license = getValidLicense(context) ?: return if (getInstalledLicense(context) != null) LicenseCheckResult(false, "License has expired.") else LicenseCheckResult(false, "No valid KBA license is installed.")
         val actual = smsPhone?.let { normalisePhone(it) }
         if (actual.isNullOrBlank()) return LicenseCheckResult(false, "Unable to verify the phone number of the SMS SIM.\n\nSMS sending is blocked because the licensed phone number cannot be verified.")
         if (actual != license.phone) return LicenseCheckResult(false, "Licensed phone number does not match the SMS SIM.\n\nLicensed number: ${displayPhone(license.phone)}\nSMS SIM number: ${displayPhone(actual)}\n\nSMS sending is blocked.")
@@ -106,32 +103,32 @@ yn90df4QmpIDXBKWYA==
         val payloadBytes = Base64.decode(parts[0], Base64.DEFAULT)
         val signatureBytes = Base64.decode(parts[1], Base64.DEFAULT)
         val signature = Signature.getInstance("SHA256withRSA")
-        signature.initVerify(loadPublicKey())
-        signature.update(payloadBytes)
+        signature.initVerify(loadPublicKey()); signature.update(payloadBytes)
         if (!signature.verify(signatureBytes)) return null
         val payload = String(payloadBytes, StandardCharsets.UTF_8)
         val parsed = parsePayload(payload) ?: return null
-        val expected = createCanonicalPayload(parsed.first, parsed.second, parsed.third)
-        if (payload != expected) return null
-        return License(licenseId, parsed.first, parsed.second, parsed.third)
+        val canonical = if (parsed.second) {
+            "phone=${parsed.first.first}\nexpiry=${parsed.first.second.format(dateFormatter)}"
+        } else {
+            "phone=${parsed.first.first}\nexpiry=${parsed.first.second.format(dateFormatter)}\nrole=${parsed.first.third.name}"
+        }
+        if (payload != canonical) return null
+        return License(licenseId, parsed.first.first, parsed.first.second, parsed.first.third)
     }
 
-    private fun parsePayload(payload: String): Triple<String, LocalDate, UserRole>? {
+    /** Returns license data plus whether the token uses the legacy USER-only format. */
+    private fun parsePayload(payload: String): Pair<Triple<String, LocalDate, UserRole>, Boolean>? {
         val lines = payload.split("\n")
         if (lines.size != 2 && lines.size != 3) return null
         if (!lines[0].startsWith("phone=") || !lines[1].startsWith("expiry=")) return null
         val phone = normalisePhone(lines[0].removePrefix("phone="))
         if (phone.isBlank()) return null
         val expiry = runCatching { LocalDate.parse(lines[1].removePrefix("expiry="), dateFormatter) }.getOrNull() ?: return null
-        val role = if (lines.size == 3 && lines[2].startsWith("role=")) {
-            runCatching { UserRole.valueOf(lines[2].removePrefix("role=")) }.getOrNull() ?: return null
-        } else UserRole.USER
-        if (lines.size == 3 && !lines[2].startsWith("role=")) return null
-        return Triple(phone, expiry, role)
+        if (lines.size == 2) return Triple(phone, expiry, UserRole.USER) to true
+        if (!lines[2].startsWith("role=")) return null
+        val role = runCatching { UserRole.valueOf(lines[2].removePrefix("role=")) }.getOrNull() ?: return null
+        return Triple(phone, expiry, role) to false
     }
-
-    private fun createCanonicalPayload(phone: String, expiryDate: LocalDate, role: UserRole): String =
-        "phone=$phone\nexpiry=${expiryDate.format(dateFormatter)}\nrole=${role.name}"
 
     private fun loadPublicKey() = run {
         val cleaned = PUBLIC_KEY_PEM.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "").replace(Regex("\\s"), "")
@@ -141,17 +138,11 @@ yn90df4QmpIDXBKWYA==
 
     private fun normaliseLicenseId(value: String): String = value.trim().uppercase().replace(" ", "")
     private fun isValidLicenseIdFormat(value: String): Boolean = Regex("^$LICENSE_PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(value)
-
     private fun normalisePhone(value: String): String {
         var n = value.trim().replace(Regex("[^0-9+]"), "")
         if (n.startsWith("+")) n = n.substring(1)
         if (n.startsWith("00")) n = n.substring(2)
-        return when {
-            n.length == 10 && n.all { it.isDigit() } -> "91$n"
-            n.length == 12 && n.startsWith("91") && n.all { it.isDigit() } -> n
-            else -> ""
-        }
+        return when { n.length == 10 && n.all { it.isDigit() } -> "91$n"; n.length == 12 && n.startsWith("91") && n.all { it.isDigit() } -> n; else -> "" }
     }
-
     private fun displayPhone(phone: String): String = if (phone.length == 12 && phone.startsWith("91")) "+91 ${phone.substring(2)}" else phone
 }
