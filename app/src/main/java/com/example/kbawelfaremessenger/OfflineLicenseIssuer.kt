@@ -32,40 +32,7 @@ object OfflineLicenseIssuer {
     fun hasSigningKey(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_CIPHERTEXT)
 
-    /**
-     * Imports a protected PKCS#12/PFX signing-key package. The package password is supplied
-     * by the authorized operator and is never stored by the app. Only the extracted PKCS#8
-     * private-key bytes are retained, encrypted with an Android Keystore AES-GCM key.
-     */
-    fun installSigningKeyFromPkcs12(context: Context, input: java.io.InputStream, password: CharArray): Boolean {
-        if (!SecurityManager.canManageLicenses(context)) return false
-        return try {
-            val pkcs12 = KeyStore.getInstance("PKCS12")
-            input.use { pkcs12.load(it, password) }
-
-            var privateKey: PrivateKey? = null
-            val aliases = pkcs12.aliases()
-            while (aliases.hasMoreElements()) {
-                val alias = aliases.nextElement()
-                if (pkcs12.isKeyEntry(alias)) {
-                    val key = pkcs12.getKey(alias, password)
-                    if (key is PrivateKey) {
-                        privateKey = key
-                        break
-                    }
-                }
-            }
-            privateKey ?: return false
-
-            saveEncryptedPrivateKey(context, privateKey)
-        } catch (_: Exception) {
-            false
-        } finally {
-            java.util.Arrays.fill(password, '\u0000')
-        }
-    }
-
-    /** Backward-compatible PKCS#8 import for trusted internal callers. */
+    /** Installs a trusted PKCS#8 PEM signing key. The PEM is never stored directly; only encrypted private-key bytes are retained. */
     fun installSigningKey(context: Context, pem: String): Boolean {
         if (!SecurityManager.canManageLicenses(context)) return false
         return try {
