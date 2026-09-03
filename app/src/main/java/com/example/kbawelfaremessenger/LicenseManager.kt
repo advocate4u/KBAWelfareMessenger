@@ -2,53 +2,22 @@ package com.example.kbawelfaremessenger
 
 import android.content.Context
 import android.util.Base64
-import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
-import java.security.Signature
-import java.security.cert.CertificateFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 object LicenseManager {
     private const val PREF_NAME = "kba_license"
     private const val KEY_LICENSE_ID = "license_id"
     private const val KEY_LICENSE_TOKEN = "license_token"
     private const val PREFIX = "ANI"
-    private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    private val PUBLIC_KEY_PEM = """
------BEGIN CERTIFICATE-----
-MIIFSTCCAzGgAwIBAgIIGt1ndg0Nz0AwDQYJKoZIhvcNAQEMBQAwUjELMAkGA1UE
-BhMCSU4xEzARBgNVBAoTCkFkdm9jYXRlNFUxLjAsBgNVBAMTJUtCQVdlbGZhcmVN
-ZXNzZW5nZXIgTGljZW5zZSBBdXRob3JpdHkwIBcNMjYwOTAzMTczNjIyWhgPMjA1
-NDAxMTkxNzM2MjJaMFIxCzAJBgNVBAYTAklOMRMwEQYDVQQKEwpBZHZvY2F0ZTRV
-MS4wLAYDVQQDEyVLQkFXZWxmYXJlTWVzc2VuZ2VyIExpY2Vuc2UgQXV0aG9yaXR5
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAsaZIXqE0CgS6aFIceKCt
-dtkw7gtga3Z/BN80DN3pWbTAxcf5DEu6umjm9tbTy2/nafe5MuSPntQnPfpWlqfG
-+B4xFTnYbVheNpbZea4XIXIITlZ2Efom6HQBWoht6Q01gKPx367DErKV5whplm+H
-XbY2FxQ5SdUdmHKVJ7HRwIIA+TqvG/KRLEBPspxDwsb3NL5CWdGmdrhUW4lQGxA/
-6MwUzmZu2C4SJcFDLnQty51AB2mZNIALkUPidOsC+yrnTHhwEPuXGgwpFSsgNtTo
-aQMDq3NhEhcS3uOrZ3TYkzdiZQOo5YTRRLO53oQnwCdYoYTIUAu5SQrFUwkpewVL
-Wk6GqvtGr7oXcRu8sJGlSM/5pG4MUakjWRRKyEosYmJn9rXGpjbeyBGlfkjpCI2b
-JeuNrJMTGr8O7DqbYwBW5ByMySaJ/ns3x9HifOd+WmmMscqG8sxXCuZzmorY6uQP
-KaFQ7daQv02+iFa0535wyoG1GEQexmU7Eb1pOTfcEErFUZ7WBxGnQdtIyZ6IWVmE
-srnrOie4NPG32XR9jA6P/3ImSUfRUnVbZir9Hkae8P2hSfq0F3AjnRjd6yQpEYXq
-tNDRMfy47Fo/yNRS5K+zx5OVUNYbTfKYR5u6HSWy0e1xYCRl/qwek07UJMKqCI37
-PeCrpcJUlfIZwMotZjf6BEsCAwEAAaMhMB8wHQYDVR0OBBYEFC/Q+IzKRxxfpWB+
-7moncBd6rMTmMA0GCSqGSIb3DQEBDAUAA4ICAQAIbE2ErQqlxVSAd2gpek9EYso8
-my7JIzmIk747jmRwiRr2wtFrIbu1ZTN6gL0XPklfCeSuLsvCv5rl29zMZm1Hn2X9
-lufIjMk0WNsvtMosPNbM3zh/2lLy+FN2N5Y/yj/u+eBorFsY0J8iC6d4fJztNWh3
-cHSQRWHKtp9nXUiD+8FcD7B5emt1Ewp5Tv6PspIl4jQM3vFLYrm2OElQ261C8OcE
-+w9fpZE3fCC1RAHLqP2VtaBRzKX06NfvMXvEHso660JqRtu5wi8WMuYR8XAmfNUh
-eKubDgvLPkpD+7Cc8mvpAlR1LDF9NktZsThP9C/jbn2c0Udvo0OXnopK95h3M6wI
-V6UcM+zJQ7f7Yd5Ul0Ee4I0HIQn1naqCvvcnQRhrC4Q8vPhRuVc6Wo5ZBKHlYhjZ
-C0hr6ULOovyR95o/NVHdBjALfm8+024n8+IouOtWeokuss/rTzcntik0sT7Hb5Y9
-j4zFS5wsMu9HQ8cmEznD6CJ8KwJF+CMCx9Qn04ZPEV5QFv9ax+IGGQEEJBAQKw2w
-5CYbI17zNCvV6wn21WsHTfdIEciKEFAvalQCHj9o+HZmCVCRqBny4K/eC90ld1I
-S9aingWN6kAbWpCjYb3WT2hVmUMhr/Njs8P4Q6DPcBnVwgAbwQfgIC3FXipQbcQB
-yn90df4QmpIDXBKWYA==
------END CERTIFICATE-----
-""".trimIndent()
+    // Must match the offline signing secret embedded in MyAdvAM.
+    private const val SIGNING_SECRET_B64 = "Kuku3ICdCr/CTRnuJwEduKjujYF8oE0szV0n24o7j/M="
+
+    private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     data class LicenseOptions(
         val validatePhone: Boolean = true,
@@ -169,11 +138,27 @@ yn90df4QmpIDXBKWYA==
     private fun verify(id: String, token: String): License? {
         val parts = token.trim().split(".", limit = 2)
         if (parts.size != 2) return null
-        val payload = Base64.decode(parts[0], Base64.DEFAULT)
-        val signature = Signature.getInstance("SHA256withRSA")
-        signature.initVerify(publicKey())
-        signature.update(payload)
-        if (!signature.verify(Base64.decode(parts[1], Base64.DEFAULT))) return null
+
+        val payload = try {
+            Base64.decode(parts[0], Base64.DEFAULT)
+        } catch (_: Exception) {
+            return null
+        }
+
+        val expected = try {
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(Base64.decode(SIGNING_SECRET_B64, Base64.DEFAULT), "HmacSHA256"))
+            mac.doFinal(payload)
+        } catch (_: Exception) {
+            return null
+        }
+
+        val supplied = try {
+            Base64.decode(parts[1], Base64.DEFAULT)
+        } catch (_: Exception) {
+            return null
+        }
+        if (!java.security.MessageDigest.isEqual(expected, supplied)) return null
 
         val fields = String(payload, StandardCharsets.UTF_8).lineSequence()
             .mapNotNull { line ->
@@ -182,9 +167,11 @@ yn90df4QmpIDXBKWYA==
             }.toMap()
 
         if (fields["license"] != id) return null
+        if (fields["version"] != "4") return null
+
         val phone = norm(fields["phone"].orEmpty())
-        val expiry = LocalDate.parse(fields["expiry"].orEmpty(), fmt)
-        val issue = LocalDate.parse(fields["issue"].orEmpty(), fmt)
+        val expiry = runCatching { LocalDate.parse(fields["expiry"].orEmpty(), fmt) }.getOrNull() ?: return null
+        val issue = runCatching { LocalDate.parse(fields["issue"].orEmpty(), fmt) }.getOrNull() ?: return null
         val role = runCatching { UserRole.valueOf(fields["role"].orEmpty()) }.getOrNull() ?: return null
         if (phone.isBlank()) return null
 
@@ -204,16 +191,6 @@ yn90df4QmpIDXBKWYA==
             skipInvalidNumbers = boolField("skipInvalidNumbers", true)
         )
         return License(id, phone, expiry, issue, role, options)
-    }
-
-    private fun publicKey() = run {
-        val encoded = PUBLIC_KEY_PEM
-            .replace("-----BEGIN CERTIFICATE-----", "")
-            .replace("-----END CERTIFICATE-----", "")
-            .replace(Regex("\\s"), "")
-        CertificateFactory.getInstance("X.509")
-            .generateCertificate(ByteArrayInputStream(Base64.decode(encoded, Base64.DEFAULT)))
-            .publicKey
     }
 
     private fun norm(value: String): String {
