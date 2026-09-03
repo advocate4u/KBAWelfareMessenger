@@ -6,10 +6,11 @@
 
     <application
         android:allowBackup="true"
+        android:icon="@drawable/kba_icon"
+        android:roundIcon="@drawable/kba_icon"
         android:label="KBA Welfare Messenger"
         android:theme="@style/AppTheme">
 
-        <!-- Login screen -->
         <activity
             android:name=".LoginActivity"
             android:screenOrientation="portrait"
@@ -22,13 +23,11 @@
 
         </activity>
 
-        <!-- Main application screen -->
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
 
-        <!-- Settings screen -->
         <activity
             android:name=".SettingsActivity"
             android:screenOrientation="portrait"
