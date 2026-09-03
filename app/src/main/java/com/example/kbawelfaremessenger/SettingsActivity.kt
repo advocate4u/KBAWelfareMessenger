@@ -2,6 +2,7 @@ package com.example.kbawelfaremessenger
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 
@@ -27,6 +28,7 @@ class SettingsActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         initialiseViews()
         loadSettings()
+        applyRoleAccess()
         setupButtons()
     }
 
@@ -43,6 +45,15 @@ class SettingsActivity : AppCompatActivity() {
         btnViewLogs = findViewById(R.id.btnViewLogs)
         btnClearLogs = findViewById(R.id.btnClearLogs)
         btnAuthentication = findViewById(R.id.btnAuthentication)
+    }
+
+    private fun applyRoleAccess() {
+        val admin = SecurityManager.isAdmin(this)
+        findViewById<Button>(R.id.btnLicense).visibility = if (admin) View.VISIBLE else View.GONE
+        btnAuthentication.visibility = if (admin) View.VISIBLE else View.GONE
+        if (!admin) {
+            findViewById<TextView>(R.id.txtAuthenticationSection).visibility = View.GONE
+        }
     }
 
     private fun loadSettings() {
@@ -62,13 +73,13 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, AdvocateHelperActivity::class.java))
         }
         findViewById<Button>(R.id.btnLicense).setOnClickListener {
-            startActivity(Intent(this, LicenseActivity::class.java))
+            if (SecurityManager.isAdmin(this)) startActivity(Intent(this, LicenseActivity::class.java))
+            else Toast.makeText(this, "Administrator access required.", Toast.LENGTH_SHORT).show()
         }
-
         btnAuthentication.setOnClickListener {
-            Toast.makeText(this, "Authentication settings will be connected to SecurityManager.", Toast.LENGTH_SHORT).show()
+            if (SecurityManager.isAdmin(this)) startActivity(Intent(this, AuthenticationActivity::class.java))
+            else Toast.makeText(this, "Administrator access required.", Toast.LENGTH_SHORT).show()
         }
-
         btnSaveSettings.setOnClickListener {
             val nameColumn = edtNameColumn.text.toString().trim()
             val phoneColumn = edtPhoneColumn.text.toString().trim()
@@ -78,22 +89,12 @@ class SettingsActivity : AppCompatActivity() {
             if (defaultMessage.isEmpty()) { edtDefaultMessage.error = "Enter default message"; edtDefaultMessage.requestFocus(); return@setOnClickListener }
             val smsDelay = edtSmsDelay.text.toString().trim().toLongOrNull()
             if (smsDelay == null || smsDelay < 0) { edtSmsDelay.error = "Enter a valid delay in milliseconds"; edtSmsDelay.requestFocus(); return@setOnClickListener }
-            settings = settings.copy(
-                nameColumn = nameColumn,
-                phoneColumn = phoneColumn,
-                defaultMessage = defaultMessage,
-                smsDelayMs = smsDelay,
-                editMessageOnScreen = switchEditMessage.isChecked,
-                skipAlreadySent = switchSkipSent.isChecked,
-                confirmBeforeBulkSend = switchConfirmSend.isChecked,
-                loggingEnabled = switchLogging.isChecked
-            )
+            settings = settings.copy(nameColumn = nameColumn, phoneColumn = phoneColumn, defaultMessage = defaultMessage, smsDelayMs = smsDelay, editMessageOnScreen = switchEditMessage.isChecked, skipAlreadySent = switchSkipSent.isChecked, confirmBeforeBulkSend = switchConfirmSend.isChecked, loggingEnabled = switchLogging.isChecked)
             AppSettingsManager.save(this, settings)
             AppLogger.success(this, "SETTINGS", "Application settings saved")
             Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
             finish()
         }
-
         btnViewLogs.setOnClickListener { Toast.makeText(this, "Log viewer", Toast.LENGTH_SHORT).show() }
         btnClearLogs.setOnClickListener { AppLogger.clear(this); Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show() }
     }
