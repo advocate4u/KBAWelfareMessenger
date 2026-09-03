@@ -8,25 +8,14 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.random.Random
 
-/**
- * Offline license authority used by MyAdvAM.
- *
- * The signing material is embedded so the manager works without a separate key
- * file, password, P12/PFX file, or network connection. This is intentionally a
- * simple offline deployment model for the welfare project; it is not intended
- * to provide hardware-backed anti-extraction security.
- */
 object LicenseAuthority {
     private const val PREFS = "myadv_manager"
     private const val ROLE = "role"
     private const val PHONE = "phone"
-
-    // Shared offline signing secret. Keep identical to the verifier in MyAdv.
     private const val SIGNING_SECRET_B64 = "Kuku3ICdCr/CTRnuJwEduKjujYF8oE0szV0n24o7j/M="
-
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    enum class ManagerRole { SUPER_ADMIN, ADMIN }
+    enum class ManagerRole { USER, SUPER_ADMIN, ADMIN }
 
     data class LicenseOptions(
         val validatePhone: Boolean = true, val sms: Boolean = true, val bulkSms: Boolean = true,
@@ -41,30 +30,20 @@ object LicenseAuthority {
         val issueDate: LocalDate, val expiry: LocalDate, val options: LicenseOptions, val token: String
     )
 
-    fun role(c: Context): ManagerRole? = c.getSharedPreferences(PREFS, 0)
-        .getString(ROLE, null)?.let { runCatching { ManagerRole.valueOf(it) }.getOrNull() }
+    fun role(c: Context): ManagerRole? = c.getSharedPreferences(PREFS, 0).getString(ROLE, null)
+        ?.let { runCatching { ManagerRole.valueOf(it) }.getOrNull() }
 
     fun phone(c: Context): String? = c.getSharedPreferences(PREFS, 0).getString(PHONE, null)
-
     fun hasKey(c: Context): Boolean = true
 
     fun configureManager(c: Context, managerRole: ManagerRole, managerPhone: String?): Boolean {
         val phone = managerPhone?.let(::normalize) ?: ""
-        c.getSharedPreferences(PREFS, 0).edit()
-            .putString(ROLE, managerRole.name)
-            .putString(PHONE, phone)
-            .apply()
+        c.getSharedPreferences(PREFS, 0).edit().putString(ROLE, managerRole.name).putString(PHONE, phone).apply()
         return true
     }
 
-    fun createLicense(
-        c: Context,
-        target: String,
-        role: ManagerRole,
-        issueDate: LocalDate,
-        expiry: LocalDate,
-        options: LicenseOptions
-    ): License? {
+    fun createLicense(c: Context, target: String, role: ManagerRole, issueDate: LocalDate,
+                      expiry: LocalDate, options: LicenseOptions): License? {
         if (expiry.isBefore(issueDate) || expiry.isBefore(LocalDate.now())) return null
         val phone = normalize(target) ?: return null
         val id = generateLicenseId()
@@ -99,15 +78,11 @@ object LicenseAuthority {
     }
 
     private fun sign(payload: String): String? = try {
-        val payloadBytes = payload.toByteArray(Charsets.UTF_8)
+        val bytes = payload.toByteArray(Charsets.UTF_8)
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(Base64.decode(SIGNING_SECRET_B64, Base64.DEFAULT), "HmacSHA256"))
-        val signature = mac.doFinal(payloadBytes)
-        Base64.encodeToString(payloadBytes, Base64.NO_WRAP) + "." +
-            Base64.encodeToString(signature, Base64.NO_WRAP)
-    } catch (_: Exception) {
-        null
-    }
+        Base64.encodeToString(bytes, Base64.NO_WRAP) + "." + Base64.encodeToString(mac.doFinal(bytes), Base64.NO_WRAP)
+    } catch (_: Exception) { null }
 
     private fun normalize(value: String): String? {
         var n = value.trim().replace(Regex("[^0-9+]"), "")
