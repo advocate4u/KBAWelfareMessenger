@@ -30,24 +30,16 @@
             android:text="Signing key: NOT CONFIGURED"
             android:textStyle="bold"
             android:padding="12dp" />
-        <EditText
-            android:id="@+id/edtAdminPrivateKey"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:hint="One-time setup: paste administrator PKCS#8 private key"
-            android:gravity="top|start"
-            android:inputType="textMultiLine"
-            android:visibility="visible" />
         <Button
             android:id="@+id/btnSaveAdminKey"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SECURELY SAVE SIGNING KEY" />
+            android:text="IMPORT PROTECTED SIGNING KEY (.P12 / .PFX)" />
         <TextView
             android:id="@+id/txtAdminKeyInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="The private key is encrypted with Android Keystore on this device. It is never compiled into the APK."
+            android:text="One-time setup: choose the protected PKCS#12/PFX key package. The password is requested only during import and is never stored. The extracted private key is encrypted with Android Keystore and is never compiled into the APK."
             android:alpha="0.7"
             android:paddingTop="6dp"
             android:paddingBottom="18dp" />
