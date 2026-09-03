@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       admin_phone:
-        description: 'Approved Super Admin phone: 9813337779 or 9104371000'
+        description: 'Approved Super Admin phone number'
         required: true
         type: string
       expiry:
@@ -16,92 +16,8 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate input
-        env:
-          ADMIN_PHONE: ${{ inputs.admin_phone }}
-          EXPIRY: ${{ inputs.expiry }}
+      - name: License generation temporarily disabled
         run: |
-          set -euo pipefail
-          PHONE="$(printf '%s' "$ADMIN_PHONE" | tr -cd '0-9')"
-          if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
-          case "$PHONE" in
-            9813337779|9104371000) ;;
-            *) echo "Only 9813337779 or 9104371000 can receive a Super Admin license."; exit 1 ;;
-          esac
-          date -d "$EXPIRY" '+%Y-%m-%d' >/dev/null
-          if [ "$(date -d "$EXPIRY" +%s)" -lt "$(date +%s)" ]; then echo "Expiry must not be in the past."; exit 1; fi
-
-      - name: Load protected PKCS12 signing key
-        env:
-          ADMIN_LICENSE_P12_BASE64: ${{ secrets.ADMIN_LICENSE_P12_BASE64 }}
-          ADMIN_LICENSE_P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
-        run: |
-          set -euo pipefail
-          umask 077
-
-          test -n "${ADMIN_LICENSE_P12_BASE64:-}" || { echo "ADMIN_LICENSE_P12_BASE64 secret is not configured."; exit 1; }
-          test -n "${ADMIN_LICENSE_P12_PASSWORD:-}" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
-
-          if ! printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12 2>base64-error.txt; then
-            echo "ERROR: ADMIN_LICENSE_P12_BASE64 is not valid Base64."; cat base64-error.txt; exit 1
-          fi
-          chmod 600 admin-license-private.p12
-
-          if ! keytool -list \
-            -keystore admin-license-private.p12 \
-            -storetype PKCS12 \
-            -storepass "$ADMIN_LICENSE_P12_PASSWORD" \
-            > keytool-list.txt 2>&1; then
-            echo "ERROR: Could not open the protected PKCS12 keystore. Check that ADMIN_LICENSE_P12_BASE64 and ADMIN_LICENSE_P12_PASSWORD belong to the same P12."; cat keytool-list.txt; exit 1
-          fi
-
-          ALIAS=$(awk -F': ' '/^Alias name: / {print $2; exit}' keytool-list.txt)
-          test -n "$ALIAS" || { echo "ERROR: No alias found in PKCS12 keystore."; cat keytool-list.txt; exit 1; }
-          echo "Using protected PKCS12 alias: $ALIAS"
-
-          echo "ALIAS=$ALIAS" >> "$GITHUB_ENV"
-
-      - name: Sign Super Admin license
-        env:
-          ADMIN_PHONE: ${{ inputs.admin_phone }}
-          EXPIRY: ${{ inputs.expiry }}
-          P12_PASSWORD: ${{ secrets.ADMIN_LICENSE_P12_PASSWORD }}
-        run: |
-          set -euo pipefail
-          PHONE="$(printf '%s' "$ADMIN_PHONE" | tr -cd '0-9')"
-          if [ "${#PHONE}" -eq 12 ] && [[ "$PHONE" == 91* ]]; then PHONE="${PHONE:2}"; fi
-          PHONE="91$PHONE"
-          PAYLOAD="phone=$PHONE\nexpiry=$EXPIRY\nrole=SUPER_ADMIN"
-          printf '%b' "$PAYLOAD" > payload.txt
-
-          test -n "$P12_PASSWORD" || { echo "ADMIN_LICENSE_P12_PASSWORD secret is not configured."; exit 1; }
-          openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes -passin pass:"$P12_PASSWORD" -out private-key.pem
-          chmod 600 private-key.pem
-          SIGNATURE_B64="$(openssl dgst -sha256 -sign private-key.pem payload.txt | base64 -w 0)"
-          PAYLOAD_B64="$(base64 -w 0 payload.txt)"
-          A="$(openssl rand -hex 1 | tr 'a-f' 'A-F' | cut -c1)"
-          B="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
-          C="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
-          D="$(openssl rand -hex 2 | tr 'a-f' 'A-F')"
-          RANDOM_ID="ANI${A}-${B}-${C}-${D}"
-          {
-            echo "MyAdv INITIAL SUPER ADMIN LICENSE"
-            echo "License ID: $RANDOM_ID"
-            echo "Phone: +91 ${PHONE:2}"
-            echo "Expiry: $EXPIRY"
-            echo "Role: SUPER_ADMIN"
-            echo
-            echo "Signed Token:"
-            echo "$PAYLOAD_B64.$SIGNATURE_B64"
-          } > MYADV_SUPER_ADMIN_LICENSE.txt
-
-      - name: Remove private key material
-        if: always()
-        run: rm -f admin-license-private.p12 private-key.pem payload.txt keytool-list.txt base64-error.txt
-
-      - name: Upload Super Admin license artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: myadv-super-admin-license-${{ inputs.admin_phone }}
-          path: MYADV_SUPER_ADMIN_LICENSE.txt
-          retention-days: 7
+          echo "Super Admin license generation is temporarily disabled while the signing-key architecture is being redesigned."
+          echo "No PKCS12/P12/PFX key material is used by this workflow."
+          exit 1
