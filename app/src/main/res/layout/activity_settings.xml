@@ -147,6 +147,14 @@
             android:textStyle="bold" />
 
         <Button
+            android:id="@+id/btnViewLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="VIEW LOGS"
+            android:textStyle="bold"
+            android:layout_marginTop="10dp" />
+
+        <Button
             android:id="@+id/btnClearLogs"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
