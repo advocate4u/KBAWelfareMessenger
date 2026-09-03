@@ -60,8 +60,16 @@ class AuthenticationActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 8, 32, 0)
         }
-        val userId = android.widget.EditText(this).apply { hint = "User ID"; singleLine = true }
-        val password = android.widget.EditText(this).apply { hint = "Password (minimum 6 characters)"; singleLine = true; inputType = 0x81 }
+        val userId = android.widget.EditText(this).apply {
+            hint = "User ID"
+            setSingleLine(true)
+        }
+        
+        val password = android.widget.EditText(this).apply {
+            hint = "Password (minimum 6 characters)"
+            setSingleLine(true)
+            inputType = 0x81
+        }
         layout.addView(userId)
         layout.addView(password)
         AlertDialog.Builder(this)
