@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="KBA Welfare Messenger License" android:textSize="24sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Activate an administrator-issued license on this device." android:alpha="0.7" android:paddingTop="6dp" android:paddingBottom="16dp" />
+        <TextView android:id="@+id/txtLicenseDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Status: NOT ACTIVATED" android:textStyle="bold" android:padding="14dp" android:background="#EEEEEE" />
+        <EditText android:id="@+id/edtLicenseId" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="License ID (e.g. ANI7-X4P9-M2Q8-T6R3)" android:inputType="textCapCharacters" android:singleLine="true" android:layout_marginTop="16dp" />
+        <EditText android:id="@+id/edtSignedToken" android:layout_width="match_parent" android:layout_height="120dp" android:hint="Signed license token" android:gravity="top|start" android:inputType="textMultiLine" />
+        <Button android:id="@+id/btnActivateLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ACTIVATE LICENSE" android:textStyle="bold" />
+        <Button android:id="@+id/btnClearLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CLEAR INSTALLED LICENSE" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="The Android app stores only the signed license token. The license private key must remain outside the app." android:alpha="0.7" android:paddingTop="16dp" />
+    </LinearLayout>
+</ScrollView>
