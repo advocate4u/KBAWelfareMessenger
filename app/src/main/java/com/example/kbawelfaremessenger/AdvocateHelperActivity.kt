@@ -208,20 +208,22 @@ class AdvocateHelperActivity : AppCompatActivity() {
         pendingFees.text = currencyFormat.format(db.getPendingFeeTotal())
     }
 
-    private fun parseDate(value: String): Long? = try {
-        val parts = value.split("-")
-        if (parts.size != 3) return null
-        Calendar.getInstance().apply {
-            set(Calendar.YEAR, parts[2].toInt())
-            set(Calendar.MONTH, parts[1].toInt() - 1)
-            set(Calendar.DAY_OF_MONTH, parts[0].toInt())
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    } catch (_: Exception) {
-        null
+    private fun parseDate(value: String): Long? {
+        return try {
+            val parts = value.split("-")
+            if (parts.size != 3) return null
+            Calendar.getInstance().apply {
+                set(Calendar.YEAR, parts[2].toInt())
+                set(Calendar.MONTH, parts[1].toInt() - 1)
+                set(Calendar.DAY_OF_MONTH, parts[0].toInt())
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun startOfDay(calendar: Calendar): Calendar = calendar.apply {
