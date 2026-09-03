@@ -3,13 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="20dp">
-
         <TextView
             android:id="@+id/txtLicenseTitle"
             android:layout_width="match_parent"
@@ -17,7 +15,6 @@
             android:text="MyAdv License Center"
             android:textSize="24sp"
             android:textStyle="bold" />
-
         <TextView
             android:id="@+id/txtLicenseDescription"
             android:layout_width="match_parent"
@@ -26,30 +23,26 @@
             android:alpha="0.7"
             android:paddingTop="6dp"
             android:paddingBottom="16dp" />
-
         <TextView
             android:id="@+id/txtAdminKeyStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Admin signing key: NOT CONFIGURED"
+            android:text="Signing key: NOT CONFIGURED"
             android:textStyle="bold"
             android:padding="12dp" />
-
         <EditText
             android:id="@+id/edtAdminPrivateKey"
             android:layout_width="match_parent"
             android:layout_height="120dp"
-            android:hint="One-time setup: paste admin PKCS#8 private key"
+            android:hint="One-time setup: paste administrator PKCS#8 private key"
             android:gravity="top|start"
             android:inputType="textMultiLine"
             android:visibility="visible" />
-
         <Button
             android:id="@+id/btnSaveAdminKey"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="SECURELY SAVE ADMIN KEY" />
-
+            android:text="SECURELY SAVE SIGNING KEY" />
         <TextView
             android:id="@+id/txtAdminKeyInfo"
             android:layout_width="match_parent"
@@ -58,24 +51,26 @@
             android:alpha="0.7"
             android:paddingTop="6dp"
             android:paddingBottom="18dp" />
-
         <TextView
             android:id="@+id/txtGenerateSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="GENERATE ADVOCATE LICENSE"
+            android:text="GENERATE LICENSE"
             android:textSize="18sp"
             android:textStyle="bold" />
-
         <EditText
             android:id="@+id/edtGeneratePhone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Advocate phone number"
+            android:hint="Phone number"
             android:inputType="phone"
             android:singleLine="true"
             android:layout_marginTop="10dp" />
-
+        <Spinner
+            android:id="@+id/spnGenerateRole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
         <EditText
             android:id="@+id/edtGenerateExpiry"
             android:layout_width="match_parent"
@@ -83,14 +78,12 @@
             android:hint="Expiry date (YYYY-MM-DD)"
             android:inputType="date"
             android:singleLine="true" />
-
         <Button
             android:id="@+id/btnGenerateLicense"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="GENERATE LICENSE"
             android:textStyle="bold" />
-
         <TextView
             android:id="@+id/txtGeneratedLicense"
             android:layout_width="match_parent"
@@ -100,13 +93,11 @@
             android:padding="14dp"
             android:background="#EEEEEE"
             android:layout_marginTop="10dp" />
-
         <Button
             android:id="@+id/btnShareGenerated"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="SHARE LICENSE" />
-
         <TextView
             android:id="@+id/txtInstallSection"
             android:layout_width="match_parent"
@@ -115,7 +106,6 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:paddingTop="22dp" />
-
         <TextView
             android:id="@+id/txtLicenseDetails"
             android:layout_width="match_parent"
@@ -125,7 +115,6 @@
             android:padding="14dp"
             android:background="#EEEEEE"
             android:layout_marginTop="8dp" />
-
         <EditText
             android:id="@+id/edtLicenseId"
             android:layout_width="match_parent"
@@ -134,7 +123,6 @@
             android:inputType="textCapCharacters"
             android:singleLine="true"
             android:layout_marginTop="12dp" />
-
         <EditText
             android:id="@+id/edtSignedToken"
             android:layout_width="match_parent"
@@ -142,19 +130,16 @@
             android:hint="Signed license token"
             android:gravity="top|start"
             android:inputType="textMultiLine" />
-
         <Button
             android:id="@+id/btnActivateLicense"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="ACTIVATE LICENSE"
             android:textStyle="bold" />
-
         <Button
             android:id="@+id/btnClearLicense"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="CLEAR INSTALLED LICENSE" />
-
     </LinearLayout>
 </ScrollView>
