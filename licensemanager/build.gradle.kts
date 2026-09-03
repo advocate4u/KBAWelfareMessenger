@@ -15,10 +15,6 @@ android {
         versionName = "1.0"
     }
 
-    buildFeatures {
-        buildConfig = true
-    }
-
     signingConfigs {
         create("release") {
             val keystoreFile = System.getenv("MYADV_KEYSTORE_FILE")
@@ -36,13 +32,10 @@ android {
         }
     }
 
-    val signingPrivateKey = System.getenv("MYADV_LICENSE_PRIVATE_KEY_B64") ?: ""
-
     buildTypes {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
-            buildConfigField("String", "MYADV_SIGNING_PRIVATE_KEY_B64", "\"$signingPrivateKey\"")
         }
     }
 
