@@ -97,7 +97,9 @@ class LicenseActivity : AppCompatActivity() {
             refreshKeyStatus()
 
             saveKey.setOnClickListener {
-                signingKeyPicker.launch(arrayOf("application/x-pkcs12", "application/pkcs12", "application/octet-stream"))
+                signingKeyPicker.launch(
+                    arrayOf("application/x-pkcs12", "application/pkcs12", "application/octet-stream")
+                )
             }
 
             generateButton.setOnClickListener {
@@ -143,7 +145,7 @@ class LicenseActivity : AppCompatActivity() {
 
             clearButton.setOnClickListener {
                 LicenseManager.clearLicense(this)
-                refresh()
+                refreshLicenseStatus(status)
             }
         }
 
@@ -160,26 +162,27 @@ class LicenseActivity : AppCompatActivity() {
                 installId.text.clear()
                 installToken.text.clear()
             }
-            refresh()
+            refreshLicenseStatus(status)
         }
 
-        fun refresh() {
-            val license = LicenseManager.getInstalledLicense(this)
-            status.text = if (license == null) {
-                "Status: NOT ACTIVATED"
-            } else {
-                val valid = LicenseManager.isLicenseValid(this)
-                "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\nLicense ID: ${license.licenseId}\nRole: ${license.role.name}\nLicensed phone: ${license.phone}\nExpiry: ${license.expiryDate.format(dateFormatter)}"
-            }
+        refreshLicenseStatus(status)
+    }
+
+    private fun refreshLicenseStatus(status: TextView) {
+        val license = LicenseManager.getInstalledLicense(this)
+        status.text = if (license == null) {
+            "Status: NOT ACTIVATED"
+        } else {
+            val valid = LicenseManager.isLicenseValid(this)
+            "Status: ${if (valid) "ACTIVE" else "EXPIRED"}\nLicense ID: ${license.licenseId}\nRole: ${license.role.name}\nLicensed phone: ${license.phone}\nExpiry: ${license.expiryDate.format(dateFormatter)}"
         }
-        refresh()
     }
 
     private fun promptForKeyPassword(uri: android.net.Uri) {
         val passwordInput = EditText(this).apply {
             hint = "PKCS#12 password"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            singleLine = true
+            isSingleLine = true
         }
 
         val container = android.widget.FrameLayout(this).apply {
