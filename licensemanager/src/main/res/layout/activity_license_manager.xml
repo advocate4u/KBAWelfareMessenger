@@ -24,9 +24,7 @@
         <CheckBox android:id="@+id/optLogging" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Logging" android:checked="true"/>
         <CheckBox android:id="@+id/optDuplicates" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Remove duplicates" android:checked="true"/>
         <CheckBox android:id="@+id/optInvalidNumbers" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Skip invalid numbers" android:checked="true"/>
-
-        <Button android:id="@+id/importKeyButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="IMPORT SIGNING AUTHORITY" android:layout_marginTop="18dp"/>
-        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Signing authority: NOT INSTALLED" android:paddingTop="8dp"/>
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Signing authority: READY (built in)" android:paddingTop="8dp"/>
         <Button android:id="@+id/generateButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="GENERATE LICENSE" android:layout_marginTop="14dp"/>
         <EditText android:id="@+id/signedToken" android:layout_width="match_parent" android:layout_height="160dp" android:gravity="top|start" android:hint="Signed license token" android:inputType="textMultiLine" android:scrollbars="vertical" android:layout_marginTop="12dp"/>
         <Button android:id="@+id/shareButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SHARE LICENSE" android:layout_marginTop="10dp" android:layout_marginBottom="24dp"/>
