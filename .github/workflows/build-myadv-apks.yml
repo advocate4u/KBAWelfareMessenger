@@ -57,11 +57,12 @@ jobs:
           umask 077
           printf '%s' "$ADMIN_LICENSE_P12_BASE64" | base64 --decode > admin-license-private.p12
           test -s admin-license-private.p12
-          MYADV_LICENSE_PRIVATE_KEY_B64="$(openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes -passin pass:"$ADMIN_LICENSE_P12_PASSWORD" | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w 0)
+          openssl pkcs12 -in admin-license-private.p12 -nocerts -nodes -passin env:ADMIN_LICENSE_P12_PASSWORD -out admin-license-private.pem
+          MYADV_LICENSE_PRIVATE_KEY_B64="$(openssl pkcs8 -topk8 -nocrypt -in admin-license-private.pem -outform DER | base64 -w 0)"
           test -n "$MYADV_LICENSE_PRIVATE_KEY_B64"
           export MYADV_LICENSE_PRIVATE_KEY_B64
           ./gradlew :app:assembleRelease :licensemanager:assembleRelease
-          rm -f admin-license-private.p12
+          rm -f admin-license-private.p12 admin-license-private.pem
       - name: Verify APK outputs
         run: |
           set -e
