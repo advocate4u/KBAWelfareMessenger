@@ -25,16 +25,24 @@ object SecurityManager {
     private const val KEY_LENGTH = 256
     private const val SALT_LENGTH = 32
 
+    // Offline administrator phone allowlist.
+    // These numbers are treated as ADMIN accounts when used as the user ID.
+    private val ADMIN_PHONE_NUMBERS = setOf("9813337779", "9104371000")
+
     private fun preferences(context: Context) = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     fun hasUser(context: Context): Boolean = preferences(context).getBoolean(KEY_SETUP_COMPLETE, false)
 
-    /** First installation creates exactly one ADMIN account. */
+    private fun normalizePhoneNumber(value: String): String = value.filter { it.isDigit() }.takeLast(10)
+    fun isAdminPhoneNumber(phoneNumber: String): Boolean = normalizePhoneNumber(phoneNumber) in ADMIN_PHONE_NUMBERS
+
+    /** First installation creates an account. The two approved admin phone numbers become ADMIN. */
     fun createUser(context: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
         if (id.isBlank() || password.length < 6 || hasUser(context)) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
-        val record = JSONObject().put("userId", id).put("role", UserRole.ADMIN.name).put("hash", encode(hash)).put("salt", encode(salt))
+        val role = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.ADMIN
+        val record = JSONObject().put("userId", id).put("role", role.name).put("hash", encode(hash)).put("salt", encode(salt))
         preferences(context).edit()
             .putString(KEY_USERS, JSONArray().put(record).toString())
             .putString(KEY_USER_ID, id)
@@ -63,8 +71,10 @@ object SecurityManager {
         if (id.isBlank() || password.length < 6 || findUser(context, id) != null) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
+        val effectiveRole = if (isAdminPhoneNumber(id)) UserRole.ADMIN else UserRole.USER
+        val record = JSONObject().put("userId", id).put("role", effectiveRole.name).put("hash", encode(hash)).put("salt", encode(salt))
         val users = readUsers(context)
-        users.put(JSONObject().put("userId", id).put("role", role.name).put("hash", encode(hash)).put("salt", encode(salt)))
+        users.put(record)
         saveUsers(context, users)
         return true
     }
