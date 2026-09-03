@@ -9,15 +9,10 @@ import java.security.cert.CertificateFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Offline RSA license verification. The private signing key is never stored here. */
 object LicenseManager {
-    private const val PREF_NAME = "kba_license"
-    private const val KEY_LICENSE_ID = "license_id"
-    private const val KEY_LICENSE_TOKEN = "license_token"
-    private const val LICENSE_PREFIX = "ANI"
-    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-    private val PUBLIC_KEY_PEM = """
+    private const val PREF_NAME="kba_license"; private const val KEY_LICENSE_ID="license_id"; private const val KEY_LICENSE_TOKEN="license_token"; private const val PREFIX="ANI"
+    private val fmt=DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val PUBLIC_KEY_PEM="""
 -----BEGIN CERTIFICATE-----
 MIIFSTCCAzGgAwIBAgIIGt1ndg0Nz0AwDQYJKoZIhvcNAQEMBQAwUjELMAkGA1UE
 BhMCSU4xEzARBgNVBAoTCkFkdm9jYXRlNFUxLjAsBgNVBAMTJUtCQVdlbGZhcmVN
@@ -50,123 +45,32 @@ S9aingWN6kAbWpCjYb3WT2hVmUMhr/Njs8P4Q6DPcBnVwgAbwQfgIC3FXipQbcQB
 yn90df4QmpIDXBKWYA==
 -----END CERTIFICATE-----
 """.trimIndent()
+    data class LicenseOptions(val validatePhone:Boolean=true,val sms:Boolean=true,val bulkSms:Boolean=true,val smsLogs:Boolean=true,val advocateDiary:Boolean=true,val advocateHelper:Boolean=true,val editMessageOnScreen:Boolean=true,val skipAlreadySent:Boolean=true,val confirmBeforeBulkSend:Boolean=true,val loggingEnabled:Boolean=true,val removeDuplicates:Boolean=true,val skipInvalidNumbers:Boolean=true)
+    data class License(val licenseId:String,val phone:String,val expiryDate:LocalDate,val issueDate:LocalDate,val role:UserRole,val options:LicenseOptions)
+    data class LicenseCheckResult(val allowed:Boolean,val message:String)
 
-    data class License(val licenseId: String, val phone: String, val expiryDate: LocalDate, val role: UserRole)
-    data class LicenseCheckResult(val allowed: Boolean, val message: String)
+    fun installLicense(c:Context,idInput:String,token:String):LicenseCheckResult=try{
+        val id=idInput.trim().uppercase().replace(" ","")
+        if(!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) return LicenseCheckResult(false,"Invalid license ID format.")
+        val l=verify(id,token)?:return LicenseCheckResult(false,"License verification failed.")
+        val today=LocalDate.now(); if(today.isBefore(l.issueDate)) return LicenseCheckResult(false,"This license is not active yet."); if(today.isAfter(l.expiryDate)) return LicenseCheckResult(false,"This license has expired.")
+        val uid=SecurityManager.currentUserId(c); val r=SecurityManager.currentRole(c)
+        if(uid!=null&&r!=null){if(norm(uid)!=l.phone)return LicenseCheckResult(false,"License phone does not match the current User ID.");if(r!=l.role)return LicenseCheckResult(false,"License role does not match the current account role.")}
+        c.getSharedPreferences(PREF_NAME,0).edit().putString(KEY_LICENSE_ID,l.licenseId).putString(KEY_LICENSE_TOKEN,token.trim()).apply(); AppLogger.success(c,"LICENSE","License activated: ${l.licenseId}"); LicenseCheckResult(true,"License activated successfully.")
+    }catch(e:Exception){AppLogger.error(c,"LICENSE","License installation failed: ${e.message}");LicenseCheckResult(false,"Unable to install license.")}
 
-    fun installLicense(context: Context, licenseId: String, signedToken: String): LicenseCheckResult {
-        return try {
-            val cleanId = normaliseLicenseId(licenseId)
-            if (!isValidLicenseIdFormat(cleanId)) return LicenseCheckResult(false, "Invalid license key format.")
-            val license = verifySignedToken(cleanId, signedToken) ?: return LicenseCheckResult(false, "License verification failed.")
-            if (LocalDate.now().isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
+    fun getInstalledLicense(c:Context):License?=try{val p=c.getSharedPreferences(PREF_NAME,0);val id=p.getString(KEY_LICENSE_ID,null)?:return null;val t=p.getString(KEY_LICENSE_TOKEN,null)?:return null;verify(id,t)}catch(_:Exception){null}
+    fun getValidLicense(c:Context):License?=getInstalledLicense(c)?.takeIf{val d=LocalDate.now();!d.isBefore(it.issueDate)&&!d.isAfter(it.expiryDate)}
+    fun getLicensedPhone(c:Context)=getValidLicense(c)?.phone
+    fun getLicenseId(c:Context)=getInstalledLicense(c)?.licenseId
+    fun getExpiryDate(c:Context)=getInstalledLicense(c)?.expiryDate
+    fun getLicenseRole(c:Context)=getValidLicense(c)?.role
+    fun isLicenseValid(c:Context)=getValidLicense(c)!=null
+    fun isFeatureEnabled(c:Context,f:String):Boolean{val o=getValidLicense(c)?.options?:return false;return when(f.lowercase()){"sms"->o.sms;"bulk_sms"->o.bulkSms;"sms_logs"->o.smsLogs;"diary","advocate_diary"->o.advocateDiary;"helper","advocate_helper"->o.advocateHelper;"edit_message"->o.editMessageOnScreen;"skip_already_sent"->o.skipAlreadySent;"confirm_bulk"->o.confirmBeforeBulkSend;"logging"->o.loggingEnabled;"remove_duplicates"->o.removeDuplicates;"skip_invalid_numbers"->o.skipInvalidNumbers;else->false}}
+    fun checkLicenseAndSmsPhone(c:Context,smsPhone:String?):LicenseCheckResult{val l=getValidLicense(c)?:return LicenseCheckResult(false,if(getInstalledLicense(c)!=null)"License has expired or is not active." else "No valid MyAdv license is installed.");if(!l.options.sms)return LicenseCheckResult(false,"SMS sending is not enabled in this license.");if(!l.options.validatePhone)return LicenseCheckResult(true,"License verified. SMS number validation is disabled by the license.");val actual=smsPhone?.let(::norm).orEmpty();if(actual.isBlank())return LicenseCheckResult(false,"Unable to verify the SMS SIM number. SMS sending is blocked.");if(actual!=l.phone)return LicenseCheckResult(false,"Licensed phone number does not match the SMS SIM. SMS sending is blocked.");return LicenseCheckResult(true,"License and SMS SIM verified.")}
+    fun clearLicense(c:Context){c.getSharedPreferences(PREF_NAME,0).edit().clear().apply();AppLogger.info(c,"LICENSE","Installed license cleared.")}
 
-            // Enforce the license hierarchy at the activation boundary, not only in the UI.
-            // First activation is allowed because there is no local account yet. Once an
-            // account exists, the replacement/renewal license must match that account's role
-            // and phone. This prevents an Admin from installing a USER or SUPER_ADMIN license,
-            // a USER from installing an ADMIN/SUPER_ADMIN license, or an account from moving to
-            // another phone by simply importing a different signed license.
-            val currentUserId = SecurityManager.currentUserId(context)
-            val currentRole = SecurityManager.currentRole(context)
-            if (currentUserId != null && currentRole != null) {
-                val currentPhone = normalisePhone(currentUserId)
-                if (currentPhone.isBlank() || currentPhone != license.phone) {
-                    return LicenseCheckResult(false, "License phone does not match the currently authenticated account.")
-                }
-                if (license.role != currentRole) {
-                    return LicenseCheckResult(false, "License role cannot be changed for an existing account. $currentRole account requires a ${currentRole.name} license.")
-                }
-            } else {
-                // Initial activation: only the designated phone numbers may become SUPER_ADMIN.
-                if (license.role == UserRole.SUPER_ADMIN && !SecurityManager.isSuperAdminPhoneNumber(license.phone)) {
-                    return LicenseCheckResult(false, "SUPER ADMIN licenses can only be activated by an approved Super Admin phone number.")
-                }
-            }
-
-            context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
-                .putString(KEY_LICENSE_ID, license.licenseId).putString(KEY_LICENSE_TOKEN, signedToken.trim()).apply()
-            AppLogger.success(context, "LICENSE", "License installed successfully. ID: ${license.licenseId}")
-            LicenseCheckResult(true, "License activated successfully for ${license.role.name}.")
-        } catch (e: Exception) {
-            AppLogger.error(context, "LICENSE", "License installation failed: ${e.message}")
-            LicenseCheckResult(false, "Unable to install license.")
-        }
-    }
-
-    fun getInstalledLicense(context: Context): License? = try {
-        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
-        val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
-        verifySignedToken(normaliseLicenseId(id), token)
-    } catch (_: Exception) { null }
-
-    fun getValidLicense(context: Context): License? = getInstalledLicense(context)?.takeIf { !LocalDate.now().isAfter(it.expiryDate) }
-    fun getLicensedPhone(context: Context): String? = getValidLicense(context)?.phone
-    fun getLicenseId(context: Context): String? = getInstalledLicense(context)?.licenseId
-    fun getExpiryDate(context: Context): LocalDate? = getInstalledLicense(context)?.expiryDate
-    fun getLicenseRole(context: Context): UserRole? = getValidLicense(context)?.role
-    fun isLicenseValid(context: Context): Boolean = getValidLicense(context) != null
-
-    fun checkLicenseAndSmsPhone(context: Context, smsPhone: String?): LicenseCheckResult {
-        val license = getValidLicense(context) ?: return if (getInstalledLicense(context) != null) LicenseCheckResult(false, "License has expired.") else LicenseCheckResult(false, "No valid KBA license is installed.")
-        val actual = smsPhone?.let { normalisePhone(it) }
-        if (actual.isNullOrBlank()) return LicenseCheckResult(false, "Unable to verify the phone number of the SMS SIM.\n\nSMS sending is blocked because the licensed phone number cannot be verified.")
-        if (actual != license.phone) return LicenseCheckResult(false, "Licensed phone number does not match the SMS SIM.\n\nLicensed number: ${displayPhone(license.phone)}\nSMS SIM number: ${displayPhone(actual)}\n\nSMS sending is blocked.")
-        return LicenseCheckResult(true, "License and SMS SIM verified.")
-    }
-
-    fun clearLicense(context: Context) {
-        context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-        AppLogger.info(context, "LICENSE", "Installed license cleared.")
-    }
-
-    private fun verifySignedToken(licenseId: String, signedToken: String): License? {
-        val parts = signedToken.trim().split(".", limit = 2)
-        if (parts.size != 2) return null
-        val payloadBytes = Base64.decode(parts[0], Base64.DEFAULT)
-        val signatureBytes = Base64.decode(parts[1], Base64.DEFAULT)
-        val signature = Signature.getInstance("SHA256withRSA")
-        signature.initVerify(loadPublicKey()); signature.update(payloadBytes)
-        if (!signature.verify(signatureBytes)) return null
-        val payload = String(payloadBytes, StandardCharsets.UTF_8)
-        val parsed = parsePayload(payload) ?: return null
-        val canonical = if (parsed.second) {
-            "phone=${parsed.first.first}\nexpiry=${parsed.first.second.format(dateFormatter)}"
-        } else {
-            "phone=${parsed.first.first}\nexpiry=${parsed.first.second.format(dateFormatter)}\nrole=${parsed.first.third.name}"
-        }
-        if (payload != canonical) return null
-        return License(licenseId, parsed.first.first, parsed.first.second, parsed.first.third)
-    }
-
-    /** Returns license data plus whether the token uses the legacy USER-only format. */
-    private fun parsePayload(payload: String): Pair<Triple<String, LocalDate, UserRole>, Boolean>? {
-        val lines = payload.split("\n")
-        if (lines.size != 2 && lines.size != 3) return null
-        if (!lines[0].startsWith("phone=") || !lines[1].startsWith("expiry=")) return null
-        val phone = normalisePhone(lines[0].removePrefix("phone="))
-        if (phone.isBlank()) return null
-        val expiry = runCatching { LocalDate.parse(lines[1].removePrefix("expiry="), dateFormatter) }.getOrNull() ?: return null
-        if (lines.size == 2) return Triple(phone, expiry, UserRole.USER) to true
-        if (!lines[2].startsWith("role=")) return null
-        val role = runCatching { UserRole.valueOf(lines[2].removePrefix("role=")) }.getOrNull() ?: return null
-        return Triple(phone, expiry, role) to false
-    }
-
-    private fun loadPublicKey() = run {
-        val cleaned = PUBLIC_KEY_PEM.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "").replace(Regex("\\s"), "")
-        val certificateBytes = Base64.decode(cleaned, Base64.DEFAULT)
-        CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(certificateBytes)).publicKey
-    }
-
-    private fun normaliseLicenseId(value: String): String = value.trim().uppercase().replace(" ", "")
-    private fun isValidLicenseIdFormat(value: String): Boolean = Regex("^$LICENSE_PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(value)
-    private fun normalisePhone(value: String): String {
-        var n = value.trim().replace(Regex("[^0-9+]"), "")
-        if (n.startsWith("+")) n = n.substring(1)
-        if (n.startsWith("00")) n = n.substring(2)
-        return when { n.length == 10 && n.all { it.isDigit() } -> "91$n"; n.length == 12 && n.startsWith("91") && n.all { it.isDigit() } -> n; else -> "" }
-    }
-    private fun displayPhone(phone: String): String = if (phone.length == 12 && phone.startsWith("91")) "+91 ${phone.substring(2)}" else phone
+    private fun verify(id:String,token:String):License?{val p=token.trim().split(".",limit=2);if(p.size!=2)return null;val b=Base64.decode(p[0],Base64.DEFAULT);val s=Signature.getInstance("SHA256withRSA");s.initVerify(publicKey());s.update(b);if(!s.verify(Base64.decode(p[1],Base64.DEFAULT)))return null;val fields=String(b,StandardCharsets.UTF_8).lineSequence().mapNotNull{val i=it.indexOf('=');if(i<=0)null else it.substring(0,i) to it.substring(i+1)}.toMap();if(fields["license"]!=id)return null;val phone=norm(fields["phone"].orEmpty());val expiry=LocalDate.parse(fields["expiry"].orEmpty(),fmt);val issue=LocalDate.parse(fields["issue"]?:fields["expiry"].orEmpty(),fmt);val role=runCatching{UserRole.valueOf(fields["role"].orEmpty())}.getOrNull()?:return null;if(phone.isBlank())return null;fun b(k:String,d:Boolean)=fields[k]?.toBooleanStrictOrNull()?:d;return License(id,phone,expiry,issue,role,LicenseOptions(b("validatePhone",true),b("sms",true),b("bulkSms",true),b("smsLogs",true),b("advocateDiary",true),b("advocateHelper",true),b("editMessageOnScreen",true),b("skipAlreadySent",true),b("confirmBeforeBulkSend",true),b("loggingEnabled",true),b("removeDuplicates",true),b("skipInvalidNumbers",true)))}
+    private fun publicKey()=run{val x=PUBLIC_KEY_PEM.replace("-----BEGIN CERTIFICATE-----","").replace("-----END CERTIFICATE-----","").replace(Regex("\\s"),"");CertificateFactory.getInstance("X.509").generateCertificate(ByteArrayInputStream(Base64.decode(x,Base64.DEFAULT))).publicKey}
+    private fun norm(v:String):String{var n=v.trim().replace(Regex("[^0-9+]"),"");if(n.startsWith("+"))n=n.substring(1);if(n.startsWith("00"))n=n.substring(2);return when{n.length==10&&n.all(Char::isDigit)->"91$n";n.length==12&&n.startsWith("91")&&n.all(Char::isDigit)->n;else->""}}
 }
