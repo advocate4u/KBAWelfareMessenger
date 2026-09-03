@@ -50,7 +50,7 @@ class LoginActivity : AppCompatActivity() {
     private fun activateFirstLogin() {
         val license = LicenseManager.getValidLicense(this)
         if (license == null) {
-            UiFeedback.error(this, "Install your MyAdv license first. The license determines whether this account is ADMIN or USER.", true)
+            UiFeedback.error(this, "Install your MyAdv license first. The license determines whether this account is SUPER ADMIN, ADMIN, or USER.", true)
             startActivity(Intent(this, LicenseActivity::class.java))
             return
         }
@@ -69,7 +69,12 @@ class LoginActivity : AppCompatActivity() {
 
         val created = SecurityManager.createUser(this, userId, password)
         if (created) {
-            UiFeedback.success(this, if (license.role == UserRole.ADMIN) "Admin account activated successfully." else "User account activated successfully.")
+            val message = when (license.role) {
+                UserRole.SUPER_ADMIN -> "Super Admin account activated successfully."
+                UserRole.ADMIN -> "Admin account activated successfully."
+                UserRole.USER -> "User account activated successfully."
+            }
+            UiFeedback.success(this, message)
             openMainActivity()
         } else {
             UiFeedback.error(this, "Unable to activate account. Make sure the license matches this phone and is valid.", true)
