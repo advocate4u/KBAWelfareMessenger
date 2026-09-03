@@ -47,7 +47,6 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
             "case_number LIKE ? OR client_name LIKE ? OR client_phone LIKE ? OR court_name LIKE ? OR next_date LIKE ?"
         val pattern = "%$q%"
         val args = if (q.isEmpty()) null else arrayOf(pattern, pattern, pattern, pattern, pattern)
-
         db.query("advocate_cases", null, selection, args, null, null, "updated_at DESC, id DESC").use { c ->
             while (c.moveToNext()) result += readCase(c)
         }
@@ -104,6 +103,41 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         "advocate_cases", "id = ?", arrayOf(id.toString())
     )
 
+    /**
+     * Merge a backup into the current database.
+     * Existing case numbers are updated; new case numbers are inserted.
+     * Returns Pair(inserted, updated).
+     */
+    fun mergeCases(items: List<AdvocateCase>): Pair<Int, Int> {
+        val db = writableDatabase
+        var inserted = 0
+        var updated = 0
+        db.beginTransaction()
+        try {
+            items.forEach { item ->
+                val existingId = findIdByCaseNumber(db, item.caseNumber)
+                if (existingId == null) {
+                    db.insertOrThrow("advocate_cases", null, values(item, false))
+                    inserted++
+                } else {
+                    val current = item.copy(id = existingId, updatedAt = System.currentTimeMillis())
+                    db.update("advocate_cases", values(current, false), "id = ?", arrayOf(existingId.toString()))
+                    updated++
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return inserted to updated
+    }
+
+    private fun findIdByCaseNumber(db: SQLiteDatabase, caseNumber: String): Long? =
+        db.query(
+            "advocate_cases", arrayOf("id"), "case_number = ?", arrayOf(caseNumber),
+            null, null, null, "1"
+        ).use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+
     private fun readCase(c: android.database.Cursor) = AdvocateCase(
         id = c.getLong(c.getColumnIndexOrThrow("id")),
         caseNumber = c.getString(c.getColumnIndexOrThrow("case_number")),
@@ -140,9 +174,7 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
 
     private fun parseDate(value: String): Long? = try {
         dateFormat.parse(value)?.let { startOfDay(it.time) }
-    } catch (_: Exception) {
-        null
-    }
+    } catch (_: Exception) { null }
 
     private fun startOfDay(calendar: Calendar): Long = startOfDay(calendar.timeInMillis)
 
@@ -155,8 +187,6 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
     }.timeInMillis
 
     companion object {
-        private val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
-            isLenient = false
-        }
+        private val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply { isLenient = false }
     }
 }
