@@ -13,10 +13,7 @@ object LicenseManager {
     private const val KEY_LICENSE_ID = "license_id"
     private const val KEY_LICENSE_TOKEN = "license_token"
     private const val PREFIX = "ANI"
-
-    // Must match the offline signing secret embedded in MyAdvAM.
     private const val SIGNING_SECRET_B64 = "Kuku3ICdCr/CTRnuJwEduKjujYF8oE0szV0n24o7j/M="
-
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     data class LicenseOptions(
@@ -56,23 +53,9 @@ object LicenseManager {
             if (today.isBefore(license.issueDate)) return LicenseCheckResult(false, "This license is not active yet.")
             if (today.isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
 
-            // A license is installed independently of the currently logged-in account.
-            // First-time account activation enforces that the User ID matches the licensed phone.
-            // For an existing account, SMS sending separately verifies the licensed SIM number.
-            // A valid signed license is the authority for the local account role.
-            // During first activation there is no account yet. For an existing account,
-            // only allow a role change when the account User ID matches the licensed phone.
-            val currentUserId = SecurityManager.currentUserId(c)
-            if (!currentUserId.isNullOrBlank()) {
-                val accountPhone = norm(currentUserId)
-                if (accountPhone != license.phone) {
-                    return LicenseCheckResult(false, "License phone does not match the current User ID.")
-                }
-                if (!SecurityManager.updateCurrentUserRole(c, license.role)) {
-                    return LicenseCheckResult(false, "Unable to update the current account role from the license.")
-                }
-            }
-
+            // License installation is deliberately independent of login/account state.
+            // The phone-to-User-ID binding is enforced during first account activation
+            // and again when an existing account authenticates with an installed license.
             c.getSharedPreferences(PREF_NAME, 0).edit()
                 .putString(KEY_LICENSE_ID, license.licenseId)
                 .putString(KEY_LICENSE_TOKEN, token.trim())
@@ -128,10 +111,7 @@ object LicenseManager {
 
     fun checkLicenseAndSmsPhone(c: Context, smsPhone: String?): LicenseCheckResult {
         val license = getValidLicense(c)
-            ?: return LicenseCheckResult(
-                false,
-                if (getInstalledLicense(c) != null) "License has expired or is not active." else "No valid MyAdv license is installed."
-            )
+            ?: return LicenseCheckResult(false, if (getInstalledLicense(c) != null) "License has expired or is not active." else "No valid MyAdv license is installed.")
         if (!license.options.sms) return LicenseCheckResult(false, "SMS sending is not enabled in this license.")
         if (!license.options.validatePhone) return LicenseCheckResult(true, "License verified. SMS number validation is disabled by the license.")
         val actual = smsPhone?.let(::norm).orEmpty()
@@ -148,57 +128,32 @@ object LicenseManager {
     private fun verify(id: String, token: String): License? {
         val parts = token.trim().split(".", limit = 2)
         if (parts.size != 2) return null
-
-        val payload = try {
-            Base64.decode(parts[0], Base64.DEFAULT)
-        } catch (_: Exception) {
-            return null
-        }
-
+        val payload = try { Base64.decode(parts[0], Base64.DEFAULT) } catch (_: Exception) { return null }
         val expected = try {
             val mac = Mac.getInstance("HmacSHA256")
             mac.init(SecretKeySpec(Base64.decode(SIGNING_SECRET_B64, Base64.DEFAULT), "HmacSHA256"))
             mac.doFinal(payload)
-        } catch (_: Exception) {
-            return null
-        }
-
-        val supplied = try {
-            Base64.decode(parts[1], Base64.DEFAULT)
-        } catch (_: Exception) {
-            return null
-        }
+        } catch (_: Exception) { return null }
+        val supplied = try { Base64.decode(parts[1], Base64.DEFAULT) } catch (_: Exception) { return null }
         if (!java.security.MessageDigest.isEqual(expected, supplied)) return null
-
-        val fields = String(payload, StandardCharsets.UTF_8).lineSequence()
-            .mapNotNull { line ->
-                val index = line.indexOf('=')
-                if (index <= 0) null else line.substring(0, index) to line.substring(index + 1)
-            }.toMap()
-
+        val fields = String(payload, StandardCharsets.UTF_8).lineSequence().mapNotNull { line ->
+            val index = line.indexOf('=')
+            if (index <= 0) null else line.substring(0, index) to line.substring(index + 1)
+        }.toMap()
         if (fields["license"] != id) return null
         if (fields["version"] != "4") return null
-
         val phone = norm(fields["phone"].orEmpty())
         val expiry = runCatching { LocalDate.parse(fields["expiry"].orEmpty(), fmt) }.getOrNull() ?: return null
         val issue = runCatching { LocalDate.parse(fields["issue"].orEmpty(), fmt) }.getOrNull() ?: return null
         val role = runCatching { UserRole.valueOf(fields["role"].orEmpty()) }.getOrNull() ?: return null
         if (phone.isBlank()) return null
-
         fun boolField(key: String, default: Boolean): Boolean = fields[key]?.toBooleanStrictOrNull() ?: default
         val options = LicenseOptions(
-            validatePhone = boolField("validatePhone", true),
-            sms = boolField("sms", true),
-            bulkSms = boolField("bulkSms", true),
-            smsLogs = boolField("smsLogs", true),
-            advocateDiary = boolField("advocateDiary", true),
-            advocateHelper = boolField("advocateHelper", true),
-            editMessageOnScreen = boolField("editMessageOnScreen", true),
-            skipAlreadySent = boolField("skipAlreadySent", true),
-            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true),
-            loggingEnabled = boolField("loggingEnabled", true),
-            removeDuplicates = boolField("removeDuplicates", true),
-            skipInvalidNumbers = boolField("skipInvalidNumbers", true)
+            validatePhone = boolField("validatePhone", true), sms = boolField("sms", true), bulkSms = boolField("bulkSms", true),
+            smsLogs = boolField("smsLogs", true), advocateDiary = boolField("advocateDiary", true), advocateHelper = boolField("advocateHelper", true),
+            editMessageOnScreen = boolField("editMessageOnScreen", true), skipAlreadySent = boolField("skipAlreadySent", true),
+            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true), loggingEnabled = boolField("loggingEnabled", true),
+            removeDuplicates = boolField("removeDuplicates", true), skipInvalidNumbers = boolField("skipInvalidNumbers", true)
         )
         return License(id, phone, expiry, issue, role, options)
     }
