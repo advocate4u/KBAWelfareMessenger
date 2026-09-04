@@ -53,6 +53,15 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         return result
     }
 
+    fun getCaseByCaseNumber(caseNumber: String): AdvocateCase? {
+        val value = caseNumber.trim()
+        if (value.isEmpty()) return null
+        return readableDatabase.query(
+            "advocate_cases", null, "case_number = ?", arrayOf(value),
+            null, null, "updated_at DESC, id DESC", "1"
+        ).use { c -> if (c.moveToFirst()) readCase(c) else null }
+    }
+
     fun getTotalCaseCount(): Int = readableDatabase.rawQuery(
         "SELECT COUNT(*) FROM advocate_cases", null
     ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
@@ -103,11 +112,6 @@ class AdvocateCaseDbHelper(context: Context) : SQLiteOpenHelper(
         "advocate_cases", "id = ?", arrayOf(id.toString())
     )
 
-    /**
-     * Merge a backup into the current database.
-     * Existing case numbers are updated; new case numbers are inserted.
-     * Returns Pair(inserted, updated).
-     */
     fun mergeCases(items: List<AdvocateCase>): Pair<Int, Int> {
         val db = writableDatabase
         var inserted = 0
