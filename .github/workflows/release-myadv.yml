@@ -1,44 +1,44 @@
 name: Build MyAdv Release (Custom Version)
 
-on:
+"on":
   workflow_dispatch:
     inputs:
       app_version:
-        description: 'MyAdv versionName (example: 2.4)'
+        description: MyAdv versionName, for example 2.4
         required: true
         default: '2.4'
         type: string
       version_code:
-        description: 'Android versionCode; use a higher number than the previous release'
+        description: Android versionCode, use a higher number than the previous release
         required: true
         default: '6'
         type: string
 
 jobs:
   build:
+    name: Build signed MyAdv APKs
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
-      - name: Install Gradle
-        uses: gradle/actions/setup-gradle@v5
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Generate Gradle Wrapper
+      - name: Generate Gradle wrapper
         run: gradle wrapper
 
-      - name: Make Gradle Wrapper executable
-        run: chmod +x gradlew
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
 
       - name: Prepare release keystore
         env:
@@ -49,63 +49,20 @@ jobs:
           printf '%s' "$MYADV_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/myadv-release.jks"
           test -s "$GITHUB_WORKSPACE/myadv-release.jks"
 
-      - name: Verify release signing configuration
+      - name: Verify signing configuration
         env:
-          MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
-          MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
-          MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
-          MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
+          KEYSTORE: ${{ github.workspace }}/myadv-release.jks
+          STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$MYADV_STORE_PASSWORD"
-          test -n "$MYADV_KEY_ALIAS"
-          test -n "$MYADV_KEY_PASSWORD"
-          keytool -list -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" >/dev/null
-          ENTRY_TYPE=$(keytool -list -v -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" | awk -F': ' '/Entry type:/{print $2; exit}')
-          test "$ENTRY_TYPE" = "PrivateKeyEntry"
+          test -n "$STORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
 
-      - name: Repair known malformed Kotlin source
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
-          text = path.read_text(encoding='utf-8')
-          pattern = re.compile(
-              r'        val actualSimPhone = normalizePhone\(rawSimPhone\)\\n\\n'
-              r'        // validatePhone=false explicitly permits SMS from any active SIM\.\\n'
-              r'.*?'
-              r'        val smsManager =',
-              re.DOTALL,
-          )
-          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)
-
-        // validatePhone=false explicitly permits SMS from any active SIM.
-        if (license.options.validatePhone && actualSimPhone != licensedPhone) {
-            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")
-            throw SmsLicenseException(
-                "License/SIM mismatch.\\n\\n" +
-                        "Licensed phone: $licensedPhone\\n" +
-                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +
-                        "SMS sending is blocked."
-            )
-        }
-
-        val smsManager ='''
-          text, count = pattern.subn(replacement, text, count=1)
-          if count:
-              print('Repaired escaped SIM verification block.')
-          else:
-              print('SIM verification block already normalized.')
-          text = text.replace(
-              'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)',
-              'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
-          )
-          path.write_text(text, encoding='utf-8')
-          PY
-
-      - name: Build both signed release APKs
+      - name: Build both release APKs
         env:
           APP_VERSION: ${{ inputs.app_version }}
           VERSION_CODE: ${{ inputs.version_code }}
@@ -115,25 +72,25 @@ jobs:
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
 
-      - name: Locate and rename APKs for distribution
+      - name: Rename final APKs
         run: |
           set -euo pipefail
           APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
-          AM_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
           test -n "$APP_APK"
-          test -n "$AM_APK"
+          test -n "$LICENSE_APK"
           cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
-          cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          cp "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
-      - name: Verify final APK outputs
+      - name: Verify APKs
         run: |
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
           test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
-          echo "Built MyAdv version: ${{ inputs.app_version }} (versionCode ${{ inputs.version_code }})"
+          echo "MyAdv version: ${{ inputs.app_version }} (versionCode ${{ inputs.version_code }})"
           ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
-      - name: Upload both APKs
+      - name: Upload MyAdv-APKs
         uses: actions/upload-artifact@v4
         with:
           name: MyAdv-APKs
@@ -142,6 +99,6 @@ jobs:
             licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
           if-no-files-found: error
 
-      - name: Remove private build material
+      - name: Cleanup signing material
         if: always()
         run: rm -f myadv-release.jks
