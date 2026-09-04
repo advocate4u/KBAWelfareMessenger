@@ -134,6 +134,25 @@ object SecurityManager {
     }
 
     fun currentRole(c: Context): UserRole? = currentUser(c)?.role
+
+    /** Updates the current account role only after LicenseManager has verified a valid signed license. */
+    fun updateCurrentUserRole(c: Context, role: UserRole): Boolean {
+        val id = currentUserId(c) ?: return false
+        val users = readUsers(c)
+        var updated = false
+        for (i in 0 until users.length()) {
+            val obj = users.optJSONObject(i) ?: continue
+            if (obj.optString("userId") == id) {
+                obj.put("role", role.name)
+                updated = true
+                break
+            }
+        }
+        if (!updated) return false
+        saveUsers(c, users)
+        return true
+    }
+
     fun isSuperAdmin(c: Context) = currentRole(c) == UserRole.SUPER_ADMIN && LicenseManager.getLicenseRole(c) == UserRole.SUPER_ADMIN
     fun canManageLicenses(c: Context) = currentRole(c) == UserRole.SUPER_ADMIN || currentRole(c) == UserRole.ADMIN
     fun isAdmin(c: Context) =
