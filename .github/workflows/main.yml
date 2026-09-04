@@ -36,7 +36,7 @@ jobs:
           sdkmanager "build-tools;35.0.0"
           echo "$ANDROID_SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" version
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -c -v 4 /dev/null || true
+          test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
