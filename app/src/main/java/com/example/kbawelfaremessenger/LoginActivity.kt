@@ -51,12 +51,12 @@ class LoginActivity : AppCompatActivity() {
 
         if (hasUser) {
             txtLoginMode.text = "LOGIN"
-            txtLoginDescription.text = "Enter your User ID / phone number and your MyAdv password."
+            txtLoginDescription.text = "Enter your User ID and MyAdv password."
             edtPassword.hint = "Password"
             btnLogin.text = "LOGIN"
         } else {
             txtLoginMode.text = "CREATE YOUR MYADV LOGIN"
-            txtLoginDescription.text = "License verified. Create your own password to activate this device. No administrator password is required."
+            txtLoginDescription.text = "License verified. Create the administrator account for this licensed device. No administrator password is pre-shared."
             edtPassword.hint = "Create Password (minimum 6 characters)"
             btnLogin.text = "CREATE LOGIN & CONTINUE"
             if (edtUserId.text.isNullOrBlank() && license != null) {
@@ -80,7 +80,7 @@ class LoginActivity : AppCompatActivity() {
         val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
         val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
         if (licensedPhone != enteredPhone) {
-            UiFeedback.error(this, "User ID must match the phone number on the installed license.", true)
+            UiFeedback.error(this, "For the first activation, User ID must match the phone number on the installed license.", true)
             return
         }
 
@@ -95,17 +95,12 @@ class LoginActivity : AppCompatActivity() {
     private fun loginUser() {
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
-        if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
+        if (userId.isEmpty()) { edtUserId.error = "Enter User ID"; edtUserId.requestFocus(); return }
         if (password.isEmpty()) { edtPassword.error = "Enter password"; edtPassword.requestFocus(); return }
+        if (!LicenseManager.isLicenseValid(this)) { openLicenseActivation(); return }
 
-        val license = LicenseManager.getValidLicense(this) ?: run { openLicenseActivation(); return }
-        val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
-        val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
-        if (licensedPhone != enteredPhone) {
-            UiFeedback.error(this, "License phone does not match the current User ID.", true)
-            return
-        }
-
+        // Existing users created by an administrator authenticate using their own account.
+        // The installed license only needs to be valid; it does not have to contain that user's phone.
         if (SecurityManager.authenticate(this, userId, password)) {
             AppLogger.info(this, "AUTH", "User login successful.")
             UiFeedback.success(this, "Welcome to MyAdv")
