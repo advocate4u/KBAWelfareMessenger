@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/diaryScroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Diary" android:textSize="24sp" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Offline case, hearing and professional notes" android:alpha="0.7" android:paddingBottom="12dp" />
+<EditText android:id="@+id/diaryDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Date" android:inputType="date" android:focusable="false" />
+<EditText android:id="@+id/diaryTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Title / Hearing" android:inputType="textCapSentences" />
+<EditText android:id="@+id/diaryCourt" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Court" android:inputType="textCapWords" />
+<EditText android:id="@+id/diaryCaseNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Case Number" android:inputType="text" />
+<EditText android:id="@+id/diaryClient" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Client" android:inputType="textCapWords" />
+<EditText android:id="@+id/diaryNotes" android:layout_width="match_parent" android:layout_height="120dp" android:gravity="top|start" android:hint="Notes" android:inputType="textMultiLine" />
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<Button android:id="@+id/diarySave" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SAVE ENTRY" />
+<Button android:id="@+id/diaryClear" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CLEAR" />
+</LinearLayout>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SAVED ENTRIES" android:textSize="18sp" android:textStyle="bold" android:layout_marginTop="20dp" android:paddingBottom="8dp" />
+<LinearLayout android:id="@+id/diaryList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+</LinearLayout>
+</ScrollView>
