@@ -38,6 +38,7 @@ object LicenseManager {
     data class License(
         val licenseId: String,
         val phone: String,
+        val secondaryPhone: String? = null,
         val expiryDate: LocalDate,
         val issueDate: LocalDate,
         val role: UserRole,
@@ -80,6 +81,7 @@ object LicenseManager {
     }
 
     fun getLicensedPhone(c: Context): String? = getValidLicense(c)?.phone
+    fun getLicensedPhones(c: Context): List<String> = getValidLicense(c)?.let { listOfNotNull(it.phone, it.secondaryPhone) } ?: emptyList()
     fun getLicenseId(c: Context): String? = getInstalledLicense(c)?.licenseId
     fun getExpiryDate(c: Context): LocalDate? = getInstalledLicense(c)?.expiryDate
     fun getLicenseRole(c: Context): UserRole? = getValidLicense(c)?.role
@@ -114,7 +116,7 @@ object LicenseManager {
         if (!license.options.validatePhone) return LicenseCheckResult(true, "License verified. SMS number validation is disabled by the license.")
         val actual = smsPhone?.let(::norm).orEmpty()
         if (actual.isBlank()) return LicenseCheckResult(false, "Unable to verify the SMS SIM number. SMS sending is blocked.")
-        if (actual != license.phone) return LicenseCheckResult(false, "Licensed phone number does not match the SMS SIM. SMS sending is blocked.")
+        if (actual != license.phone && actual != license.secondaryPhone) return LicenseCheckResult(false, "Selected SMS SIM is not licensed. SMS sending is blocked.")
         return LicenseCheckResult(true, "License and SMS SIM verified.")
     }
 
@@ -163,7 +165,8 @@ object LicenseManager {
             whatsapp = boolField("whatsapp", false),
             rangeSelection = boolField("rangeSelection", false)
         )
-        return License(id, phone, expiry, issue, role, options)
+        val secondaryPhone = fields["phone2"]?.let(::norm)?.takeIf { it.isNotBlank() }
+        return License(id, phone, expiry, issue, role, options, secondaryPhone)
     }
 
     private fun norm(value: String): String {
