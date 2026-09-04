@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/build-kotlin-source-repair
 
 jobs:
   build:
@@ -61,6 +62,27 @@ jobs:
           keytool -certreq -keystore "$MYADV_KEYSTORE_FILE" -storepass "$MYADV_STORE_PASSWORD" -alias "$MYADV_KEY_ALIAS" -keypass "$MYADV_KEY_PASSWORD" -file "$RUNNER_TEMP/myadv-signing-test.csr" >/dev/null 2>&1
           rm -f "$RUNNER_TEMP/myadv-signing-test.csr"
           echo "Release signing configuration: OK"
+
+      - name: Repair malformed Kotlin source
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt")
+          text = path.read_text(encoding="utf-8")
+
+          start = text.index("        val actualSimPhone =\n")
+          end = text.index("        val smsManager =\n", start)
+          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n'''
+          text = text[:start] + replacement + text[end:]
+          text = text.replace(
+              "is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)",
+              "is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))"
+          )
+          path.write_text(text, encoding="utf-8")
+          print("Repaired MainActivity.kt")
+          PY
 
       - name: Build both signed release APKs
         env:
