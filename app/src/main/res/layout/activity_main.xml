@@ -128,12 +128,8 @@
                     android:text="UNSELECT ALL" />
             </LinearLayout>
 
-            <!--
-                The contact list is intentionally a bounded nested scroller.
-                The screen itself remains vertically scrollable, while the
-                contact area gets its own scroll gesture for large CSV files.
-            -->
-            <androidx.recyclerview.widget.RecyclerView
+            <!-- Dedicated bounded contact scroller. -->
+            <com.example.kbawelfaremessenger.ScrollableContactRecyclerView
                 android:id="@+id/recyclerContacts"
                 android:layout_width="match_parent"
                 android:layout_height="360dp"
