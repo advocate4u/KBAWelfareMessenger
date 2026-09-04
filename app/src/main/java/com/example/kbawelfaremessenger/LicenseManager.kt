@@ -59,9 +59,18 @@ object LicenseManager {
             // A license is installed independently of the currently logged-in account.
             // First-time account activation enforces that the User ID matches the licensed phone.
             // For an existing account, SMS sending separately verifies the licensed SIM number.
-            val currentRole = SecurityManager.currentRole(c)
-            if (currentRole != null && currentRole != license.role) {
-                return LicenseCheckResult(false, "License role does not match the current account role.")
+            // A valid signed license is the authority for the local account role.
+            // During first activation there is no account yet. For an existing account,
+            // only allow a role change when the account User ID matches the licensed phone.
+            val currentUserId = SecurityManager.currentUserId(c)
+            if (!currentUserId.isNullOrBlank()) {
+                val accountPhone = norm(currentUserId)
+                if (accountPhone != license.phone) {
+                    return LicenseCheckResult(false, "License phone does not match the current User ID.")
+                }
+                if (!SecurityManager.updateCurrentUserRole(c, license.role)) {
+                    return LicenseCheckResult(false, "Unable to update the current account role from the license.")
+                }
             }
 
             c.getSharedPreferences(PREF_NAME, 0).edit()
