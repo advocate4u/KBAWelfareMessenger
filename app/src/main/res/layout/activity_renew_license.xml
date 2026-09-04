@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RENEW LICENSE"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Install the new license provided by your administrator. Verification works offline."
+            android:alpha="0.75" />
+
+        <TextView
+            android:id="@+id/txtCurrentLicense"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:padding="14dp"
+            android:text="Current license"
+            android:textStyle="bold"
+            android:background="#EEEEEE" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="NEW LICENSE"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/edtRenewLicenseId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:hint="License ID"
+            android:inputType="textCapCharacters"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/edtRenewSignedToken"
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:hint="Signed license token"
+            android:gravity="top|start"
+            android:inputType="textMultiLine" />
+
+        <Button
+            android:id="@+id/btnRenewLicense"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="RENEW LICENSE"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txtRenewStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:padding="14dp"
+            android:text="Status: --"
+            android:textStyle="bold"
+            android:background="#EEEEEE" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="If the new license has the same primary phone, your existing login is kept. If the primary phone changes, the local login is cleared and MyAdv will ask you to create a new login."
+            android:alpha="0.75" />
+    </LinearLayout>
+</ScrollView>
