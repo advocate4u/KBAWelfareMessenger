@@ -33,6 +33,7 @@ jobs:
       - name: Install Android build tools for APK verification
         run: |
           set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "build-tools;35.0.0"
           echo "$ANDROID_SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" version
@@ -99,10 +100,10 @@ jobs:
           LICENSE=licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
           test -s "$APP"
           test -s "$LICENSE"
-          apksigner verify --verbose --print-certs "$APP"
-          apksigner verify --verbose --print-certs "$LICENSE"
-          zipalign -c -v 4 "$APP"
-          zipalign -c -v 4 "$LICENSE"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APP"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$LICENSE"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -c -v 4 "$APP"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -c -v 4 "$LICENSE"
           echo "Verified signed/aligned APKs:"
           ls -lh "$APP" "$LICENSE"
       - name: Upload MyAdv-APKs
@@ -154,3 +155,5 @@ jobs:
       - name: Cleanup signing material
         if: always()
         run: rm -f myadv-release.jks
+
+# Release verification trigger: use the current main workflow after the previous verification failure.
