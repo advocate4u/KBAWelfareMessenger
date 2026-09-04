@@ -56,11 +56,12 @@ object LicenseManager {
             if (today.isBefore(license.issueDate)) return LicenseCheckResult(false, "This license is not active yet.")
             if (today.isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
 
-            val uid = SecurityManager.currentUserId(c)
+            // A license is installed independently of the currently logged-in account.
+            // First-time account activation enforces that the User ID matches the licensed phone.
+            // For an existing account, SMS sending separately verifies the licensed SIM number.
             val currentRole = SecurityManager.currentRole(c)
-            if (uid != null && currentRole != null) {
-                if (norm(uid) != license.phone) return LicenseCheckResult(false, "License phone does not match the current User ID.")
-                if (currentRole != license.role) return LicenseCheckResult(false, "License role does not match the current account role.")
+            if (currentRole != null && currentRole != license.role) {
+                return LicenseCheckResult(false, "License role does not match the current account role.")
             }
 
             c.getSharedPreferences(PREF_NAME, 0).edit()
