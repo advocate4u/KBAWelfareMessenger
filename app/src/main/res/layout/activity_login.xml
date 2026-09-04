@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -27,15 +25,24 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:textColor="#1769E0"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="8dp" />
 
     <TextView
+        android:id="@+id/txtLoginMode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Use the User ID / phone number and password provided by the administrator."
+        android:textAlignment="center"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/txtLoginDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:textAlignment="center"
         android:alpha="0.7"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="20dp" />
 
     <EditText
         android:id="@+id/edtUserId"
@@ -51,7 +58,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:hint="Password"
+        android:hint="Create Password"
         android:inputType="textPassword"
         android:singleLine="true"
         android:padding="14dp" />
@@ -61,7 +68,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="LOGIN"
+        android:text="CREATE LOGIN &amp; CONTINUE"
         android:textStyle="bold" />
 
     <Button
@@ -69,6 +76,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="INSTALL LICENSE" />
+        android:text="VIEW / CHANGE LICENSE" />
 
 </LinearLayout>

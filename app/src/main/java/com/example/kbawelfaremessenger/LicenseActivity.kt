@@ -1,5 +1,6 @@
 package com.example.kbawelfaremessenger
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -32,11 +33,17 @@ class LicenseActivity : AppCompatActivity() {
         val status = findViewById<TextView>(R.id.txtLicenseDetails)
 
         findViewById<Button>(R.id.btnActivateLicense).setOnClickListener {
-            val result = LicenseManager.installLicense(this, id.text.toString().trim(), token.text.toString().trim())
+            val result = LicenseManager.installLicense(this, id.text.toString(), token.text.toString())
             Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
             if (result.allowed) {
-                id.text.clear()
-                token.text.clear()
+                // Do not leave the user on the license page. Go directly to the
+                // first-time account creation screen or normal login screen.
+                startActivity(Intent(this, LoginActivity::class.java).apply {
+                    putExtra("license_just_activated", true)
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                })
+                finish()
+                return@setOnClickListener
             }
             refresh(status)
         }
@@ -61,5 +68,8 @@ class LicenseActivity : AppCompatActivity() {
         }
     }
 
-    override fun onSupportNavigateUp(): Boolean { finish(); return true }
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
 }
