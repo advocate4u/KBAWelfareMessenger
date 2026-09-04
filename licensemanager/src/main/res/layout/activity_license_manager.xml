@@ -2,7 +2,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="?android:attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,126 +15,32 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="MyAdv License Manager"
+            android:text="MyAdvAnIT"
             android:textColor="?android:attr/textColorPrimary"
             android:textSize="24sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="LICENSE FOR USER"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="LICENSE FOR USER" android:textColor="?android:attr/textColorPrimary" android:textSize="13sp" android:textStyle="bold" />
+        <EditText android:id="@+id/licensePhone" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Primary Mobile Number / User ID" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="phone" android:singleLine="true" />
+        <EditText android:id="@+id/licensePhone2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:hint="Second Licensed Mobile Number (optional)" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="phone" android:singleLine="true" />
+        <Spinner android:id="@+id/licenseRole" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
 
-        <EditText
-            android:id="@+id/licensePhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Primary Mobile Number / User ID"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textColorHint="?android:attr/textColorHint"
-            android:inputType="phone"
-            android:singleLine="true" />
-
-        <EditText
-            android:id="@+id/licensePhone2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:hint="Second Licensed Mobile Number (optional)"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textColorHint="?android:attr/textColorHint"
-            android:inputType="phone"
-            android:singleLine="true" />
-
-        <Spinner
-            android:id="@+id/licenseRole"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <EditText
-                android:id="@+id/issueDate"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="From"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textColorHint="?android:attr/textColorHint"
-                android:focusable="false"
-                android:clickable="true" />
-            <EditText
-                android:id="@+id/expiryDate"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:hint="To"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textColorHint="?android:attr/textColorHint"
-                android:focusable="false"
-                android:clickable="true" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <EditText android:id="@+id/issueDate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="From" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:focusable="false" android:clickable="true" />
+            <EditText android:id="@+id/expiryDate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:hint="To" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:focusable="false" android:clickable="true" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/permissionsHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="?android:attr/colorControlHighlight"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="12dp"
-            android:text="PERMISSIONS &amp; FEATURES  ▼"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:id="@+id/permissionsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="4dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optValidatePhone" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Validate phone" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optBulkSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulk SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optSmsLogs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS Logs" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optDiary" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Diary" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optHelper" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Helper" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optEditMessage" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Edit Message" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optSkipSent" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Sent" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optConfirmBulk" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Confirm Bulk" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optLogging" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Logging" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optDuplicates" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Remove Duplicates" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optInvalidNumbers" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Invalid" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optPreview" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Preview" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optTestSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Test SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <CheckBox android:id="@+id/optWhatsApp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-                <CheckBox android:id="@+id/optRange" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Range Selection" android:textColor="?android:attr/textColorPrimary" android:checked="true" />
-            </LinearLayout>
+        <TextView android:id="@+id/permissionsHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="?android:attr/colorControlHighlight" android:clickable="true" android:focusable="true" android:padding="12dp" android:text="PERMISSIONS &amp; FEATURES  ▼" android:textColor="?android:attr/textColorPrimary" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/permissionsContainer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="4dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optValidatePhone" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Validate phone" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optBulkSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulk SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optSmsLogs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS Logs" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optDiary" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Diary" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optHelper" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Helper" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optEditMessage" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Edit Message" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optSkipSent" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Sent" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optConfirmBulk" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Confirm Bulk" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optLogging" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Logging" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optDuplicates" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Remove Duplicates" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optInvalidNumbers" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Invalid" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optPreview" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Preview" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optTestSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Test SMS" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><CheckBox android:id="@+id/optWhatsApp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:textColor="?android:attr/textColorPrimary" android:checked="true" /><CheckBox android:id="@+id/optRange" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Range Selection" android:textColor="?android:attr/textColorPrimary" android:checked="true" /></LinearLayout>
         </LinearLayout>
 
         <Button android:id="@+id/generateButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="GENERATE LICENSE" android:textStyle="bold" />
@@ -143,9 +50,6 @@
         <Button android:id="@+id/copyLicenseIdButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="COPY LICENSE KEY" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="SIGNED LICENSE TOKEN" android:textColor="?android:attr/textColorPrimary" android:textSize="12sp" android:textStyle="bold" />
         <EditText android:id="@+id/signedToken" android:layout_width="match_parent" android:layout_height="130dp" android:gravity="top|start" android:hint="Signed license token" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="textMultiLine" android:scrollbars="vertical" android:textIsSelectable="true" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-            <Button android:id="@+id/copyTokenButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="COPY TOKEN" />
-            <Button android:id="@+id/shareButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SHARE LICENSE" />
-        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/copyTokenButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="COPY TOKEN" /><Button android:id="@+id/shareButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SHARE LICENSE" /></LinearLayout>
     </LinearLayout>
 </ScrollView>
