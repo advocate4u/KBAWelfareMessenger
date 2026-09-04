@@ -40,7 +40,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setupLoginScreen() {
-        val hasUser = SecurityManager.hasUser(this)
         val license = LicenseManager.getValidLicense(this)
         txtLoginTitle.visibility = View.GONE
 
@@ -56,33 +55,51 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
+        val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
+        val existingUser = SecurityManager.currentUserId(this)
+        val existingUserMatchesLicense = existingUser?.let {
+            it.filter(Char::isDigit).takeLast(10) == licensedPhone
+        } == true
+
+        // A local login belongs to the primary licensed phone. If a license was
+        // changed to another primary phone, discard the old activation and start
+        // the normal first-login creation flow for the new licensed identity.
+        if (SecurityManager.hasUser(this) && !existingUserMatchesLicense) {
+            SecurityManager.resetLocalLogin(this)
+        }
+
+        val hasMatchingUser = SecurityManager.hasUser(this) &&
+            SecurityManager.currentUserId(this)?.filter(Char::isDigit)?.takeLast(10) == licensedPhone
+
         txtLoginDescription.visibility = View.GONE
         edtUserId.visibility = View.VISIBLE
         edtPassword.visibility = View.VISIBLE
         btnLogin.visibility = View.VISIBLE
         btnLicense.visibility = View.VISIBLE
-        edtPassword.isEnabled = true
 
-        if (hasUser) {
+        // The login identity always comes from the primary license phone.
+        // It is deliberately non-editable for both CREATE LOGIN and LOGIN.
+        edtUserId.setText(licensedPhone)
+        edtUserId.setSelection(edtUserId.text.length)
+        edtUserId.isEnabled = false
+        edtUserId.isFocusable = false
+        edtUserId.isFocusableInTouchMode = false
+        edtUserId.isClickable = false
+        edtUserId.isLongClickable = false
+
+        if (hasMatchingUser) {
             txtLoginMode.text = "LOGIN"
-            edtUserId.isEnabled = true
-            edtUserId.isFocusable = true
-            edtUserId.isClickable = true
             edtPassword.hint = "Password"
             btnLogin.text = "LOGIN"
+            btnLogin.setOnClickListener { loginUser() }
         } else {
             txtLoginMode.text = "CREATE LOGIN"
-            val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
-            edtUserId.setText(licensedPhone)
-            edtUserId.isEnabled = false
-            edtUserId.isFocusable = false
-            edtUserId.isClickable = false
             edtPassword.hint = "Create Password (4 digits)"
             btnLogin.text = "CREATE LOGIN"
+            btnLogin.setOnClickListener { activateFirstLogin() }
         }
 
         btnLicense.text = "INSTALL / CHANGE LICENSE"
-        btnLogin.setOnClickListener { if (hasUser) loginUser() else activateFirstLogin() }
         btnLicense.setOnClickListener { openLicenseActivation() }
     }
 
@@ -90,13 +107,16 @@ class LoginActivity : AppCompatActivity() {
         val license = LicenseManager.getValidLicense(this) ?: run { openLicenseActivation(); return }
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
-        if (userId.isEmpty()) { edtUserId.error = "Licensed phone number is required"; edtUserId.requestFocus(); return }
-        if (!password.matches(Regex("^\\d{4}$"))) { edtPassword.error = "Enter a 4-digit PIN"; edtPassword.requestFocus(); return }
-
         val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
         val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
-        if (licensedPhone != enteredPhone) {
-            UiFeedback.error(this, "The User ID must match the primary phone number on the installed license.", true)
+
+        if (enteredPhone != licensedPhone) {
+            UiFeedback.error(this, "The licensed primary phone number is fixed and cannot be changed.", true)
+            return
+        }
+        if (!password.matches(Regex("^\\d{4}$"))) {
+            edtPassword.error = "Enter a 4-digit PIN"
+            edtPassword.requestFocus()
             return
         }
 
@@ -104,14 +124,14 @@ class LoginActivity : AppCompatActivity() {
             UiFeedback.success(this, "Login created successfully. Welcome to MyAdv.")
             openMainActivity()
         } else {
-            UiFeedback.error(this, "Unable to create login. Verify the license and User ID.", true)
+            UiFeedback.error(this, "Unable to create login. Verify the license and PIN.", true)
         }
     }
 
     private fun loginUser() {
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
-        if (userId.isEmpty()) { edtUserId.error = "Enter User ID"; edtUserId.requestFocus(); return }
+        if (userId.isEmpty()) { edtUserId.error = "Licensed phone number is required"; return }
         if (password.isEmpty()) { edtPassword.error = "Enter password"; edtPassword.requestFocus(); return }
         if (!LicenseManager.isLicenseValid(this)) { openLicenseActivation(); return }
 
@@ -121,7 +141,7 @@ class LoginActivity : AppCompatActivity() {
             openMainActivity()
         } else {
             AppLogger.warning(this, "AUTH", "Invalid login attempt.")
-            UiFeedback.error(this, "Invalid User ID or password.", true)
+            UiFeedback.error(this, "Invalid password.", true)
         }
     }
 
