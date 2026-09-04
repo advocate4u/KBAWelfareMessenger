@@ -92,6 +92,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnSettings: Button
 
+    private lateinit var txtWelcome: TextView
+    private lateinit var txtLicenseRemaining: TextView
+
     private lateinit var txtCsvHeader: TextView
     private lateinit var txtRangeHeader: TextView
     private lateinit var txtMessageHeader: TextView
@@ -366,6 +369,7 @@ class MainActivity : AppCompatActivity() {
         setupCollapsibleSections()
         setupSmsReceiver()
         setupButtonColors()
+        setupLicenseHeader()
         applyLicenseFeatureVisibility()
         applyThemeTextColors(findViewById(android.R.id.content))
 
@@ -549,6 +553,21 @@ class MainActivity : AppCompatActivity() {
             is TextView -> if (view !is Button && view !is CheckBox) view.setTextColor(primary)
         }
         if (view is ViewGroup) for (index in 0 until view.childCount) applyThemeTextColors(view.getChildAt(index))
+    }
+
+    private fun setupLicenseHeader() {
+        val license = LicenseManager.getValidLicense(this)
+        if (license == null) {
+            txtWelcome.text = "Welcome"
+            txtLicenseRemaining.text = "License: Not active"
+            txtLicenseRemaining.setTextColor(Color.RED)
+            return
+        }
+        val phone = license.phone.removePrefix("91").takeLast(10)
+        val days = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), license.expiryDate)
+        txtWelcome.text = "Welcome $phone"
+        txtLicenseRemaining.text = if (days == 0L) "License: Expires today" else "License: $days days remaining"
+        txtLicenseRemaining.setTextColor(if (days > 7) Color.GREEN else Color.RED)
     }
 
     private fun applyLicenseFeatureVisibility() {
