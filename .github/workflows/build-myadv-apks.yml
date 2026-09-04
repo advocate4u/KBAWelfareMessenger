@@ -52,6 +52,12 @@ jobs:
           set -euo pipefail
           ./gradlew :app:assembleRelease :licensemanager:assembleRelease
 
+      - name: Rename release APKs
+        run: |
+          set -euo pipefail
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MyAdv.apk
+          mv licensemanager/build/outputs/apk/release/licensemanager-release.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+
       - name: Remove private build material
         if: always()
         shell: bash
@@ -60,16 +66,16 @@ jobs:
       - name: Verify APK outputs
         run: |
           set -euo pipefail
-          test -n "$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
-          test -n "$(find licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -s app/build/outputs/apk/release/MyAdv.apk
+          test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
           echo "Generated APKs:"
-          find app/build/outputs/apk/release licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print
+          ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: MyAdv-APKs
           path: |
-            app/build/outputs/apk/release/*.apk
-            licensemanager/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/MyAdv.apk
+            licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
           if-no-files-found: error
