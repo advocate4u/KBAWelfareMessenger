@@ -9,14 +9,17 @@ name: Build MyAdv APKs
 permissions:
   contents: write
 
+# Never cancel an active release build just because another repository event occurs.
+# A release build must finish so that its APKs can be inspected and published.
 concurrency:
   group: myadv-release-build
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     name: Build signed MyAdv APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +77,7 @@ jobs:
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
+        run: ./gradlew --no-daemon --stacktrace :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
       - name: Rename final APKs
         run: |
           set -euo pipefail
@@ -84,13 +87,21 @@ jobs:
           test -n "$LICENSE_APK"
           cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
           cp "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
-      - name: Verify APKs
+      - name: Verify APKs are installable release packages
         run: |
           set -euo pipefail
-          test -s app/build/outputs/apk/release/MyAdv.apk
-          test -s licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
-          echo "MyAdv version: ${{ steps.version.outputs.app_version }} (versionCode ${{ steps.version.outputs.version_code }})"
-          ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+          APP=app/build/outputs/apk/release/MyAdv.apk
+          LICENSE=licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+          test -s "$APP"
+          test -s "$LICENSE"
+          command -v apksigner >/dev/null 2>&1
+          command -v zipalign >/dev/null 2>&1
+          apksigner verify --verbose --print-certs "$APP"
+          apksigner verify --verbose --print-certs "$LICENSE"
+          zipalign -c -v 4 "$APP"
+          zipalign -c -v 4 "$LICENSE"
+          echo "Verified signed/aligned APKs:"
+          ls -lh "$APP" "$LICENSE"
       - name: Upload MyAdv-APKs
         uses: actions/upload-artifact@v4
         with:
