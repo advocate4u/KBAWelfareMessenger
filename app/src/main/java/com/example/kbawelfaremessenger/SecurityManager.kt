@@ -58,6 +58,11 @@ object SecurityManager {
     fun authenticate(c: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
         val user = findUser(c, id) ?: return false
+
+        // Every login is bound to the currently installed, valid license.
+        val license = LicenseManager.getValidLicense(c) ?: return false
+        if (normalizePhone(license.phone) != normalizePhone(id)) return false
+
         val ok = try {
             MessageDigest.isEqual(
                 Base64.decode(user.getString("hash"), Base64.NO_WRAP),
@@ -66,8 +71,22 @@ object SecurityManager {
         } catch (_: Exception) {
             false
         }
-        if (ok) preferences(c).edit().putString(KEY_CURRENT_USER, id).apply()
-        return ok
+        if (!ok) return false
+
+        // The signed license is authoritative for the local account role.
+        // This also upgrades/downgrades an existing account when its license changes.
+        user.put("role", license.role.name)
+        val users = readUsers(c)
+        for (i in 0 until users.length()) {
+            val obj = users.optJSONObject(i) ?: continue
+            if (obj.optString("userId") == id) {
+                obj.put("role", license.role.name)
+                break
+            }
+        }
+        saveUsers(c, users)
+        preferences(c).edit().putString(KEY_CURRENT_USER, id).apply()
+        return true
     }
 
     /** SUPER_ADMIN can create ADMIN or USER. ADMIN can create USER only. */
@@ -94,9 +113,7 @@ object SecurityManager {
             val obj = users.optJSONObject(i) ?: continue
             val id = obj.optString("userId").trim()
             if (id.isBlank()) continue
-            val role = runCatching {
-                UserRole.valueOf(obj.optString("role", UserRole.USER.name))
-            }.getOrDefault(UserRole.USER)
+            val role = runCatching { UserRole.valueOf(obj.optString("role", UserRole.USER.name)) }.getOrDefault(UserRole.USER)
             result.add(LocalUser(id, role))
         }
         return result
@@ -108,12 +125,9 @@ object SecurityManager {
         val id = userId.trim()
         if (id.isBlank() || id == currentUserId(c)) return false
         val target = findUser(c, id) ?: return false
-        val targetRole = runCatching {
-            UserRole.valueOf(target.optString("role", UserRole.USER.name))
-        }.getOrDefault(UserRole.USER)
+        val targetRole = runCatching { UserRole.valueOf(target.optString("role", UserRole.USER.name)) }.getOrDefault(UserRole.USER)
         if (targetRole == UserRole.SUPER_ADMIN) return false
         if (actor == UserRole.ADMIN && targetRole != UserRole.USER) return false
-
         val users = readUsers(c)
         var removed = false
         for (i in users.length() - 1 downTo 0) {
@@ -167,21 +181,14 @@ object SecurityManager {
         val prefs = preferences(c)
         val stored = prefs.getString(KEY_USERS, null)
         if (!stored.isNullOrBlank()) {
-            return try {
-                JSONArray(stored)
-            } catch (_: Exception) {
-                JSONArray()
-            }
+            return try { JSONArray(stored) } catch (_: Exception) { JSONArray() }
         }
-
         val oldId = prefs.getString(KEY_USER_ID, null)
         val oldHash = prefs.getString(KEY_PASSWORD_HASH, null)
         val oldSalt = prefs.getString(KEY_PASSWORD_SALT, null)
         if (!oldId.isNullOrBlank() && !oldHash.isNullOrBlank() && !oldSalt.isNullOrBlank()) {
             val role = LicenseManager.getLicenseRole(c) ?: UserRole.USER
-            val migrated = JSONArray().put(
-                JSONObject().put("userId", oldId).put("role", role.name).put("hash", oldHash).put("salt", oldSalt)
-            )
+            val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", role.name).put("hash", oldHash).put("salt", oldSalt))
             prefs.edit().putString(KEY_USERS, migrated.toString()).putString(KEY_CURRENT_USER, oldId).apply()
             return migrated
         }
@@ -202,11 +209,7 @@ object SecurityManager {
 
     private fun hashPassword(password: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
-        return try {
-            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
-        } finally {
-            spec.clearPassword()
-        }
+        return try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded } finally { spec.clearPassword() }
     }
 
     private fun encode(value: ByteArray) = Base64.encodeToString(value, Base64.NO_WRAP)
