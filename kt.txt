@@ -1,0 +1,402 @@
+MYADV (KBAWelfareMessenger) - KNOWLEDGE TRANSFER GUIDE
+========================================================
+
+Purpose
+-------
+MyAdv is an Android application for advocate/welfare messaging and related advocate utilities. The project currently contains two APK applications:
+
+1. MyAdv - the main user application.
+2. MyAdv License Manager - used by authorized administrators to create/manage licenses.
+
+The project is designed so that licensing, local authentication, messaging, advocate case management, and offline data storage work without requiring a mandatory cloud backend.
+
+IMPORTANT CURRENT STATUS
+------------------------
+- Main app display name: MyAdv
+- License Manager display name: MyAdv License Manager
+- Final APK names produced by CI:
+  MyAdv.apk
+  MyAdv-License-Manager.apk
+- Both APKs are uploaded together in one GitHub Actions artifact named MyAdv-APKs.
+- Current license token validation uses an offline HMAC/shared-secret approach. RSA signing was intentionally deferred for later.
+- WhatsApp automatic/direct sending is NOT implemented. Normal WhatsApp can be opened with a recipient and pre-filled message, but WhatsApp itself must perform the final Send action.
+
+1. HIGH-LEVEL APPLICATION FLOW
+------------------------------
+Fresh installation:
+
+1. Start MyAdv.
+2. If there is no valid installed license, the application opens License Activation.
+3. Enter License ID and signed license token.
+4. License is verified offline.
+5. On first activation, MyAdv enters CREATE YOUR MYADV LOGIN mode.
+6. The licensed phone number is used as the initial User ID.
+7. The user creates their own password (minimum 6 characters).
+8. The account is created locally and the user proceeds to the normal application.
+
+Existing installation:
+- Valid license -> normal Login screen.
+- Invalid/missing license -> License Activation is required.
+
+The license installation itself does not require an already logged-in account.
+
+2. LICENSING ARCHITECTURE
+--------------------------
+Main classes/components:
+
+LicenseManager
+- Stores and validates the locally installed license.
+- Validates License ID and signed token.
+- Checks issue/expiry information.
+- Provides isFeatureEnabled(...) checks.
+- License validity is checked offline.
+
+LicenseAuthority
+- Used by License Manager to construct/create licenses.
+- License options include feature permissions.
+
+License Manager APK
+- Used by authorized administrators to create licenses.
+- Phone/User ID is shown at the top.
+- Permissions are presented in a compact/collapsible area.
+- License ID and signed token are copyable.
+- License information can be shared.
+
+Important design rule:
+The license role is authoritative for initial account/device setup. Existing local user roles must not be overwritten just because a license is later installed or refreshed.
+
+Phone binding:
+- During first account activation, User ID must match the phone number bound to the license.
+- This restriction is intentionally NOT applied to every existing user login.
+- Administrators can subsequently create/manage users according to their local role permissions.
+
+3. USER ROLES
+------------
+SUPER_ADMIN
+- Highest local administrative role.
+- Can create ADMIN and USER accounts.
+- Can access administrative settings.
+
+ADMIN
+- Can create USER accounts.
+- Can access administrative settings.
+
+USER
+- Normal application user.
+- Does not get the Settings option.
+
+SecurityManager is responsible for authentication and role management. Existing local roles are preserved during normal authentication.
+
+4. SETTINGS AND LICENSE PERMISSIONS
+-----------------------------------
+Settings are administrative. SettingsActivity exits/blocks access when the current user is not an administrator.
+
+Feature permissions currently represented by the licensing system include:
+
+validate_phone
+sms
+bulk_sms
+sms_logs
+advocate_diary
+advocate_helper
+edit_message
+skip_already_sent
+confirm_bulk
+logging
+remove_duplicates
+skip_invalid_numbers
+preview
+test_sms
+whatsapp
+range_selection
+
+CRITICAL RULE:
+A local SharedPreferences value must never bypass a license restriction. Runtime/effective settings must be checked against LicenseManager feature permissions. This prevents a previously enabled setting from remaining usable after a license no longer permits it.
+
+Custom UI license gates include:
+- Preview
+- Test SMS
+- WhatsApp
+- Range selection
+- Range-related sections/headers
+
+5. MAIN MESSAGING FEATURES
+---------------------------
+The main app supports the existing welfare/advocate messaging workflow, including:
+
+- CSV contact import.
+- Contact search/filtering.
+- From/To range selection where licensed.
+- Duplicate removal.
+- Invalid-number skipping.
+- Personalized message placeholders.
+- Message preview.
+- Test SMS.
+- SMS sending.
+- Scheduled SMS and cancellation where supported.
+- SMS/message logs.
+- WhatsApp assisted workflow.
+- Reset and Clear Data actions.
+
+Message/signature branding is MyAdv, not KBA Welfare Messenger/KBA.
+
+SMS status colors:
+- Success = GREEN
+- Failed = RED
+- Pending = ORANGE
+
+The selected-contact list is independently scrollable even though it is hosted inside the main scrolling screen. ScrollableContactRecyclerView is used to prevent the parent ScrollView from incorrectly intercepting touch gestures.
+
+6. WHATSAPP LIMITATION
+----------------------
+Normal WhatsApp Android integration can open a WhatsApp conversation with:
+- the selected recipient, and
+- the MyAdv message pre-filled.
+
+The user must still press Send inside WhatsApp. MyAdv cannot reliably automate WhatsApp's Send button.
+
+Fully automatic bulk WhatsApp sending would require an official WhatsApp Business/Cloud API integration and is intentionally skipped for the current APK-only/offline design.
+
+Do not reintroduce an attempt to automate the normal WhatsApp Send button through UI automation/accessibility unless the product requirements are explicitly changed and the approach is reviewed.
+
+7. ADVOCATE HELPER
+------------------
+Advocate Helper is license controlled through advocate_helper.
+
+Current capabilities include:
+- Advocate/client case information.
+- Client phone number can be imported from the phone's Contacts application.
+- READ_CONTACTS permission is required for contact import.
+- Saved cases can be viewed in a scrollable list.
+- Helper sections are collapsible/scrollable to keep the screen manageable.
+- A selected case can open Advocate Diary.
+- Case number can be passed from Helper to Diary.
+- Messaging uses MyAdv branding.
+
+Contact import flow:
+1. User taps Import Client Phone.
+2. MyAdv requests READ_CONTACTS if necessary.
+3. Android Contacts picker opens.
+4. User selects a contact/number.
+5. MyAdv receives and stores the selected phone number in the case.
+
+8. ADVOCATE DIARY
+-----------------
+Advocate Diary is license controlled through advocate_diary.
+
+Diary integrates with Advocate Helper instead of being a completely isolated feature.
+
+Capabilities:
+- Select a date.
+- View previous date information.
+- Select/update the next hearing date.
+- Enter/update remark, order, or hearing information.
+- Use the case number passed from Advocate Helper.
+- Fetch matching advocate/helper case details.
+- View a cause-list style set of helper cases whose next date matches the selected date.
+- Save diary changes.
+- Update related helper case hearing/remark information when appropriate.
+- Create, edit, and delete diary entries.
+- Offline persistence using local application storage.
+- Diary sections are collapsible/scrollable.
+
+Date workflow:
+- Selected date is the date being reviewed.
+- Previous date is displayed for context.
+- Next date can be selected/updated.
+- Remarks/order/hearing details can be updated.
+- Date selection can therefore be used to check the cause list for a particular date.
+
+9. LOCAL DATA / OFFLINE DESIGN
+------------------------------
+The application relies heavily on local storage for the current offline-first workflow.
+
+Examples:
+- License information -> local preferences/storage.
+- Authentication/user records -> local SecurityManager storage.
+- App settings -> SharedPreferences, but always filtered through effective license permissions.
+- Logs -> AppLogger/local log storage.
+- Advocate Diary -> local JSON/SharedPreferences persistence.
+- Advocate Helper cases -> local repository/database/storage.
+
+When changing data structures, preserve backward compatibility where possible because existing users may already have local data.
+
+10. LOGGING
+-----------
+AppLogger is used for application events.
+
+Settings contains a functional log viewer for administrators when the logging feature is licensed.
+
+Log viewer supports:
+- Reading logs.
+- Clearing logs with confirmation.
+- Recording important operations such as settings save and diary create/update/delete.
+
+11. IMPORTANT ANDROID PERMISSIONS
+---------------------------------
+The application currently uses permissions/features including:
+
+SEND_SMS
+READ_PHONE_STATE
+READ_PHONE_NUMBERS
+POST_NOTIFICATIONS
+READ_CONTACTS
+
+Runtime permissions must be handled correctly on modern Android versions. READ_CONTACTS is specifically required for importing a client number from the phone's Contacts picker.
+
+12. IMPORTANT UI COMPONENTS
+---------------------------
+ScrollableContactRecyclerView
+- Custom RecyclerView.
+- Prevents an outer ScrollView from consuming contact-list touch gestures.
+- Used for independently scrollable contact/case lists.
+
+AdminOnlySettingsButton
+- Prevents normal users from using administrative Settings actions.
+
+LicensedFeatureButton
+- Enables/disables/hides UI actions based on LicenseManager feature permissions.
+- Current mappings include Preview, Test SMS, WhatsApp and range selection.
+
+LicensedFeatureHeaderTextView
+- Controls licensed sections/headers and can hide the related section when unlicensed.
+
+13. BUILD / CI
+--------------
+GitHub Actions builds the Android project on a cloud runner.
+
+Main build workflow:
+.github/workflows/main.yml
+
+Secondary/manual workflow:
+.github/workflows/build-myadv-apks.yml
+
+The secondary workflow was changed to workflow_dispatch only to avoid duplicate push-triggered builds.
+
+Build workflow behavior:
+1. Checkout repository.
+2. Set up Java/Android build environment.
+3. Use Gradle wrapper.
+4. Build the main and License Manager APKs.
+5. Discover the generated APKs robustly instead of assuming brittle Gradle output names.
+6. Rename final files to:
+   MyAdv.apk
+   MyAdv-License-Manager.apk
+7. Verify both files exist.
+8. Upload both in artifact:
+   MyAdv-APKs
+
+When checking a build, do not assume success merely because a workflow started. Verify the run conclusion and confirm that the artifact contains BOTH expected APKs.
+
+14. RECENT IMPORTANT FIXES / HISTORY
+------------------------------------
+The project has gone through several functionality fixes. Important ones include:
+
+- Final licensing/functionality pass.
+- Advocate Diary introduction.
+- Functional Settings log viewer.
+- License-first-launch flow.
+- First-login creation immediately after license activation.
+- APK build workflow fixes and duplicate-workflow removal.
+- Settings crash fix caused by incorrectly casting android.R.id.content to LinearLayout.
+- Dark mode support.
+- Independent contact-list scrolling.
+- Enforcement of license permissions in Settings/runtime.
+- Correct ADMIN/SUPER_ADMIN user creation flow and preservation of existing local roles.
+- Advocate Helper contact import and Helper -> Diary integration.
+- Diary previous/next date and cause-list/date workflow.
+
+15. SECURITY / LICENSING NOTES
+------------------------------
+Current token signing/validation is HMAC/shared-secret based and intended for the present offline implementation.
+
+RSA signing architecture is deliberately deferred.
+
+Do not place administrator passwords in licenses or distribute a shared admin password to end users.
+
+After first license activation, the user creates their own MyAdv password.
+
+License ID and signed token are safe to expose through the License Manager UI for copying/sharing, but implementation secrets used to validate/sign tokens must remain protected and should not be exposed in user-facing documentation or logs.
+
+16. HOW TO MAKE A SAFE CHANGE
+-----------------------------
+Before changing functionality:
+
+1. Check the current main branch and relevant activity/layout.
+2. Identify whether the feature is license controlled.
+3. Check both UI and runtime enforcement. UI-only disabling is not enough.
+4. Preserve existing local data and roles.
+5. Check Android permissions and lifecycle behavior.
+6. Update both Kotlin/Java code and XML resources together when IDs change.
+7. Build the project.
+8. Verify BOTH APK outputs.
+9. Check the GitHub Actions artifact.
+10. Prefer a focused branch/PR and squash merge to main.
+
+17. COMMON TROUBLESHOOTING
+--------------------------
+Settings screen crash:
+- Do not cast android.R.id.content to LinearLayout. It is a FrameLayout/content container.
+
+Contact list not scrolling:
+- Check that the custom ScrollableContactRecyclerView is being used.
+- Do not disable nested scrolling in a way that lets the outer ScrollView consume all touch gestures.
+
+License setting appears enabled despite being unlicensed:
+- Check LicenseManager.isFeatureEnabled and the effective-settings layer.
+- Do not trust stale SharedPreferences values directly.
+
+Existing admin cannot log in after license change:
+- Verify SecurityManager authenticates against the local user record.
+- Do not compare every existing user's phone to the initial license-bound phone.
+- Do not overwrite existing local roles with the current license role during normal authentication.
+
+Build produces wrong APK names:
+- Inspect the actual Gradle output and use robust APK discovery in the workflow.
+- Final distribution names must be MyAdv.apk and MyAdv-License-Manager.apk.
+
+Only one APK appears in the artifact:
+- Check that the workflow explicitly verifies both files before upload.
+- Confirm artifact MyAdv-APKs contains both files.
+
+18. CURRENT PRODUCT DIRECTION
+------------------------------
+MyAdv is being developed as an offline-first advocate utility/messaging application with license-controlled features.
+
+Priority principles:
+- Simple user experience.
+- No shared admin password.
+- Offline license validation.
+- Clear role separation.
+- License permissions enforced at runtime.
+- Reliable local data handling.
+- Scrollable/collapsible advocate workflows.
+- MyAdv branding throughout the user experience.
+- Build both APKs together for distribution.
+
+19. QUICK HANDOVER CHECKLIST
+----------------------------
+A new developer should understand these items before making changes:
+
+[ ] Main app is MyAdv.
+[ ] License Manager is MyAdv License Manager.
+[ ] Two APKs are distributed together.
+[ ] License activation happens before first login.
+[ ] First user creates their own password.
+[ ] Initial account is bound to licensed phone/User ID.
+[ ] Later admin-created users are not incorrectly forced to match the license phone.
+[ ] SUPER_ADMIN can create ADMIN/USER.
+[ ] ADMIN can create USER.
+[ ] USER cannot access Settings.
+[ ] License feature permissions are enforced both in UI and runtime.
+[ ] SMS status colors are green/red/orange for success/fail/pending.
+[ ] Client number can be imported from phone Contacts.
+[ ] Advocate Helper and Diary are integrated.
+[ ] Diary supports selected date, previous date, next date and remarks/hearing updates.
+[ ] Contact/case lists can scroll independently.
+[ ] Sections can collapse/expand.
+[ ] WhatsApp normal-app automation stops at pre-filled message; final Send remains manual.
+[ ] HMAC licensing is current; RSA is future work.
+[ ] Build artifact must contain MyAdv.apk and MyAdv-License-Manager.apk.
+
+END OF KNOWLEDGE TRANSFER DOCUMENT
