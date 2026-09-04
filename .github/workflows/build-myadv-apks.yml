@@ -1,9 +1,7 @@
-name: Build MyAdv APKs
+name: Build MyAdv APKs (manual)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build:
@@ -52,11 +50,15 @@ jobs:
           set -euo pipefail
           ./gradlew :app:assembleRelease :licensemanager:assembleRelease
 
-      - name: Rename release APKs
+      - name: Locate and rename release APKs
         run: |
           set -euo pipefail
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MyAdv.apk
-          mv licensemanager/build/outputs/apk/release/licensemanager-release.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          APP_APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          LICENSE_APK="$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APP_APK"
+          test -n "$LICENSE_APK"
+          mv "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
+          mv "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Remove private build material
         if: always()
