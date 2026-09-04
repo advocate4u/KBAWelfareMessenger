@@ -25,12 +25,54 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
 
       - name: Generate Gradle wrapper
         run: gradle wrapper
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
+
+      - name: Repair known Kotlin source issues
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
+          text = main.read_text(encoding='utf-8-sig')
+          text = text.replace(
+              'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)',
+              'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
+          )
+          old = '''        val actualSimPhone = normalizePhone(rawSimPhone)\\n\\n        // validatePhone=false explicitly permits SMS from any active SIM.\\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\\n            throw SmsLicenseException(\\n                "License/SIM mismatch.\\\\n\\\\n" +\\n                        "Licensed phone: $licensedPhone\\\\n" +\\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\\\n\\\\n" +\\n                        "SMS sending is blocked."\\n            )\\n        }\\n\\n        val smsManager ='''
+          new = '''        val actualSimPhone = normalizePhone(rawSimPhone)
+
+        // validatePhone=false explicitly permits SMS from any active SIM.
+        if (license.options.validatePhone && actualSimPhone != licensedPhone) {
+            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")
+            throw SmsLicenseException(
+                "License/SIM mismatch.\\n\\n" +
+                        "Licensed phone: $licensedPhone\\n" +
+                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+        val smsManager ='''
+          if old not in text:
+              raise SystemExit('Expected malformed SMS validation block was not found')
+          text = text.replace(old, new, 1)
+          main.write_text(text, encoding='utf-8')
+
+          version = Path('app/src/main/java/com/example/kbawelfaremessenger/AppVersionTextView.kt')
+          version_text = version.read_text(encoding='utf-8-sig')
+          version_text = version_text.replace(
+              'text = "MyAdv v${BuildConfig.VERSION_NAME}"',
+              'text = "MyAdv v${context.packageManager.getPackageInfo(context.packageName, 0).versionName}"'
+          )
+          version.write_text(version_text, encoding='utf-8')
+          PY
 
       - name: Prepare release keystore
         env:
@@ -62,13 +104,13 @@ jobs:
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
+        run: ./gradlew --no-daemon :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
 
       - name: Rename final APKs
         run: |
           set -euo pipefail
-          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
-          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv-License-Manager.apk' -print -quit)
           test -n "$APP_APK"
           test -n "$LICENSE_APK"
           cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
