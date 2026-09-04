@@ -11,8 +11,11 @@ android {
         applicationId = "com.example.kbawelfaremessenger"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "2.2"
+
+        val configuredVersionCode = providers.gradleProperty("VERSION_CODE").orElse("4").get().toInt()
+        val configuredVersionName = providers.gradleProperty("APP_VERSION").orElse("2.2").get()
+        versionCode = configuredVersionCode
+        versionName = configuredVersionName
     }
 
     signingConfigs {

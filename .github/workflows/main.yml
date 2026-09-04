@@ -2,9 +2,24 @@ name: Build MyAdv APKs
 
 on:
   workflow_dispatch:
+    inputs:
+      app_version:
+        description: 'MyAdv versionName (example: 2.3)'
+        required: true
+        default: '2.3'
+        type: string
+      version_code:
+        description: 'Android versionCode (must increase for each release)'
+        required: true
+        default: '5'
+        type: string
   push:
     branches:
       - main
+
+env:
+  APP_VERSION: ${{ inputs.app_version || '2.3' }}
+  VERSION_CODE: ${{ inputs.version_code || '5' }}
 
 jobs:
   build:
@@ -62,25 +77,53 @@ jobs:
           rm -f "$RUNNER_TEMP/myadv-signing-test.csr"
           echo "Release signing configuration: OK"
 
-      - name: Repair malformed Kotlin source
+      - name: Repair known malformed Kotlin source
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          path = Path("app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt")
-          text = path.read_text(encoding="utf-8")
+          path = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
 
-          start = text.index("        val actualSimPhone =\n")
-          end = text.index("        val smsManager =\n", start)
-          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n'''
-          text = text[:start] + replacement + text[end:]
-          text = text.replace(
-              "is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)",
-              "is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))"
+          # Older commits accidentally stored this SMS verification block with
+          # literal backslash-n characters. Normalize it before Kotlin compile.
+          pattern = re.compile(
+              r'        val actualSimPhone = normalizePhone\(rawSimPhone\)\\n\\n'
+              r'        // validatePhone=false explicitly permits SMS from any active SIM\.\\n'
+              r'.*?'
+              r'        val smsManager =',
+              re.DOTALL,
           )
-          path.write_text(text, encoding="utf-8")
-          print("Repaired MainActivity.kt")
+          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)
+
+        // validatePhone=false explicitly permits SMS from any active SIM.
+        if (license.options.validatePhone && actualSimPhone != licensedPhone) {
+            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")
+            throw SmsLicenseException(
+                "License/SIM mismatch.\\n\\n" +
+                        "Licensed phone: $licensedPhone\\n" +
+                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+        val smsManager ='''
+          repaired, count = pattern.subn(replacement, text, count=1)
+          if count:
+              text = repaired
+              print('Repaired escaped SIM verification block.')
+          else:
+              print('SIM verification block already normalized.')
+
+          old_hint = 'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)'
+          new_hint = 'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
+          if old_hint in text:
+              text = text.replace(old_hint, new_hint)
+              print('Repaired EditText hint color API usage.')
+
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Build both signed release APKs
@@ -89,7 +132,7 @@ jobs:
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease
+        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
 
       - name: Locate and rename APKs for distribution
         run: |
@@ -106,6 +149,7 @@ jobs:
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
           test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          echo "Built MyAdv version: $APP_VERSION (versionCode $VERSION_CODE)"
           echo "Final distribution APKs:"
           ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
