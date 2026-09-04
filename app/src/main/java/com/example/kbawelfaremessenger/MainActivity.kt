@@ -367,6 +367,7 @@ class MainActivity : AppCompatActivity() {
         setupSmsReceiver()
         setupButtonColors()
         applyLicenseFeatureVisibility()
+        applyThemeTextColors(findViewById(android.R.id.content))
 
         updateCounts()
     }
@@ -537,6 +538,17 @@ class MainActivity : AppCompatActivity() {
 
         recyclerContacts.overScrollMode =
             View.OVER_SCROLL_IF_CONTENT_SCROLLS
+    }
+
+    private fun applyThemeTextColors(view: View) {
+        val night = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val primary = if (night) Color.WHITE else Color.DKGRAY
+        val secondary = if (night) Color.LTGRAY else Color.DKGRAY
+        when (view) {
+            is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)
+            is TextView -> if (view !is Button && view !is CheckBox) view.setTextColor(primary)
+        }
+        if (view is ViewGroup) for (index in 0 until view.childCount) applyThemeTextColors(view.getChildAt(index))
     }
 
     private fun applyLicenseFeatureVisibility() {
