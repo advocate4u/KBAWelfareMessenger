@@ -28,7 +28,11 @@ object LicenseManager {
         val confirmBeforeBulkSend: Boolean = true,
         val loggingEnabled: Boolean = true,
         val removeDuplicates: Boolean = true,
-        val skipInvalidNumbers: Boolean = true
+        val skipInvalidNumbers: Boolean = true,
+        val preview: Boolean = true,
+        val testSms: Boolean = true,
+        val whatsapp: Boolean = true,
+        val rangeSelection: Boolean = true
     )
 
     data class License(
@@ -45,17 +49,11 @@ object LicenseManager {
     fun installLicense(c: Context, idInput: String, token: String): LicenseCheckResult {
         return try {
             val id = idInput.trim().uppercase().replace(" ", "")
-            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) {
-                return LicenseCheckResult(false, "Invalid license ID format.")
-            }
+            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) return LicenseCheckResult(false, "Invalid license ID format.")
             val license = verify(id, token) ?: return LicenseCheckResult(false, "License verification failed.")
             val today = LocalDate.now()
             if (today.isBefore(license.issueDate)) return LicenseCheckResult(false, "This license is not active yet.")
             if (today.isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
-
-            // License installation is deliberately independent of login/account state.
-            // The phone-to-User-ID binding is enforced during first account activation
-            // and again when an existing account authenticates with an installed license.
             c.getSharedPreferences(PREF_NAME, 0).edit()
                 .putString(KEY_LICENSE_ID, license.licenseId)
                 .putString(KEY_LICENSE_TOKEN, token.trim())
@@ -68,16 +66,12 @@ object LicenseManager {
         }
     }
 
-    fun getInstalledLicense(c: Context): License? {
-        return try {
-            val prefs = c.getSharedPreferences(PREF_NAME, 0)
-            val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
-            val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
-            verify(id, token)
-        } catch (_: Exception) {
-            null
-        }
-    }
+    fun getInstalledLicense(c: Context): License? = try {
+        val prefs = c.getSharedPreferences(PREF_NAME, 0)
+        val id = prefs.getString(KEY_LICENSE_ID, null) ?: return null
+        val token = prefs.getString(KEY_LICENSE_TOKEN, null) ?: return null
+        verify(id, token)
+    } catch (_: Exception) { null }
 
     fun getValidLicense(c: Context): License? {
         val license = getInstalledLicense(c) ?: return null
@@ -105,6 +99,10 @@ object LicenseManager {
             "logging" -> options.loggingEnabled
             "remove_duplicates" -> options.removeDuplicates
             "skip_invalid_numbers" -> options.skipInvalidNumbers
+            "preview" -> options.preview
+            "test_sms", "test" -> options.testSms
+            "whatsapp" -> options.whatsapp
+            "range", "range_selection" -> options.rangeSelection
             else -> false
         }
     }
@@ -140,8 +138,7 @@ object LicenseManager {
             val index = line.indexOf('=')
             if (index <= 0) null else line.substring(0, index) to line.substring(index + 1)
         }.toMap()
-        if (fields["license"] != id) return null
-        if (fields["version"] != "4") return null
+        if (fields["license"] != id || fields["version"] != "4") return null
         val phone = norm(fields["phone"].orEmpty())
         val expiry = runCatching { LocalDate.parse(fields["expiry"].orEmpty(), fmt) }.getOrNull() ?: return null
         val issue = runCatching { LocalDate.parse(fields["issue"].orEmpty(), fmt) }.getOrNull() ?: return null
@@ -149,11 +146,22 @@ object LicenseManager {
         if (phone.isBlank()) return null
         fun boolField(key: String, default: Boolean): Boolean = fields[key]?.toBooleanStrictOrNull() ?: default
         val options = LicenseOptions(
-            validatePhone = boolField("validatePhone", true), sms = boolField("sms", true), bulkSms = boolField("bulkSms", true),
-            smsLogs = boolField("smsLogs", true), advocateDiary = boolField("advocateDiary", true), advocateHelper = boolField("advocateHelper", true),
-            editMessageOnScreen = boolField("editMessageOnScreen", true), skipAlreadySent = boolField("skipAlreadySent", true),
-            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true), loggingEnabled = boolField("loggingEnabled", true),
-            removeDuplicates = boolField("removeDuplicates", true), skipInvalidNumbers = boolField("skipInvalidNumbers", true)
+            validatePhone = boolField("validatePhone", true),
+            sms = boolField("sms", true),
+            bulkSms = boolField("bulkSms", true),
+            smsLogs = boolField("smsLogs", true),
+            advocateDiary = boolField("advocateDiary", true),
+            advocateHelper = boolField("advocateHelper", true),
+            editMessageOnScreen = boolField("editMessageOnScreen", true),
+            skipAlreadySent = boolField("skipAlreadySent", true),
+            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true),
+            loggingEnabled = boolField("loggingEnabled", true),
+            removeDuplicates = boolField("removeDuplicates", true),
+            skipInvalidNumbers = boolField("skipInvalidNumbers", true),
+            preview = boolField("preview", true),
+            testSms = boolField("testSms", true),
+            whatsapp = boolField("whatsapp", true),
+            rangeSelection = boolField("rangeSelection", true)
         )
         return License(id, phone, expiry, issue, role, options)
     }
