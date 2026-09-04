@@ -84,4 +84,14 @@
         android:layout_marginTop="10dp"
         android:text="INSTALL / CHANGE LICENSE" />
 
+    <TextView
+        android:id="@+id/txtCopyright"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:text="© 2026 MyAdvAnIT. All Rights Reserved."
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="12sp" />
+
 </LinearLayout>
