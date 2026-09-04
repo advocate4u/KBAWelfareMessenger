@@ -17,6 +17,7 @@ class LicenseManagerActivity : AppCompatActivity() {
     private lateinit var issue: EditText
     private lateinit var expiry: EditText
     private lateinit var phone: EditText
+    private lateinit var phone2: EditText
     private lateinit var role: Spinner
     private lateinit var token: EditText
     private lateinit var status: TextView
@@ -27,6 +28,7 @@ class LicenseManagerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_license_manager)
         title = "MyAdv License Manager"
         phone = findViewById(R.id.licensePhone)
+        phone2 = findViewById(R.id.licensePhone2)
         issue = findViewById(R.id.issueDate)
         expiry = findViewById(R.id.expiryDate)
         role = findViewById(R.id.licenseRole)
@@ -34,9 +36,10 @@ class LicenseManagerActivity : AppCompatActivity() {
         status = findViewById(R.id.statusText)
         licenseId = findViewById(R.id.licenseId)
         role.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, arrayOf("USER", "ADMIN", "SUPER_ADMIN"))
+
         val today = LocalDate.now()
         issue.setText(today.format(fmt))
-        expiry.setText(today.plusYears(1).format(fmt))
+        expiry.setText(today.plusMonths(1).format(fmt))
         issue.setOnClickListener { pickDate(issue) }
         expiry.setOnClickListener { pickDate(expiry) }
 
@@ -62,9 +65,10 @@ class LicenseManagerActivity : AppCompatActivity() {
 
     private fun generate() {
         val target = phone.text.toString().trim()
+        val target2 = phone2.text.toString().trim()
         val issueDate = runCatching { LocalDate.parse(issue.text.toString(), fmt) }.getOrNull()
         val expiryDate = runCatching { LocalDate.parse(expiry.text.toString(), fmt) }.getOrNull()
-        if (target.isBlank() || issueDate == null || expiryDate == null) { toast("Enter mobile number and valid dates."); return }
+        if (target.isBlank() || issueDate == null || expiryDate == null) { toast("Enter primary mobile number and valid dates."); return }
         if (expiryDate.isBefore(issueDate)) { toast("Expiry date cannot be before issue date."); return }
         val selectedRole = when (role.selectedItem?.toString()) {
             "USER" -> LicenseAuthority.ManagerRole.USER
@@ -81,8 +85,8 @@ class LicenseManagerActivity : AppCompatActivity() {
             preview = checked(R.id.optPreview), testSms = checked(R.id.optTestSms), whatsapp = checked(R.id.optWhatsApp),
             rangeSelection = checked(R.id.optRange)
         )
-        val license = LicenseAuthority.createLicense(this, target, selectedRole, issueDate, expiryDate, options)
-        if (license == null) { toast("Could not generate license. Check dates and mobile number."); return }
+        val license = LicenseAuthority.createLicense(this, target, target2, selectedRole, issueDate, expiryDate, options)
+        if (license == null) { toast("Could not generate license. Check both mobile numbers and dates."); return }
         licenseId.text = license.id
         token.setText(license.token)
         status.text = "LICENSE GENERATED • ${license.role} • EXPIRES ${license.expiry.format(fmt)}"
