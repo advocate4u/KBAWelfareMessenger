@@ -17,10 +17,6 @@ on:
     branches:
       - main
 
-env:
-  APP_VERSION: ${{ inputs.app_version || '2.3' }}
-  VERSION_CODE: ${{ inputs.version_code || '5' }}
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -87,8 +83,6 @@ jobs:
           path = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
           text = path.read_text(encoding='utf-8')
 
-          # Older commits accidentally stored this SMS verification block with
-          # literal backslash-n characters. Normalize it before Kotlin compile.
           pattern = re.compile(
               r'        val actualSimPhone = normalizePhone\(rawSimPhone\)\\n\\n'
               r'        // validatePhone=false explicitly permits SMS from any active SIM\.\\n'
@@ -128,6 +122,8 @@ jobs:
 
       - name: Build both signed release APKs
         env:
+          APP_VERSION: ${{ github.event.inputs.app_version || '2.3' }}
+          VERSION_CODE: ${{ github.event.inputs.version_code || '5' }}
           MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
@@ -145,6 +141,9 @@ jobs:
           cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Verify final APK outputs
+        env:
+          APP_VERSION: ${{ github.event.inputs.app_version || '2.3' }}
+          VERSION_CODE: ${{ github.event.inputs.version_code || '5' }}
         run: |
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
