@@ -46,10 +46,11 @@ object AppSettingsManager {
             }
         }
 
-        // License permissions are authoritative. Never allow a stale local
-        // preference to grant a feature that the currently valid license denies.
+        // License permissions are authoritative. The returned settings are
+        // the effective settings used by the app, so stale local preferences
+        // can never grant a feature denied by the currently valid license.
         val license = LicenseManager.getValidLicense(context)
-        val effective = loaded.copy(
+        return loaded.copy(
             removeDuplicates = loaded.removeDuplicates && (license?.options?.removeDuplicates == true),
             skipInvalidNumbers = loaded.skipInvalidNumbers && (license?.options?.skipInvalidNumbers == true),
             editMessageOnScreen = loaded.editMessageOnScreen && (license?.options?.editMessageOnScreen == true),
@@ -57,14 +58,6 @@ object AppSettingsManager {
             confirmBeforeBulkSend = loaded.confirmBeforeBulkSend && (license?.options?.confirmBeforeBulkSend == true),
             loggingEnabled = loaded.loggingEnabled && (license?.options?.loggingEnabled == true)
         )
-
-        // Persist the normalized state so a denied feature cannot remain enabled
-        // in local settings after a license change or expiry.
-        if (effective != loaded) {
-            runCatching { save(context, effective) }
-        }
-
-        return effective
     }
 
     fun save(context: Context, settings: AppSettings) {
