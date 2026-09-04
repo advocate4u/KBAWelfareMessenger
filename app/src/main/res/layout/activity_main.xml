@@ -20,7 +20,7 @@
                 <Button android:id="@+id/btnSelectAll" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SELECT ALL" />
                 <Button android:id="@+id/btnUnselectAll" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="UNSELECT ALL" />
             </LinearLayout>
-            <com.example.kbawelfaremessenger.ScrollableContactRecyclerView android:id="@+id/recyclerContacts" android:layout_width="match_parent" android:layout_height="360dp" android:layout_marginTop="3dp" android:minHeight="120dp" android:clipToPadding="false" android:paddingTop="2dp" android:paddingBottom="2dp" android:nestedScrollingEnabled="true" android:overScrollMode="ifContentScrolls" />
+            <com.example.kbawelfaremessenger.ScrollableContactRecyclerView android:id="@+id/recyclerContacts" android:layout_width="match_parent" android:layout_height="360dp" android:layout_marginTop="3dp" android:minHeight="120dp" android:clipToPadding="false" android:paddingTop="2dp" android:paddingBottom="2dp" android:nestedScrollingEnabled="false" android:overScrollMode="ifContentScrolls" />
         </LinearLayout>
 
         <com.example.kbawelfaremessenger.LicensedFeatureHeaderTextView android:id="@+id/txtRangeHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/colorControlHighlight" android:padding="10dp" android:text="▶  RANGE SELECTION" android:textSize="16sp" android:textStyle="bold" />
