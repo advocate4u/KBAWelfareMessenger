@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingBottom="12dp">
+            <Button android:id="@+id/btnSettingsBack" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="‹ BACK" android:minWidth="0dp" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="ADMIN SETTINGS" android:textSize="20sp" android:textStyle="bold" />
+            <Space android:layout_width="72dp" android:layout_height="1dp" />
+        </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Helper" android:textSize="20sp" android:textStyle="bold" android:paddingBottom="12dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Manage cases, hearing dates, updates and fees." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
         <Button android:id="@+id/btnAdvocateHelper" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="OPEN ADVOCATE HELPER" android:textStyle="bold" />
