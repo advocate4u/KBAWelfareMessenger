@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -24,7 +25,8 @@ class LicenseManagerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_license_manager)
-        title = "MyAdvAM — License Manager"
+        title = "MyAdv License Manager"
+
         phone = findViewById(R.id.licensePhone)
         issue = findViewById(R.id.issueDate)
         expiry = findViewById(R.id.expiryDate)
@@ -40,6 +42,15 @@ class LicenseManagerActivity : AppCompatActivity() {
         issue.setOnClickListener { pickDate(issue) }
         expiry.setOnClickListener { pickDate(expiry) }
 
+        val permissionsHeader = findViewById<TextView>(R.id.permissionsHeader)
+        val permissionsContainer = findViewById<View>(R.id.permissionsContainer)
+        permissionsContainer.visibility = View.GONE
+        permissionsHeader.setOnClickListener {
+            val expanded = permissionsContainer.visibility == View.VISIBLE
+            permissionsContainer.visibility = if (expanded) View.GONE else View.VISIBLE
+            permissionsHeader.text = if (expanded) "PERMISSIONS & FEATURES  ▼" else "PERMISSIONS & FEATURES  ▲"
+        }
+
         findViewById<Button>(R.id.generateButton).setOnClickListener { generate() }
         findViewById<Button>(R.id.copyLicenseIdButton).setOnClickListener {
             copyToClipboard("MyAdv License Key", licenseId.text.toString().trim())
@@ -49,7 +60,7 @@ class LicenseManagerActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.shareButton).setOnClickListener { shareLicense() }
 
-        status.text = if (LicenseAuthority.hasKey(this)) "Signing authority: READY (built in)" else "Signing authority: NOT AVAILABLE IN THIS BUILD"
+        status.text = if (LicenseAuthority.hasKey(this)) "Signing authority: READY" else "Signing authority: NOT AVAILABLE IN THIS BUILD"
     }
 
     private fun pickDate(target: EditText) {
@@ -98,7 +109,7 @@ class LicenseManagerActivity : AppCompatActivity() {
         }
         licenseId.text = license.id
         token.setText(license.token)
-        status.text = "LICENSE GENERATED • " + license.role + " • EXPIRES " + license.expiry.format(fmt)
+        status.text = "LICENSE GENERATED • ${license.role} • EXPIRES ${license.expiry.format(fmt)}"
         toast("License generated successfully.")
     }
 
@@ -109,7 +120,7 @@ class LicenseManagerActivity : AppCompatActivity() {
         }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
-        toast(label + " copied.")
+        toast("$label copied.")
     }
 
     private fun shareLicense() {
@@ -121,7 +132,7 @@ class LicenseManagerActivity : AppCompatActivity() {
         }
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "MyAdv License\nLicense Key: " + id + "\nSigned license token:\n" + signedToken)
+            putExtra(Intent.EXTRA_TEXT, "MyAdv License\nLicense Key: $id\nSigned license token:\n$signedToken")
         }
         startActivity(Intent.createChooser(sendIntent, "Share MyAdv License"))
     }
