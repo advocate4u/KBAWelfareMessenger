@@ -31,8 +31,7 @@ class SettingsActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_settings)
-        supportActionBar?.title = "Admin Settings"
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        findViewById<Button>(R.id.btnSettingsBack).setOnClickListener { finish() }
         initialiseViews()
         loadSettings()
         applyRoleAccess()
