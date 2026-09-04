@@ -77,25 +77,53 @@ jobs:
           rm -f "$RUNNER_TEMP/myadv-signing-test.csr"
           echo "Release signing configuration: OK"
 
-      - name: Verify source before build
+      - name: Repair known malformed Kotlin source
         run: |
           set -euo pipefail
-          test -s app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt
-          if grep -F '\\n' app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt | grep -F 'actualSimPhone' >/dev/null; then
-            echo "ERROR: MainActivity.kt still contains escaped Kotlin source around SIM verification."
-            exit 1
-          fi
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
           text = path.read_text(encoding='utf-8')
-          old = 'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)'
-          new = 'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
-          if old in text:
-              path.write_text(text.replace(old, new), encoding='utf-8')
-              print('Fixed EditText hint color API usage for this build.')
+
+          # Older commits accidentally stored this SMS verification block with
+          # literal backslash-n characters. Normalize it before Kotlin compile.
+          pattern = re.compile(
+              r'        val actualSimPhone = normalizePhone\(rawSimPhone\)\\n\\n'
+              r'        // validatePhone=false explicitly permits SMS from any active SIM\.\\n'
+              r'.*?'
+              r'        val smsManager =',
+              re.DOTALL,
+          )
+          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)
+
+        // validatePhone=false explicitly permits SMS from any active SIM.
+        if (license.options.validatePhone && actualSimPhone != licensedPhone) {
+            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")
+            throw SmsLicenseException(
+                "License/SIM mismatch.\\n\\n" +
+                        "Licensed phone: $licensedPhone\\n" +
+                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+        val smsManager ='''
+          repaired, count = pattern.subn(replacement, text, count=1)
+          if count:
+              text = repaired
+              print('Repaired escaped SIM verification block.')
           else:
-              print('No hint color source repair required.')
+              print('SIM verification block already normalized.')
+
+          old_hint = 'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)'
+          new_hint = 'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
+          if old_hint in text:
+              text = text.replace(old_hint, new_hint)
+              print('Repaired EditText hint color API usage.')
+
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Build both signed release APKs
