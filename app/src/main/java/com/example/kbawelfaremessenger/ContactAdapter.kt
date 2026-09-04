@@ -40,7 +40,7 @@ class ContactAdapter(
         when (contact.smsStatus) {
             SmsStatus.NONE -> {
                 holder.txtStatus.text = "Not sent"
-                holder.txtStatus.setTextColor(Color.DKGRAY)
+                holder.txtStatus.setTextColor(holder.txtPhone.currentTextColor)
             }
             SmsStatus.SENDING -> {
                 holder.txtStatus.text = "⏳ PENDING"
