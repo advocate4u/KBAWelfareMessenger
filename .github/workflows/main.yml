@@ -1,18 +1,6 @@
 name: Build MyAdv APKs
 
 on:
-  workflow_dispatch:
-    inputs:
-      app_version:
-        description: 'MyAdv versionName (example: 2.3)'
-        required: true
-        default: '2.3'
-        type: string
-      version_code:
-        description: 'Android versionCode (must increase for each release)'
-        required: true
-        default: '5'
-        type: string
   push:
     branches:
       - main
@@ -122,8 +110,8 @@ jobs:
 
       - name: Build both signed release APKs
         env:
-          APP_VERSION: ${{ github.event.inputs.app_version || '2.3' }}
-          VERSION_CODE: ${{ github.event.inputs.version_code || '5' }}
+          APP_VERSION: '2.3'
+          VERSION_CODE: '5'
           MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
@@ -141,15 +129,11 @@ jobs:
           cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Verify final APK outputs
-        env:
-          APP_VERSION: ${{ github.event.inputs.app_version || '2.3' }}
-          VERSION_CODE: ${{ github.event.inputs.version_code || '5' }}
         run: |
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
           test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
-          echo "Built MyAdv version: $APP_VERSION (versionCode $VERSION_CODE)"
-          echo "Final distribution APKs:"
+          echo "Built MyAdv version: 2.3 (versionCode 5)"
           ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Upload both APKs
