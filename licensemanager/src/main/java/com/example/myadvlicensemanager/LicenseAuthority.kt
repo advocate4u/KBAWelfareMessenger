@@ -37,7 +37,7 @@ object LicenseAuthority {
     )
 
     data class License(
-        val id: String, val phone: String, val role: ManagerRole,
+        val id: String, val phone: String, val secondaryPhone: String?, val role: ManagerRole,
         val issueDate: LocalDate, val expiry: LocalDate, val options: LicenseOptions, val token: String
     )
 
@@ -51,17 +51,22 @@ object LicenseAuthority {
         return true
     }
 
-    fun createLicense(c: Context, target: String, role: ManagerRole, issueDate: LocalDate, expiry: LocalDate, options: LicenseOptions): License? {
-        if (expiry.isBefore(issueDate) || expiry.isBefore(LocalDate.now())) return null
+    fun createLicense(c: Context, target: String, secondaryTarget: String?, role: ManagerRole, issueDate: LocalDate, expiryDate: LocalDate, options: LicenseOptions): License? {
+        if (expiryDate.isBefore(issueDate) || expiryDate.isBefore(LocalDate.now())) return null
         val phone = normalize(target) ?: return null
+        val phone2 = secondaryTarget?.trim()?.takeIf { it.isNotEmpty() }?.let(::normalize) ?: run {
+            if (!secondaryTarget.isNullOrBlank()) return null else null
+        }
+        if (phone2 == phone) return null
         val id = generateLicenseId()
         val payload = buildString {
             appendLine("version=4")
             appendLine("license=$id")
             appendLine("phone=$phone")
+            if (phone2 != null) appendLine("phone2=$phone2")
             appendLine("role=$role")
             appendLine("issue=${issueDate.format(fmt)}")
-            appendLine("expiry=${expiry.format(fmt)}")
+            appendLine("expiry=${expiryDate.format(fmt)}")
             appendLine("validatePhone=${options.validatePhone}")
             appendLine("sms=${options.sms}")
             appendLine("bulkSms=${options.bulkSms}")
@@ -80,7 +85,7 @@ object LicenseAuthority {
             append("rangeSelection=${options.rangeSelection}")
         }
         val token = sign(payload) ?: return null
-        return License(id, phone, role, issueDate, expiry, options, token)
+        return License(id, phone, phone2, role, issueDate, expiryDate, options, token)
     }
 
     private fun generateLicenseId(): String {

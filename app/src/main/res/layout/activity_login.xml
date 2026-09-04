@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:gravity="center"
     android:padding="28dp"
-    android:background="#F5F7FA">
+    android:background="?android:attr/colorBackground">
 
     <ImageView
         android:id="@+id/imgLoginAppIcon"
@@ -34,6 +34,7 @@
         android:textAlignment="center"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         android:layout_marginBottom="8dp" />
 
     <TextView
@@ -41,7 +42,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAlignment="center"
-        android:alpha="0.7"
+        android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="20dp" />
 
     <EditText
@@ -49,6 +50,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="User ID / Phone Number"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorHint"
         android:inputType="phone"
         android:singleLine="true"
         android:padding="14dp" />
@@ -59,6 +62,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:hint="Create Password"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorHint"
         android:inputType="numberPassword"
         android:maxLength="4"
         android:singleLine="true"
@@ -69,7 +74,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:text="CREATE LOGIN &amp; CONTINUE"
+        android:text="CREATE LOGIN"
         android:textStyle="bold" />
 
     <Button

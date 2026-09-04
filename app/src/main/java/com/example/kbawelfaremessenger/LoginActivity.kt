@@ -2,6 +2,7 @@ package com.example.kbawelfaremessenger
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -41,44 +42,46 @@ class LoginActivity : AppCompatActivity() {
     private fun setupLoginScreen() {
         val hasUser = SecurityManager.hasUser(this)
         val license = LicenseManager.getValidLicense(this)
-        txtLoginTitle.text = ""
-        txtLoginTitle.visibility = android.view.View.GONE
+        txtLoginTitle.visibility = View.GONE
 
         if (license == null) {
             txtLoginMode.text = "INSTALL LICENSE FIRST"
-            txtLoginDescription.text = "Install a valid MyAdv license to continue."
-            edtUserId.setText("")
-            edtPassword.setText("")
-            edtUserId.isEnabled = false
-            edtPassword.isEnabled = false
+            txtLoginDescription.visibility = View.GONE
+            edtUserId.visibility = View.GONE
+            edtPassword.visibility = View.GONE
+            btnLogin.visibility = View.VISIBLE
+            btnLicense.visibility = View.GONE
             btnLogin.text = "INSTALL LICENSE"
-            btnLicense.text = "INSTALL LICENSE"
             btnLogin.setOnClickListener { openLicenseActivation() }
-            btnLicense.setOnClickListener { openLicenseActivation() }
             return
         }
+
+        txtLoginDescription.visibility = View.GONE
+        edtUserId.visibility = View.VISIBLE
+        edtPassword.visibility = View.VISIBLE
+        btnLogin.visibility = View.VISIBLE
+        btnLicense.visibility = View.VISIBLE
         edtPassword.isEnabled = true
-        edtUserId.isEnabled = hasUser
-        edtUserId.isFocusable = hasUser
-        edtUserId.isClickable = hasUser
 
         if (hasUser) {
             txtLoginMode.text = "LOGIN"
-            txtLoginDescription.text = "Enter your User ID and MyAdv password."
+            edtUserId.isEnabled = true
+            edtUserId.isFocusable = true
+            edtUserId.isClickable = true
             edtPassword.hint = "Password"
             btnLogin.text = "LOGIN"
         } else {
-            txtLoginMode.text = "CREATE YOUR MYADV LOGIN"
-            txtLoginDescription.text = "License verified. Create your 4-digit PIN for this licensed device."
-            edtPassword.hint = "Create 4-digit PIN"
-            btnLogin.text = "CREATE LOGIN & CONTINUE"
-            if (license != null) {
-                edtUserId.setText(license.phone.filter { it.isDigit() }.takeLast(10))
-                edtUserId.setSelection(edtUserId.text.length)
-            }
+            txtLoginMode.text = "CREATE LOGIN"
+            val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
+            edtUserId.setText(licensedPhone)
+            edtUserId.isEnabled = false
+            edtUserId.isFocusable = false
+            edtUserId.isClickable = false
+            edtPassword.hint = "Create Password (4 digits)"
+            btnLogin.text = "CREATE LOGIN"
         }
 
-        btnLicense.text = "VIEW / CHANGE LICENSE"
+        btnLicense.text = "INSTALL / CHANGE LICENSE"
         btnLogin.setOnClickListener { if (hasUser) loginUser() else activateFirstLogin() }
         btnLicense.setOnClickListener { openLicenseActivation() }
     }
@@ -87,13 +90,13 @@ class LoginActivity : AppCompatActivity() {
         val license = LicenseManager.getValidLicense(this) ?: run { openLicenseActivation(); return }
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
-        if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
+        if (userId.isEmpty()) { edtUserId.error = "Licensed phone number is required"; edtUserId.requestFocus(); return }
         if (!password.matches(Regex("^\\d{4}$"))) { edtPassword.error = "Enter a 4-digit PIN"; edtPassword.requestFocus(); return }
 
         val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
         val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
         if (licensedPhone != enteredPhone) {
-            UiFeedback.error(this, "For the first activation, User ID must match the phone number on the installed license.", true)
+            UiFeedback.error(this, "The User ID must match the primary phone number on the installed license.", true)
             return
         }
 
@@ -112,8 +115,6 @@ class LoginActivity : AppCompatActivity() {
         if (password.isEmpty()) { edtPassword.error = "Enter password"; edtPassword.requestFocus(); return }
         if (!LicenseManager.isLicenseValid(this)) { openLicenseActivation(); return }
 
-        // Existing users created by an administrator authenticate using their own account.
-        // The installed license only needs to be valid; it does not have to contain that user's phone.
         if (SecurityManager.authenticate(this, userId, password)) {
             AppLogger.info(this, "AUTH", "User login successful.")
             UiFeedback.success(this, "Welcome to MyAdv")
