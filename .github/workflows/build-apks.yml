@@ -1,0 +1,105 @@
+name: Build MyAdv APKs
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
+      - name: Generate Gradle wrapper
+        run: gradle wrapper
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Calculate release version
+        id: version
+        run: python3 scripts/compute_release_version.py
+      - name: Show release version
+        run: |
+          echo "Building MyAdv v${{ steps.version.outputs.app_version }}"
+          echo "Android versionCode: ${{ steps.version.outputs.version_code }}"
+      - name: Repair known Kotlin source issues
+        run: python3 scripts/repair_release_build.py
+      - name: Prepare release keystore
+        env:
+          MYADV_KEYSTORE_BASE64: ${{ secrets.MYADV_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$MYADV_KEYSTORE_BASE64"
+          printf '%s' "$MYADV_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/myadv-release.jks"
+          test -s "$GITHUB_WORKSPACE/myadv-release.jks"
+      - name: Verify signing configuration
+        env:
+          KEYSTORE: ${{ github.workspace }}/myadv-release.jks
+          STORE_PASSWORD: ${{ secrets.MYADV_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          test -n "$STORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+      - name: Build both release APKs
+        env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          MYADV_KEYSTORE_PATH: ${{ github.workspace }}/myadv-release.jks
+          MYADV_KEYSTORE_PASSWORD: ${{ secrets.MYADV_KEYSTORE_PASSWORD }}
+          MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
+          MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
+      - name: Rename final APKs
+        run: |
+          set -euo pipefail
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdvAnIT.apk' -print -quit)
+          test -n "$APP_APK"
+          test -n "$LICENSE_APK"
+          cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
+          cp "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+      - name: Verify APKs are signed and structurally valid
+        run: |
+          set -euo pipefail
+          test -s app/build/outputs/apk/release/MyAdv.apk
+          test -s licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+          command -v apksigner >/dev/null 2>&1
+          apksigner verify --verbose --print-certs app/build/outputs/apk/release/MyAdv.apk
+          apksigner verify --verbose --print-certs licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+      - name: Upload MyAdv-APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyAdv-APKs
+          path: |
+            app/build/outputs/apk/release/MyAdv.apk
+            licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
+          if-no-files-found: error
+      - name: Persist release version
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- release-version.json; then
+            exit 0
+          fi
+          git add release-version.json
+          git commit -m "chore: record MyAdv release v${{ steps.version.outputs.app_version }} [skip ci]"
+          git push origin HEAD:main
+      - name: Cleanup signing material
+        if: always()
+        run: rm -f myadv-release.jks
