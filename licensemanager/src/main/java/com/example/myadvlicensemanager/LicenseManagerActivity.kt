@@ -1,6 +1,6 @@
 package com.example.myadvlicensemanager
 
-import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import android.app.DatePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -11,7 +11,7 @@ import android.widget.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class LicenseManagerActivity : Activity() {
+class LicenseManagerActivity : AppCompatActivity() {
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private lateinit var issue: EditText
     private lateinit var expiry: EditText
