@@ -2254,44 +2254,7 @@ class MainActivity : AppCompatActivity() {
                 ?.trim()
                 .orEmpty()
 
-        if (rawSimPhone.isEmpty()) {
-
-            throw SmsLicenseException(
-                "Android could not verify the phone number of the selected SMS SIM.\n\n" +
-                        "For security reasons SMS sending is blocked."
-            )
-        }
-
-        val actualSimPhone =
-            normalizePhone(
-                rawSimPhone
-            )
-
-        if (actualSimPhone.isEmpty()) {
-
-            throw SmsLicenseException(
-                "The selected SMS SIM returned an invalid phone number.\n\n" +
-                        "SMS sending is blocked."
-            )
-        }
-
-        if (actualSimPhone != licensedPhone) {
-
-            AppLogger.warning(
-                this,
-                "LICENSE",
-                "Licensed phone does not match selected SMS SIM."
-            )
-
-            throw SmsLicenseException(
-                "License/SIM mismatch.\n\n" +
-                        "Licensed phone: $licensedPhone\n" +
-                        "Selected SMS SIM: $actualSimPhone\n\n" +
-                        "SMS sending is blocked."
-            )
-        }
-
-        val smsManager =
+        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n        val smsManager =
             try {
 
                 SmsManager.getSmsManagerForSubscriptionId(
