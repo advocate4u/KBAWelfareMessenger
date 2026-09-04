@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - fix/build-kotlin-source-repair
 
 jobs:
   build:
@@ -67,29 +68,18 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path("app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt")
           text = path.read_text(encoding="utf-8")
 
-          # A previous automated edit inserted literal backslash-n tokens into
-          # the SMS verification block. Replace that whole block with valid
-          # Kotlin instead of doing a global replacement that could corrupt
-          # legitimate "\\n" string escapes elsewhere in the source.
           start = text.index("        val actualSimPhone =\n")
           end = text.index("        val smsManager =\n", start)
-
           replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n'''
-
           text = text[:start] + replacement + text[end:]
-
-          # AppCompat EditText does not expose a Kotlin hintTextColor property
-          # usable here; use the Android setter explicitly.
           text = text.replace(
               "is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)",
               "is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))"
           )
-
           path.write_text(text, encoding="utf-8")
           print("Repaired MainActivity.kt")
           PY
