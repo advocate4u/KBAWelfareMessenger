@@ -11,8 +11,11 @@ android {
         applicationId = "com.example.myadvlicensemanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+
+        val configuredVersionCode = providers.gradleProperty("VERSION_CODE").orElse("6").get().toInt()
+        val configuredVersionName = providers.gradleProperty("APP_VERSION").orElse("2.6").get()
+        versionCode = configuredVersionCode
+        versionName = configuredVersionName
     }
 
     signingConfigs {

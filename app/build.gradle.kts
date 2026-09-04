@@ -12,8 +12,8 @@ android {
         minSdk = 26
         targetSdk = 35
 
-        val configuredVersionCode = providers.gradleProperty("VERSION_CODE").orElse("4").get().toInt()
-        val configuredVersionName = providers.gradleProperty("APP_VERSION").orElse("2.2").get()
+        val configuredVersionCode = providers.gradleProperty("VERSION_CODE").orElse("6").get().toInt()
+        val configuredVersionName = providers.gradleProperty("APP_VERSION").orElse("2.6").get()
         versionCode = configuredVersionCode
         versionName = configuredVersionName
     }
