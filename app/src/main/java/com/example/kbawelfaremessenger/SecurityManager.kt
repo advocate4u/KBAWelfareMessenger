@@ -33,7 +33,7 @@ object SecurityManager {
 
     fun createUser(c: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
-        if (id.isBlank() || password.length < 6 || hasUser(c)) return false
+        if (id.isBlank() || !password.matches(Regex("^\\d{4}$")) || hasUser(c)) return false
         val license = LicenseManager.getValidLicense(c) ?: return false
         if (normalizePhone(license.phone) != normalizePhone(id)) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
@@ -121,7 +121,6 @@ object SecurityManager {
 
     fun logout(c: Context) { preferences(c).edit().remove(KEY_CURRENT_USER).apply() }
 
-    /** Clears the complete local login state when a renewal changes the primary licensed identity. */
     fun resetLocalLogin(c: Context) {
         preferences(c).edit().clear().apply()
         AppLogger.info(c, "AUTH", "Local login state reset because the licensed primary phone changed.")

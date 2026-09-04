@@ -2,7 +2,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="?android:attr/colorBackground">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -12,15 +13,16 @@
             android:id="@+id/txtLicenseTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="MyAdv License Center"
+            android:text="MyAdv License Activation"
+            android:textColor="?android:attr/textColorPrimary"
             android:textSize="24sp"
             android:textStyle="bold" />
         <TextView
             android:id="@+id/txtLicenseDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Offline license activation."
-            android:alpha="0.7"
+            android:text="Install the license provided by your administrator. Verification works offline."
+            android:textColor="?android:attr/textColorSecondary"
             android:paddingTop="6dp"
             android:paddingBottom="16dp" />
         <TextView
@@ -28,114 +30,30 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Signing key: NOT CONFIGURED"
+            android:textColor="?android:attr/textColorPrimary"
             android:textStyle="bold"
             android:padding="12dp" />
-        <Button
-            android:id="@+id/btnSaveAdminKey"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="IMPORT PROTECTED SIGNING KEY (.P12 / .PFX)" />
+        <Button android:id="@+id/btnSaveAdminKey" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="IMPORT PROTECTED SIGNING KEY (.P12 / .PFX)" />
         <TextView
             android:id="@+id/txtAdminKeyInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="One-time setup: choose the protected PKCS#12/PFX key package. The password is requested only during import and is never stored. The extracted private key is encrypted with Android Keystore and is never compiled into the APK."
-            android:alpha="0.7"
+            android:text="One-time setup: choose the protected PKCS#12/PFX key package. The password is requested only during import and is never stored."
+            android:textColor="?android:attr/textColorSecondary"
             android:paddingTop="6dp"
             android:paddingBottom="18dp" />
-        <TextView
-            android:id="@+id/txtGenerateSection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="GENERATE LICENSE"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-        <EditText
-            android:id="@+id/edtGeneratePhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Phone number"
-            android:inputType="phone"
-            android:singleLine="true"
-            android:layout_marginTop="10dp" />
-        <Spinner
-            android:id="@+id/spnGenerateRole"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
-        <EditText
-            android:id="@+id/edtGenerateExpiry"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Expiry date (YYYY-MM-DD)"
-            android:inputType="none"
-            android:focusable="false"
-            android:clickable="true"
-            android:cursorVisible="false"
-            android:singleLine="true"
-            android:drawableEnd="@android:drawable/ic_menu_my_calendar" />
-        <Button
-            android:id="@+id/btnGenerateLicense"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="GENERATE LICENSE"
-            android:textStyle="bold" />
-        <TextView
-            android:id="@+id/txtGeneratedLicense"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="No license generated yet."
-            android:textIsSelectable="true"
-            android:padding="14dp"
-            android:background="#EEEEEE"
-            android:layout_marginTop="10dp" />
-        <Button
-            android:id="@+id/btnShareGenerated"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="SHARE LICENSE" />
-        <TextView
-            android:id="@+id/txtInstallSection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="INSTALL LICENSE ON THIS DEVICE"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:paddingTop="22dp" />
-        <TextView
-            android:id="@+id/txtLicenseDetails"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Status: NOT ACTIVATED"
-            android:textStyle="bold"
-            android:padding="14dp"
-            android:background="#EEEEEE"
-            android:layout_marginTop="8dp" />
-        <EditText
-            android:id="@+id/edtLicenseId"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="License ID (e.g. ANI7-X4P9-M2Q8-T6R3)"
-            android:inputType="textCapCharacters"
-            android:singleLine="true"
-            android:layout_marginTop="12dp" />
-        <EditText
-            android:id="@+id/edtSignedToken"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:hint="Signed license token"
-            android:gravity="top|start"
-            android:inputType="textMultiLine" />
-        <Button
-            android:id="@+id/btnActivateLicense"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="ACTIVATE LICENSE"
-            android:textStyle="bold" />
-        <Button
-            android:id="@+id/btnClearLicense"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="CLEAR INSTALLED LICENSE" />
+        <TextView android:id="@+id/txtGenerateSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="GENERATE LICENSE" android:textColor="?android:attr/textColorPrimary" android:textSize="18sp" android:textStyle="bold" />
+        <EditText android:id="@+id/edtGeneratePhone" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Phone number" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="phone" android:singleLine="true" android:layout_marginTop="10dp" />
+        <Spinner android:id="@+id/spnGenerateRole" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/edtGenerateExpiry" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Expiry date (YYYY-MM-DD)" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="none" android:focusable="false" android:clickable="true" android:cursorVisible="false" android:singleLine="true" android:drawableEnd="@android:drawable/ic_menu_my_calendar" />
+        <Button android:id="@+id/btnGenerateLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="GENERATE LICENSE" android:textStyle="bold" />
+        <TextView android:id="@+id/txtGeneratedLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No license generated yet." android:textColor="?android:attr/textColorPrimary" android:textIsSelectable="true" android:padding="14dp" android:background="?android:attr/colorBackground" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnShareGenerated" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SHARE LICENSE" />
+        <TextView android:id="@+id/txtInstallSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="INSTALL LICENSE ON THIS DEVICE" android:textColor="?android:attr/textColorPrimary" android:textSize="18sp" android:textStyle="bold" android:paddingTop="22dp" />
+        <TextView android:id="@+id/txtLicenseDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Status: NOT ACTIVATED" android:textColor="?android:attr/textColorPrimary" android:textStyle="bold" android:padding="14dp" android:background="?android:attr/colorBackground" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/edtLicenseId" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="License ID (e.g. ANI7-X4P9-M2Q8-T6R3)" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:inputType="textCapCharacters" android:singleLine="true" android:layout_marginTop="12dp" />
+        <EditText android:id="@+id/edtSignedToken" android:layout_width="match_parent" android:layout_height="120dp" android:hint="Signed license token" android:textColor="?android:attr/textColorPrimary" android:textColorHint="?android:attr/textColorHint" android:gravity="top|start" android:inputType="textMultiLine" android:scrollbars="vertical" />
+        <Button android:id="@+id/btnActivateLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ACTIVATE LICENSE" android:textStyle="bold" />
+        <Button android:id="@+id/btnClearLicense" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CLEAR INSTALLED LICENSE" />
     </LinearLayout>
 </ScrollView>

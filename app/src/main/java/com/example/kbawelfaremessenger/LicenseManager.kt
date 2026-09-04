@@ -17,54 +17,34 @@ object LicenseManager {
     private val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     data class LicenseOptions(
-        val validatePhone: Boolean = true,
-        val sms: Boolean = true,
-        val bulkSms: Boolean = true,
-        val smsLogs: Boolean = true,
-        val advocateDiary: Boolean = true,
-        val advocateHelper: Boolean = true,
-        val editMessageOnScreen: Boolean = true,
-        val skipAlreadySent: Boolean = true,
-        val confirmBeforeBulkSend: Boolean = true,
-        val loggingEnabled: Boolean = true,
-        val removeDuplicates: Boolean = true,
-        val skipInvalidNumbers: Boolean = true,
-        val preview: Boolean = true,
-        val testSms: Boolean = true,
-        val whatsapp: Boolean = true,
-        val rangeSelection: Boolean = true
+        val validatePhone: Boolean = true, val sms: Boolean = true, val bulkSms: Boolean = true, val smsLogs: Boolean = true,
+        val advocateDiary: Boolean = true, val advocateHelper: Boolean = true, val editMessageOnScreen: Boolean = true,
+        val skipAlreadySent: Boolean = true, val confirmBeforeBulkSend: Boolean = true, val loggingEnabled: Boolean = true,
+        val removeDuplicates: Boolean = true, val skipInvalidNumbers: Boolean = true, val preview: Boolean = true,
+        val testSms: Boolean = true, val whatsapp: Boolean = true, val rangeSelection: Boolean = true
     )
 
     data class License(
-        val licenseId: String,
-        val phone: String,
-        val secondaryPhone: String? = null,
-        val expiryDate: LocalDate,
-        val issueDate: LocalDate,
-        val role: UserRole,
-        val options: LicenseOptions
+        val licenseId: String, val phone: String, val secondaryPhone: String? = null, val expiryDate: LocalDate,
+        val issueDate: LocalDate, val role: UserRole, val options: LicenseOptions
     )
 
     data class LicenseCheckResult(val allowed: Boolean, val message: String)
 
-    fun installLicense(c: Context, idInput: String, token: String): LicenseCheckResult =
-        installInternal(c, idInput, token, false)
-
-    fun renewLicense(c: Context, idInput: String, token: String): LicenseCheckResult =
-        installInternal(c, idInput, token, true)
+    fun installLicense(c: Context, idInput: String, token: String): LicenseCheckResult = installInternal(c, idInput, token, false)
+    fun renewLicense(c: Context, idInput: String, token: String): LicenseCheckResult = installInternal(c, idInput, token, true)
 
     private fun installInternal(c: Context, idInput: String, token: String, renewal: Boolean): LicenseCheckResult {
         return try {
             val id = idInput.trim().uppercase().replace(" ", "")
-            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) {
-                return LicenseCheckResult(false, "Invalid license ID format.")
-            }
+            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) return LicenseCheckResult(false, "Invalid license ID format.")
             val license = verify(id, token) ?: return LicenseCheckResult(false, "License verification failed.")
             val today = LocalDate.now()
             if (today.isBefore(license.issueDate)) return LicenseCheckResult(false, "This license is not active yet.")
             if (today.isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
 
-            val oldLicense = if (renewal) getInstalledLicense(c) else null
+            val oldLicense = getInstalledLicense(c)
+            val hadExistingLogin = SecurityManager.hasUser(c)
             val samePrimaryPhone = oldLicense != null && norm(oldLicense.phone) == norm(license.phone)
 
             c.getSharedPreferences(PREF_NAME, 0).edit()
@@ -72,22 +52,21 @@ object LicenseManager {
                 .putString(KEY_LICENSE_TOKEN, token.trim())
                 .apply()
 
-            if (renewal && !samePrimaryPhone) {
+            if (hadExistingLogin && oldLicense != null && !samePrimaryPhone) {
                 SecurityManager.resetLocalLogin(c)
-                AppLogger.info(c, "LICENSE", "License renewed with a different primary phone; local login reset.")
-            } else if (renewal) {
-                AppLogger.info(c, "LICENSE", "License renewed for the same primary phone; existing login preserved.")
+                AppLogger.info(c, "LICENSE", "License changed to a different primary phone; local login reset.")
+            } else if (hadExistingLogin && oldLicense != null) {
+                AppLogger.info(c, "LICENSE", "License updated for the same primary phone; existing login preserved.")
             } else {
                 AppLogger.success(c, "LICENSE", "License activated: ${license.licenseId}")
             }
 
-            LicenseCheckResult(
-                true,
-                if (renewal) {
-                    if (samePrimaryPhone) "License renewed successfully. Existing login has been preserved."
-                    else "License renewed successfully. A new login is required for the new primary phone."
-                } else "License activated successfully."
-            )
+            LicenseCheckResult(true, when {
+                oldLicense != null && !samePrimaryPhone -> "License updated successfully. A new login is required for the new primary phone."
+                oldLicense != null -> "License updated successfully. Existing login has been preserved."
+                renewal -> "License renewed successfully. Create login if this is the first activation."
+                else -> "License activated successfully."
+            })
         } catch (e: Exception) {
             AppLogger.error(c, "LICENSE", "License ${if (renewal) "renewal" else "installation"} failed: ${e.message}")
             LicenseCheckResult(false, "Unable to ${if (renewal) "renew" else "install"} license.")
@@ -117,28 +96,19 @@ object LicenseManager {
     fun isFeatureEnabled(c: Context, feature: String): Boolean {
         val options = getValidLicense(c)?.options ?: return false
         return when (feature.lowercase()) {
-            "sms" -> options.sms
-            "bulk_sms" -> options.bulkSms
-            "sms_logs" -> options.smsLogs
-            "diary", "advocate_diary" -> options.advocateDiary
-            "helper", "advocate_helper" -> options.advocateHelper
-            "edit_message" -> options.editMessageOnScreen
-            "skip_already_sent" -> options.skipAlreadySent
-            "confirm_bulk" -> options.confirmBeforeBulkSend
-            "logging" -> options.loggingEnabled
-            "remove_duplicates" -> options.removeDuplicates
-            "skip_invalid_numbers" -> options.skipInvalidNumbers
-            "preview" -> options.preview
-            "test_sms", "test" -> options.testSms
-            "whatsapp" -> options.whatsapp
-            "range", "range_selection" -> options.rangeSelection
+            "sms" -> options.sms; "bulk_sms" -> options.bulkSms; "sms_logs" -> options.smsLogs
+            "diary", "advocate_diary" -> options.advocateDiary; "helper", "advocate_helper" -> options.advocateHelper
+            "edit_message" -> options.editMessageOnScreen; "skip_already_sent" -> options.skipAlreadySent
+            "confirm_bulk" -> options.confirmBeforeBulkSend; "logging" -> options.loggingEnabled
+            "remove_duplicates" -> options.removeDuplicates; "skip_invalid_numbers" -> options.skipInvalidNumbers
+            "preview" -> options.preview; "test_sms", "test" -> options.testSms
+            "whatsapp" -> options.whatsapp; "range", "range_selection" -> options.rangeSelection
             else -> false
         }
     }
 
     fun checkLicenseAndSmsPhone(c: Context, smsPhone: String?): LicenseCheckResult {
-        val license = getValidLicense(c)
-            ?: return LicenseCheckResult(false, if (getInstalledLicense(c) != null) "License has expired or is not active." else "No valid MyAdv license is installed.")
+        val license = getValidLicense(c) ?: return LicenseCheckResult(false, if (getInstalledLicense(c) != null) "License has expired or is not active." else "No valid MyAdv license is installed.")
         if (!license.options.sms) return LicenseCheckResult(false, "SMS sending is not enabled in this license.")
         if (!license.options.validatePhone) return LicenseCheckResult(true, "License verified. SMS number validation is disabled by the license.")
         val actual = smsPhone?.let(::norm).orEmpty()
@@ -149,7 +119,8 @@ object LicenseManager {
 
     fun clearLicense(c: Context) {
         c.getSharedPreferences(PREF_NAME, 0).edit().clear().apply()
-        AppLogger.info(c, "LICENSE", "Installed license cleared.")
+        SecurityManager.resetLocalLogin(c)
+        AppLogger.info(c, "LICENSE", "Installed license cleared and local login reset.")
     }
 
     private fun verify(id: String, token: String): License? {
@@ -175,33 +146,15 @@ object LicenseManager {
         if (phone.isBlank()) return null
         fun boolField(key: String, default: Boolean): Boolean = fields[key]?.toBooleanStrictOrNull() ?: default
         val options = LicenseOptions(
-            validatePhone = boolField("validatePhone", true),
-            sms = boolField("sms", true),
-            bulkSms = boolField("bulkSms", true),
-            smsLogs = boolField("smsLogs", true),
-            advocateDiary = boolField("advocateDiary", true),
-            advocateHelper = boolField("advocateHelper", true),
-            editMessageOnScreen = boolField("editMessageOnScreen", true),
-            skipAlreadySent = boolField("skipAlreadySent", true),
-            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true),
-            loggingEnabled = boolField("loggingEnabled", true),
-            removeDuplicates = boolField("removeDuplicates", true),
-            skipInvalidNumbers = boolField("skipInvalidNumbers", true),
-            preview = boolField("preview", false),
-            testSms = boolField("testSms", false),
-            whatsapp = boolField("whatsapp", false),
-            rangeSelection = boolField("rangeSelection", false)
+            validatePhone = boolField("validatePhone", true), sms = boolField("sms", true), bulkSms = boolField("bulkSms", true),
+            smsLogs = boolField("smsLogs", true), advocateDiary = boolField("advocateDiary", true), advocateHelper = boolField("advocateHelper", true),
+            editMessageOnScreen = boolField("editMessageOnScreen", true), skipAlreadySent = boolField("skipAlreadySent", true),
+            confirmBeforeBulkSend = boolField("confirmBeforeBulkSend", true), loggingEnabled = boolField("loggingEnabled", true),
+            removeDuplicates = boolField("removeDuplicates", true), skipInvalidNumbers = boolField("skipInvalidNumbers", true),
+            preview = boolField("preview", false), testSms = boolField("testSms", false), whatsapp = boolField("whatsapp", false), rangeSelection = boolField("rangeSelection", false)
         )
         val secondaryPhone = fields["phone2"]?.let(::norm)?.takeIf { it.isNotBlank() }
-        return License(
-            licenseId = id,
-            phone = phone,
-            secondaryPhone = secondaryPhone,
-            expiryDate = expiry,
-            issueDate = issue,
-            role = role,
-            options = options
-        )
+        return License(id, phone, secondaryPhone, expiry, issue, role, options)
     }
 
     private fun norm(value: String): String {
