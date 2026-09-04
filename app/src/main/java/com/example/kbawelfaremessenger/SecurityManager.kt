@@ -121,6 +121,12 @@ object SecurityManager {
 
     fun logout(c: Context) { preferences(c).edit().remove(KEY_CURRENT_USER).apply() }
 
+    /** Clears the complete local login state when a renewal changes the primary licensed identity. */
+    fun resetLocalLogin(c: Context) {
+        preferences(c).edit().clear().apply()
+        AppLogger.info(c, "AUTH", "Local login state reset because the licensed primary phone changed.")
+    }
+
     private fun readUsers(c: Context): JSONArray {
         val prefs = preferences(c)
         val stored = prefs.getString(KEY_USERS, null)
