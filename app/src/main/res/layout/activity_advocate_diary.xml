@@ -1,19 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/diaryScroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Diary" android:textSize="24sp" android:textStyle="bold" />
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Offline case, hearing and professional notes" android:alpha="0.7" android:paddingBottom="12dp" />
-<EditText android:id="@+id/diaryDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Date" android:inputType="date" android:focusable="false" />
-<EditText android:id="@+id/diaryTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Title / Hearing" android:inputType="textCapSentences" />
-<EditText android:id="@+id/diaryCourt" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Court" android:inputType="textCapWords" />
-<EditText android:id="@+id/diaryCaseNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Case Number" android:inputType="text" />
-<EditText android:id="@+id/diaryClient" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Client" android:inputType="textCapWords" />
-<EditText android:id="@+id/diaryNotes" android:layout_width="match_parent" android:layout_height="120dp" android:gravity="top|start" android:hint="Notes" android:inputType="textMultiLine" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-<Button android:id="@+id/diarySave" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SAVE ENTRY" />
-<Button android:id="@+id/diaryClear" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CLEAR" />
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/diaryScroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:clipToPadding="false">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Diary" android:textSize="24sp" android:textStyle="bold"/>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Select a date to check the cause list and update hearing details" android:alpha="0.7" android:paddingBottom="8dp"/>
+<TextView android:id="@+id/headerHearing" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="▼  HEARING / CAUSE DETAILS" android:textSize="16sp" android:textStyle="bold" android:padding="10dp"/>
+<LinearLayout android:id="@+id/sectionHearing" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+<EditText android:id="@+id/diaryDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Hearing / Cause List Date" android:focusable="false" android:clickable="true"/>
+<Button android:id="@+id/btnCheckCauseList" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CHECK CAUSE LIST FOR SELECTED DATE"/>
+<TextView android:id="@+id/causeListHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="CAUSE LIST" android:textStyle="bold" android:textSize="17sp" android:paddingTop="8dp"/>
+<LinearLayout android:id="@+id/causeList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
 </LinearLayout>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SAVED ENTRIES" android:textSize="18sp" android:textStyle="bold" android:layout_marginTop="20dp" android:paddingBottom="8dp" />
-<LinearLayout android:id="@+id/diaryList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+
+<TextView android:id="@+id/headerCase" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="▼  CASE INFORMATION" android:textSize="16sp" android:textStyle="bold" android:padding="10dp" android:layout_marginTop="4dp"/>
+<LinearLayout android:id="@+id/sectionCase" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+<EditText android:id="@+id/diaryCaseNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Case Number" android:singleLine="true"/>
+<Button android:id="@+id/btnFetchHelper" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="FETCH DETAILS FROM ADVOCATE HELPER"/>
+<EditText android:id="@+id/diaryClient" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Client" android:inputType="textCapWords"/>
+<EditText android:id="@+id/diaryCourt" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Court" android:inputType="textCapWords"/>
+</LinearLayout>
+
+<TextView android:id="@+id/headerUpdate" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="▼  HEARING UPDATE" android:textSize="16sp" android:textStyle="bold" android:padding="10dp" android:layout_marginTop="4dp"/>
+<LinearLayout android:id="@+id/sectionUpdate" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+<EditText android:id="@+id/diaryTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Hearing / Activity" android:inputType="textCapSentences"/>
+<EditText android:id="@+id/diaryPreviousDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Previous Date" android:focusable="false"/>
+<EditText android:id="@+id/diaryNextDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Next Date — select/update" android:focusable="false" android:clickable="true"/>
+<EditText android:id="@+id/diaryRemark" android:layout_width="match_parent" android:layout_height="110dp" android:gravity="top|start" android:hint="Remark / Order / Hearing Update" android:inputType="textMultiLine"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+<Button android:id="@+id/diarySave" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SAVE ENTRY" android:textStyle="bold"/>
+<Space android:layout_width="8dp" android:layout_height="1dp"/>
+<Button android:id="@+id/diaryClear" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CLEAR"/>
+</LinearLayout>
+</LinearLayout>
+
+<TextView android:id="@+id/headerSaved" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="▼  SAVED DIARY ENTRIES" android:textSize="16sp" android:textStyle="bold" android:padding="10dp" android:layout_marginTop="4dp"/>
+<LinearLayout android:id="@+id/sectionSaved" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+<LinearLayout android:id="@+id/diaryList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
+</LinearLayout>
 </LinearLayout>
 </ScrollView>
