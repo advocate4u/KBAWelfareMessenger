@@ -7,8 +7,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 /**
  * RecyclerView used for the contact selector inside the screen-level ScrollView.
- * It keeps vertical gestures inside the contact list so the parent ScrollView
- * does not steal the gesture before the list can scroll.
+ * The contact list has its own fixed viewport, so vertical gestures should be
+ * handled by RecyclerView rather than being consumed by the outer ScrollView.
  */
 class ScrollableContactRecyclerView @JvmOverloads constructor(
     context: Context,
@@ -16,35 +16,30 @@ class ScrollableContactRecyclerView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : RecyclerView(context, attrs, defStyleAttr) {
 
+    init {
+        // The outer ScrollView must not participate in nested scrolling for this
+        // fixed-height child; RecyclerView owns scrolling inside its viewport.
+        isNestedScrollingEnabled = false
+        overScrollMode = OVER_SCROLL_IF_CONTENT_SCROLLS
+    }
+
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN,
-            MotionEvent.ACTION_MOVE -> {
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
-
+            MotionEvent.ACTION_MOVE -> parent?.requestDisallowInterceptTouchEvent(true)
             MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> {
-                parent?.requestDisallowInterceptTouchEvent(false)
-            }
+            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
-
         return super.onInterceptTouchEvent(event)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN,
-            MotionEvent.ACTION_MOVE -> {
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
-
+            MotionEvent.ACTION_MOVE -> parent?.requestDisallowInterceptTouchEvent(true)
             MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> {
-                parent?.requestDisallowInterceptTouchEvent(false)
-            }
+            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
-
         return super.onTouchEvent(event)
     }
 }
