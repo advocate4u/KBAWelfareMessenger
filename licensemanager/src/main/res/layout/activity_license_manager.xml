@@ -1,180 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <ImageView android:layout_width="64dp" android:layout_height="64dp" android:layout_gravity="center_horizontal" android:contentDescription="MyAdv License Manager" android:src="@drawable/myadvam_icon" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="MyAdv License Manager" android:textSize="24sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:paddingBottom="12dp" android:text="Offline License Manager" android:textSize="14sp" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="LICENSE FOR USER" android:textSize="13sp" android:textStyle="bold" />
+        <EditText android:id="@+id/licensePhone" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Mobile Number / User ID" android:inputType="phone" android:singleLine="true" />
+        <Spinner android:id="@+id/licenseRole" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+        <EditText android:id="@+id/issueDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Issue Date" android:focusable="false" android:clickable="true" />
+        <EditText android:id="@+id/expiryDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Expiry Date" android:focusable="false" android:clickable="true" />
 
-        <ImageView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_gravity="center_horizontal"
-            android:contentDescription="MyAdv License Manager"
-            android:src="@drawable/myadvam_icon" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="MyAdv License Manager"
-            android:textSize="26sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingBottom="18dp"
-            android:text="Offline License Manager"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="LICENSE FOR USER"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/licensePhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Mobile Number / User ID"
-            android:inputType="phone"
-            android:singleLine="true"
-            android:layout_marginTop="6dp" />
-
-        <Spinner
-            android:id="@+id/licenseRole"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
-
-        <EditText
-            android:id="@+id/issueDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Issue Date"
-            android:focusable="false"
-            android:clickable="true" />
-
-        <EditText
-            android:id="@+id/expiryDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Expiry Date"
-            android:focusable="false"
-            android:clickable="true" />
-
-        <TextView
-            android:id="@+id/permissionsHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:background="#EEEEEE"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="14dp"
-            android:text="PERMISSIONS &amp; FEATURES  ▼"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:id="@+id/permissionsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp">
-
-            <CheckBox android:id="@+id/optValidatePhone" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Validate licensed mobile number on SMS device" android:checked="true" />
-            <CheckBox android:id="@+id/optSms" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SMS" android:checked="true" />
-            <CheckBox android:id="@+id/optBulkSms" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Bulk SMS" android:checked="true" />
-            <CheckBox android:id="@+id/optSmsLogs" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SMS Logs" android:checked="true" />
-            <CheckBox android:id="@+id/optDiary" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Diary" android:checked="true" />
-            <CheckBox android:id="@+id/optHelper" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Advocate Helper" android:checked="true" />
-            <CheckBox android:id="@+id/optEditMessage" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Edit message on screen" android:checked="true" />
-            <CheckBox android:id="@+id/optSkipSent" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Skip already sent contacts" android:checked="true" />
-            <CheckBox android:id="@+id/optConfirmBulk" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Confirm before bulk send" android:checked="true" />
-            <CheckBox android:id="@+id/optLogging" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Logging" android:checked="true" />
-            <CheckBox android:id="@+id/optDuplicates" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Remove duplicates" android:checked="true" />
-            <CheckBox android:id="@+id/optInvalidNumbers" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Skip invalid numbers" android:checked="true" />
+        <TextView android:id="@+id/permissionsHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="#EEEEEE" android:clickable="true" android:focusable="true" android:padding="12dp" android:text="PERMISSIONS &amp; FEATURES  ▼" android:textSize="15sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/permissionsContainer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="4dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optValidatePhone" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Validate phone" android:checked="true" />
+                <CheckBox android:id="@+id/optSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optBulkSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Bulk SMS" android:checked="true" />
+                <CheckBox android:id="@+id/optSmsLogs" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SMS Logs" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optDiary" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Diary" android:checked="true" />
+                <CheckBox android:id="@+id/optHelper" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Advocate Helper" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optEditMessage" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Edit Message" android:checked="true" />
+                <CheckBox android:id="@+id/optSkipSent" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Sent" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optConfirmBulk" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Confirm Bulk" android:checked="true" />
+                <CheckBox android:id="@+id/optLogging" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Logging" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optDuplicates" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Remove Duplicates" android:checked="true" />
+                <CheckBox android:id="@+id/optInvalidNumbers" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Skip Invalid" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optPreview" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Preview" android:checked="true" />
+                <CheckBox android:id="@+id/optTestSms" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Test SMS" android:checked="true" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                <CheckBox android:id="@+id/optWhatsApp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="WhatsApp" android:checked="true" />
+                <CheckBox android:id="@+id/optRange" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Range Selection" android:checked="true" />
+            </LinearLayout>
         </LinearLayout>
 
-        <Button
-            android:id="@+id/generateButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="GENERATE LICENSE"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="10dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="GENERATED LICENSE KEY"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/licenseId"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="#EEEEEE"
-            android:padding="12dp"
-            android:text="Generated automatically"
-            android:textIsSelectable="true"
-            android:textSize="16sp" />
-
-        <Button
-            android:id="@+id/copyLicenseIdButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="COPY LICENSE KEY" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="SIGNED LICENSE TOKEN"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/signedToken"
-            android:layout_width="match_parent"
-            android:layout_height="160dp"
-            android:gravity="top|start"
-            android:hint="Signed license token"
-            android:inputType="textMultiLine"
-            android:scrollbars="vertical"
-            android:textIsSelectable="true" />
-
-        <Button
-            android:id="@+id/copyTokenButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="COPY TOKEN" />
-
-        <Button
-            android:id="@+id/shareButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="SHARE LICENSE"
-            android:layout_marginBottom="24dp" />
-
+        <Button android:id="@+id/generateButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="GENERATE LICENSE" android:textStyle="bold" />
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="GENERATED LICENSE KEY" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/licenseId" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:background="#EEEEEE" android:padding="10dp" android:text="Generated automatically" android:textIsSelectable="true" android:textSize="15sp" />
+        <Button android:id="@+id/copyLicenseIdButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="COPY LICENSE KEY" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="SIGNED LICENSE TOKEN" android:textSize="12sp" android:textStyle="bold" />
+        <EditText android:id="@+id/signedToken" android:layout_width="match_parent" android:layout_height="130dp" android:gravity="top|start" android:hint="Signed license token" android:inputType="textMultiLine" android:scrollbars="vertical" android:textIsSelectable="true" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/copyTokenButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="COPY TOKEN" />
+            <Button android:id="@+id/shareButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SHARE LICENSE" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>
