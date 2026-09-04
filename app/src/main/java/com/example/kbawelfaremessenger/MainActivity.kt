@@ -366,6 +366,7 @@ class MainActivity : AppCompatActivity() {
         setupCollapsibleSections()
         setupSmsReceiver()
         setupButtonColors()
+        applyLicenseFeatureVisibility()
 
         updateCounts()
     }
@@ -528,8 +529,7 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.adapter =
             adapter
 
-        recyclerContacts.isNestedScrollingEnabled =
-            false
+        recyclerContacts.isNestedScrollingEnabled = true
 
         recyclerContacts.setHasFixedSize(
             false
@@ -537,6 +537,18 @@ class MainActivity : AppCompatActivity() {
 
         recyclerContacts.overScrollMode =
             View.OVER_SCROLL_IF_CONTENT_SCROLLS
+    }
+
+    private fun applyLicenseFeatureVisibility() {
+        val preview = LicenseManager.isFeatureEnabled(this, "preview")
+        val test = LicenseManager.isFeatureEnabled(this, "test_sms")
+        val whatsapp = LicenseManager.isFeatureEnabled(this, "whatsapp")
+        val range = LicenseManager.isFeatureEnabled(this, "range_selection")
+        btnPreview.visibility = if (preview) View.VISIBLE else View.GONE
+        btnTestSms.visibility = if (test) View.VISIBLE else View.GONE
+        btnWhatsApp.visibility = if (whatsapp) View.VISIBLE else View.GONE
+        txtRangeHeader.visibility = if (range) View.VISIBLE else View.GONE
+        layoutRangeSection.visibility = if (range && layoutRangeSection.visibility == View.VISIBLE) View.VISIBLE else if (range) View.GONE else View.GONE
     }
 
     // ---------------------------------------------------------
@@ -3570,7 +3582,7 @@ Do you want to continue?
                     13f
 
                 detailsText.setTextColor(
-                    Color.DKGRAY
+                    if ((root.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES) Color.LTGRAY else Color.DKGRAY
                 )
 
                 statusText.textSize =
