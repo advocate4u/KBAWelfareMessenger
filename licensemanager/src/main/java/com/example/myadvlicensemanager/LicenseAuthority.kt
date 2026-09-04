@@ -18,11 +18,22 @@ object LicenseAuthority {
     enum class ManagerRole { USER, SUPER_ADMIN, ADMIN }
 
     data class LicenseOptions(
-        val validatePhone: Boolean = true, val sms: Boolean = true, val bulkSms: Boolean = true,
-        val smsLogs: Boolean = true, val advocateDiary: Boolean = true, val advocateHelper: Boolean = true,
-        val editMessageOnScreen: Boolean = true, val skipAlreadySent: Boolean = true,
-        val confirmBeforeBulkSend: Boolean = true, val loggingEnabled: Boolean = true,
-        val removeDuplicates: Boolean = true, val skipInvalidNumbers: Boolean = true
+        val validatePhone: Boolean = true,
+        val sms: Boolean = true,
+        val bulkSms: Boolean = true,
+        val smsLogs: Boolean = true,
+        val advocateDiary: Boolean = true,
+        val advocateHelper: Boolean = true,
+        val editMessageOnScreen: Boolean = true,
+        val skipAlreadySent: Boolean = true,
+        val confirmBeforeBulkSend: Boolean = true,
+        val loggingEnabled: Boolean = true,
+        val removeDuplicates: Boolean = true,
+        val skipInvalidNumbers: Boolean = true,
+        val preview: Boolean = true,
+        val testSms: Boolean = true,
+        val whatsapp: Boolean = true,
+        val rangeSelection: Boolean = true
     )
 
     data class License(
@@ -30,9 +41,7 @@ object LicenseAuthority {
         val issueDate: LocalDate, val expiry: LocalDate, val options: LicenseOptions, val token: String
     )
 
-    fun role(c: Context): ManagerRole? = c.getSharedPreferences(PREFS, 0).getString(ROLE, null)
-        ?.let { runCatching { ManagerRole.valueOf(it) }.getOrNull() }
-
+    fun role(c: Context): ManagerRole? = c.getSharedPreferences(PREFS, 0).getString(ROLE, null)?.let { runCatching { ManagerRole.valueOf(it) }.getOrNull() }
     fun phone(c: Context): String? = c.getSharedPreferences(PREFS, 0).getString(PHONE, null)
     fun hasKey(c: Context): Boolean = true
 
@@ -42,8 +51,7 @@ object LicenseAuthority {
         return true
     }
 
-    fun createLicense(c: Context, target: String, role: ManagerRole, issueDate: LocalDate,
-                      expiry: LocalDate, options: LicenseOptions): License? {
+    fun createLicense(c: Context, target: String, role: ManagerRole, issueDate: LocalDate, expiry: LocalDate, options: LicenseOptions): License? {
         if (expiry.isBefore(issueDate) || expiry.isBefore(LocalDate.now())) return null
         val phone = normalize(target) ?: return null
         val id = generateLicenseId()
@@ -65,7 +73,11 @@ object LicenseAuthority {
             appendLine("confirmBeforeBulkSend=${options.confirmBeforeBulkSend}")
             appendLine("loggingEnabled=${options.loggingEnabled}")
             appendLine("removeDuplicates=${options.removeDuplicates}")
-            append("skipInvalidNumbers=${options.skipInvalidNumbers}")
+            appendLine("skipInvalidNumbers=${options.skipInvalidNumbers}")
+            appendLine("preview=${options.preview}")
+            appendLine("testSms=${options.testSms}")
+            appendLine("whatsapp=${options.whatsapp}")
+            append("rangeSelection=${options.rangeSelection}")
         }
         val token = sign(payload) ?: return null
         return License(id, phone, role, issueDate, expiry, options, token)

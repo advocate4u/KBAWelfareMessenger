@@ -25,8 +25,13 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!SecurityManager.isAdmin(this)) {
+            Toast.makeText(this, "Administrator access required.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         setContentView(R.layout.activity_settings)
-        supportActionBar?.title = "Settings"
+        supportActionBar?.title = "Admin Settings"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         initialiseViews()
         loadSettings()
@@ -70,49 +75,30 @@ class SettingsActivity : AppCompatActivity() {
         switchLogging.isChecked = settings.loggingEnabled
     }
 
-    /** License options are permissions, not user preferences. A disabled feature must not be editable. */
     private fun applyLicenseAccess() {
-        val editMessageAllowed = LicenseManager.isFeatureEnabled(this, "edit_message")
-        val skipSentAllowed = LicenseManager.isFeatureEnabled(this, "skip_already_sent")
-        val confirmBulkAllowed = LicenseManager.isFeatureEnabled(this, "confirm_bulk")
-        val loggingAllowed = LicenseManager.isFeatureEnabled(this, "logging")
-
-        enforceSwitch(switchEditMessage, editMessageAllowed, settings.editMessageOnScreen, "Edit Message on Screen is not permitted by this license.")
-        enforceSwitch(switchSkipSent, skipSentAllowed, settings.skipAlreadySent, "Skip Already Sent Numbers is not permitted by this license.")
-        enforceSwitch(switchConfirmSend, confirmBulkAllowed, settings.confirmBeforeBulkSend, "Confirm Before Bulk Send is not permitted by this license.")
-        enforceSwitch(switchLogging, loggingAllowed, settings.loggingEnabled, "Private Logging is not permitted by this license.")
+        enforceSwitch(switchEditMessage, LicenseManager.isFeatureEnabled(this, "edit_message"), settings.editMessageOnScreen, "Edit Message on Screen is not permitted by this license.")
+        enforceSwitch(switchSkipSent, LicenseManager.isFeatureEnabled(this, "skip_already_sent"), settings.skipAlreadySent, "Skip Already Sent Numbers is not permitted by this license.")
+        enforceSwitch(switchConfirmSend, LicenseManager.isFeatureEnabled(this, "confirm_bulk"), settings.confirmBeforeBulkSend, "Confirm Before Bulk Send is not permitted by this license.")
+        enforceSwitch(switchLogging, LicenseManager.isFeatureEnabled(this, "logging"), settings.loggingEnabled, "Private Logging is not permitted by this license.")
     }
 
     private fun enforceSwitch(control: Switch, allowed: Boolean, savedValue: Boolean, deniedMessage: String) {
         control.isEnabled = allowed
-        if (!allowed) {
-            control.isChecked = false
-            control.alpha = 0.55f
-            control.setOnClickListener {
-                Toast.makeText(this, deniedMessage, Toast.LENGTH_LONG).show()
-            }
-        } else {
-            control.isChecked = savedValue
-            control.alpha = 1f
-            control.setOnClickListener(null)
-        }
+        control.isChecked = if (allowed) savedValue else false
+        control.alpha = if (allowed) 1f else 0.55f
+        control.setOnClickListener(if (allowed) null else View.OnClickListener { Toast.makeText(this, deniedMessage, Toast.LENGTH_LONG).show() })
     }
 
     private fun setupButtons() {
         findViewById<Button>(R.id.btnAdvocateHelper).setOnClickListener {
-            if (LicenseManager.isFeatureEnabled(this, "advocate_helper")) {
-                startActivity(Intent(this, AdvocateHelperActivity::class.java))
-            } else {
-                Toast.makeText(this, "Advocate Helper is not enabled in this license.", Toast.LENGTH_LONG).show()
-            }
+            if (LicenseManager.isFeatureEnabled(this, "advocate_helper")) startActivity(Intent(this, AdvocateHelperActivity::class.java))
+            else Toast.makeText(this, "Advocate Helper is not enabled in this license.", Toast.LENGTH_LONG).show()
         }
         findViewById<Button>(R.id.btnLicense).setOnClickListener {
             if (SecurityManager.isAdmin(this)) startActivity(Intent(this, LicenseActivity::class.java))
-            else Toast.makeText(this, "Administrator access required.", Toast.LENGTH_SHORT).show()
         }
         btnAuthentication.setOnClickListener {
             if (SecurityManager.isAdmin(this)) startActivity(Intent(this, AuthenticationActivity::class.java))
-            else Toast.makeText(this, "Administrator access required.", Toast.LENGTH_SHORT).show()
         }
         btnSaveSettings.setOnClickListener {
             val nameColumn = edtNameColumn.text.toString().trim()
@@ -123,34 +109,25 @@ class SettingsActivity : AppCompatActivity() {
             if (defaultMessage.isEmpty()) { edtDefaultMessage.error = "Enter default message"; return@setOnClickListener }
             val smsDelay = edtSmsDelay.text.toString().trim().toLongOrNull()
             if (smsDelay == null || smsDelay < 0) { edtSmsDelay.error = "Enter a valid delay in milliseconds"; return@setOnClickListener }
-
-            val editAllowed = LicenseManager.isFeatureEnabled(this, "edit_message")
-            val skipAllowed = LicenseManager.isFeatureEnabled(this, "skip_already_sent")
-            val confirmAllowed = LicenseManager.isFeatureEnabled(this, "confirm_bulk")
-            val loggingAllowed = LicenseManager.isFeatureEnabled(this, "logging")
-
             settings = settings.copy(
                 nameColumn = nameColumn,
                 phoneColumn = phoneColumn,
                 defaultMessage = defaultMessage,
                 smsDelayMs = smsDelay,
-                editMessageOnScreen = if (editAllowed) switchEditMessage.isChecked else false,
-                skipAlreadySent = if (skipAllowed) switchSkipSent.isChecked else false,
-                confirmBeforeBulkSend = if (confirmAllowed) switchConfirmSend.isChecked else false,
-                loggingEnabled = if (loggingAllowed) switchLogging.isChecked else false
+                editMessageOnScreen = if (LicenseManager.isFeatureEnabled(this, "edit_message")) switchEditMessage.isChecked else false,
+                skipAlreadySent = if (LicenseManager.isFeatureEnabled(this, "skip_already_sent")) switchSkipSent.isChecked else false,
+                confirmBeforeBulkSend = if (LicenseManager.isFeatureEnabled(this, "confirm_bulk")) switchConfirmSend.isChecked else false,
+                loggingEnabled = if (LicenseManager.isFeatureEnabled(this, "logging")) switchLogging.isChecked else false
             )
             AppSettingsManager.save(this, settings)
-            AppLogger.success(this, "SETTINGS", "Application settings saved with license permissions enforced")
+            AppLogger.success(this, "SETTINGS", "Admin settings saved with license permissions enforced")
             Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
             finish()
         }
         btnViewLogs.setOnClickListener { showLogs() }
         btnClearLogs.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("Clear logs?")
-                .setMessage("All local application logs will be deleted.")
-                .setNegativeButton("CANCEL", null)
-                .setPositiveButton("CLEAR") { _, _ ->
+            AlertDialog.Builder(this).setTitle("Clear logs?").setMessage("All local application logs will be deleted.")
+                .setNegativeButton("CANCEL", null).setPositiveButton("CLEAR") { _, _ ->
                     AppLogger.clear(this)
                     Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show()
                 }.show()
@@ -159,35 +136,21 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun addDiaryLauncher() {
         val contentRoot = findViewById<ViewGroup>(android.R.id.content)
-        val scrollView = (0 until contentRoot.childCount).asSequence()
-            .map { contentRoot.getChildAt(it) }
-            .filterIsInstance<ScrollView>()
-            .firstOrNull() ?: return
+        val scrollView = (0 until contentRoot.childCount).asSequence().map { contentRoot.getChildAt(it) }.filterIsInstance<ScrollView>().firstOrNull() ?: return
         val content = scrollView.getChildAt(0) as? LinearLayout ?: return
         val button = Button(this).apply {
             text = "OPEN ADVOCATE DIARY"
             setOnClickListener {
-                if (LicenseManager.isFeatureEnabled(this@SettingsActivity, "advocate_diary")) {
-                    startActivity(Intent(this@SettingsActivity, AdvocateDiaryActivity::class.java))
-                } else {
-                    Toast.makeText(this@SettingsActivity, "Advocate Diary is not enabled in this license.", Toast.LENGTH_LONG).show()
-                }
+                if (LicenseManager.isFeatureEnabled(this@SettingsActivity, "advocate_diary")) startActivity(Intent(this@SettingsActivity, AdvocateDiaryActivity::class.java))
+                else Toast.makeText(this@SettingsActivity, "Advocate Diary is not enabled in this license.", Toast.LENGTH_LONG).show()
             }
         }
         content.addView(button, minOf(3, content.childCount))
     }
 
     private fun showLogs() {
-        if (!LicenseManager.isFeatureEnabled(this, "sms_logs") && !SecurityManager.isAdmin(this)) {
-            Toast.makeText(this, "Logs are not enabled in this license.", Toast.LENGTH_LONG).show()
-            return
-        }
-        val view = TextView(this).apply {
-            text = AppLogger.read(this@SettingsActivity)
-            textSize = 13f
-            setPadding(24, 12, 24, 12)
-            setTextIsSelectable(true)
-        }
+        if (!LicenseManager.isFeatureEnabled(this, "sms_logs")) { Toast.makeText(this, "Logs are not enabled in this license.", Toast.LENGTH_LONG).show(); return }
+        val view = TextView(this).apply { text = AppLogger.read(this@SettingsActivity); textSize = 13f; setPadding(24, 12, 24, 12); setTextIsSelectable(true) }
         AlertDialog.Builder(this).setTitle("Application Logs").setView(ScrollView(this).apply { addView(view) }).setPositiveButton("CLOSE", null).show()
     }
 
