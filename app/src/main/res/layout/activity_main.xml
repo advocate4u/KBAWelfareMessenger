@@ -6,6 +6,7 @@
                 <TextView android:id="@+id/txtWelcome" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Welcome" android:textSize="21sp" android:textStyle="bold" />
                 <TextView android:id="@+id/txtLicenseRemaining" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="License: --" android:textSize="12sp" android:textStyle="bold" />
             </LinearLayout>
+            <com.example.kbawelfaremessenger.LicenseRenewButton android:id="@+id/btnRenewLicense" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginEnd="2dp" android:background="?attr/selectableItemBackgroundBorderless" android:src="@android:drawable/ic_popup_sync" android:contentDescription="Renew license" />
             <com.example.kbawelfaremessenger.AdminOnlySettingsButton android:id="@+id/btnSettings" android:layout_width="48dp" android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp" android:text="⚙" android:textSize="20sp" android:contentDescription="Settings" />
         </LinearLayout>
 
