@@ -28,7 +28,6 @@ object SecurityManager {
     fun hasUser(c: Context) = preferences(c).getBoolean(KEY_SETUP_COMPLETE, false)
     private fun normalizePhone(v: String) = v.filter(Char::isDigit).takeLast(10)
 
-    /** Privilege is license/role based; there are no hardcoded privileged phone numbers. */
     fun isAdminPhoneNumber(phoneNumber: String) = false
     fun isSuperAdminPhoneNumber(phoneNumber: String) = false
 
@@ -39,11 +38,7 @@ object SecurityManager {
         if (normalizePhone(license.phone) != normalizePhone(id)) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
         val hash = hashPassword(password, salt)
-        val record = JSONObject()
-            .put("userId", id)
-            .put("role", license.role.name)
-            .put("hash", encode(hash))
-            .put("salt", encode(salt))
+        val record = JSONObject().put("userId", id).put("role", license.role.name).put("hash", encode(hash)).put("salt", encode(salt))
         preferences(c).edit()
             .putString(KEY_USERS, JSONArray().put(record).toString())
             .putString(KEY_USER_ID, id)
@@ -55,36 +50,19 @@ object SecurityManager {
         return true
     }
 
+    /** Existing users authenticate with their own account ID. The license must be valid, but its phone is not the user's login ID. */
     fun authenticate(c: Context, userId: String, password: String): Boolean {
         val id = userId.trim()
         val user = findUser(c, id) ?: return false
-
-        // Every login is bound to the currently installed, valid license.
-        val license = LicenseManager.getValidLicense(c) ?: return false
-        if (normalizePhone(license.phone) != normalizePhone(id)) return false
-
+        if (LicenseManager.getValidLicense(c) == null) return false
         val ok = try {
             MessageDigest.isEqual(
                 Base64.decode(user.getString("hash"), Base64.NO_WRAP),
                 hashPassword(password, Base64.decode(user.getString("salt"), Base64.NO_WRAP))
             )
-        } catch (_: Exception) {
-            false
-        }
+        } catch (_: Exception) { false }
         if (!ok) return false
-
-        // The signed license is authoritative for the local account role.
-        // This also upgrades/downgrades an existing account when its license changes.
-        user.put("role", license.role.name)
-        val users = readUsers(c)
-        for (i in 0 until users.length()) {
-            val obj = users.optJSONObject(i) ?: continue
-            if (obj.optString("userId") == id) {
-                obj.put("role", license.role.name)
-                break
-            }
-        }
-        saveUsers(c, users)
+        // Keep the account's assigned role. License permissions remain authoritative for features.
         preferences(c).edit().putString(KEY_CURRENT_USER, id).apply()
         return true
     }
@@ -95,7 +73,6 @@ object SecurityManager {
         if (actor != UserRole.SUPER_ADMIN && actor != UserRole.ADMIN) return false
         if (role == UserRole.SUPER_ADMIN) return false
         if (actor == UserRole.ADMIN && role != UserRole.USER) return false
-
         val id = userId.trim()
         if (id.isBlank() || password.length < 6 || findUser(c, id) != null) return false
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
@@ -130,41 +107,23 @@ object SecurityManager {
         if (actor == UserRole.ADMIN && targetRole != UserRole.USER) return false
         val users = readUsers(c)
         var removed = false
-        for (i in users.length() - 1 downTo 0) {
-            if (users.optJSONObject(i)?.optString("userId") == id) {
-                users.remove(i)
-                removed = true
-            }
-        }
+        for (i in users.length() - 1 downTo 0) if (users.optJSONObject(i)?.optString("userId") == id) { users.remove(i); removed = true }
         if (removed) saveUsers(c, users)
         return removed
     }
 
     fun currentUserId(c: Context): String? = preferences(c).getString(KEY_CURRENT_USER, null)
-
-    fun currentUser(c: Context): LocalUser? {
-        val id = currentUserId(c) ?: return null
-        return listUsers(c).firstOrNull { it.userId == id }
-    }
-
+    fun currentUser(c: Context): LocalUser? = currentUserId(c)?.let { id -> listUsers(c).firstOrNull { it.userId == id } }
     fun currentRole(c: Context): UserRole? = currentUser(c)?.role
 
-    /** Updates the current account role only after LicenseManager has verified a valid signed license. */
     fun updateCurrentUserRole(c: Context, role: UserRole): Boolean {
         val id = currentUserId(c) ?: return false
         val users = readUsers(c)
-        var updated = false
         for (i in 0 until users.length()) {
             val obj = users.optJSONObject(i) ?: continue
-            if (obj.optString("userId") == id) {
-                obj.put("role", role.name)
-                updated = true
-                break
-            }
+            if (obj.optString("userId") == id) { obj.put("role", role.name); saveUsers(c, users); return true }
         }
-        if (!updated) return false
-        saveUsers(c, users)
-        return true
+        return false
     }
 
     fun isSuperAdmin(c: Context) = currentRole(c) == UserRole.SUPER_ADMIN && LicenseManager.getLicenseRole(c) == UserRole.SUPER_ADMIN
@@ -173,22 +132,17 @@ object SecurityManager {
         (currentRole(c) == UserRole.SUPER_ADMIN || currentRole(c) == UserRole.ADMIN) &&
             (LicenseManager.getLicenseRole(c) == UserRole.SUPER_ADMIN || LicenseManager.getLicenseRole(c) == UserRole.ADMIN)
 
-    fun logout(c: Context) {
-        preferences(c).edit().remove(KEY_CURRENT_USER).apply()
-    }
+    fun logout(c: Context) { preferences(c).edit().remove(KEY_CURRENT_USER).apply() }
 
     private fun readUsers(c: Context): JSONArray {
         val prefs = preferences(c)
         val stored = prefs.getString(KEY_USERS, null)
-        if (!stored.isNullOrBlank()) {
-            return try { JSONArray(stored) } catch (_: Exception) { JSONArray() }
-        }
+        if (!stored.isNullOrBlank()) return try { JSONArray(stored) } catch (_: Exception) { JSONArray() }
         val oldId = prefs.getString(KEY_USER_ID, null)
         val oldHash = prefs.getString(KEY_PASSWORD_HASH, null)
         val oldSalt = prefs.getString(KEY_PASSWORD_SALT, null)
         if (!oldId.isNullOrBlank() && !oldHash.isNullOrBlank() && !oldSalt.isNullOrBlank()) {
-            val role = LicenseManager.getLicenseRole(c) ?: UserRole.USER
-            val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", role.name).put("hash", oldHash).put("salt", oldSalt))
+            val migrated = JSONArray().put(JSONObject().put("userId", oldId).put("role", UserRole.USER.name).put("hash", oldHash).put("salt", oldSalt))
             prefs.edit().putString(KEY_USERS, migrated.toString()).putString(KEY_CURRENT_USER, oldId).apply()
             return migrated
         }
@@ -197,15 +151,11 @@ object SecurityManager {
 
     private fun findUser(c: Context, userId: String): JSONObject? {
         val users = readUsers(c)
-        for (i in 0 until users.length()) {
-            if (users.optJSONObject(i)?.optString("userId") == userId) return users.optJSONObject(i)
-        }
+        for (i in 0 until users.length()) if (users.optJSONObject(i)?.optString("userId") == userId) return users.optJSONObject(i)
         return null
     }
 
-    private fun saveUsers(c: Context, users: JSONArray) {
-        preferences(c).edit().putString(KEY_USERS, users.toString()).apply()
-    }
+    private fun saveUsers(c: Context, users: JSONArray) { preferences(c).edit().putString(KEY_USERS, users.toString()).apply() }
 
     private fun hashPassword(password: String, salt: ByteArray): ByteArray {
         val spec = PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
