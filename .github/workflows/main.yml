@@ -2,9 +2,24 @@ name: Build MyAdv APKs
 
 on:
   workflow_dispatch:
+    inputs:
+      app_version:
+        description: 'MyAdv versionName (example: 2.3)'
+        required: true
+        default: '2.3'
+        type: string
+      version_code:
+        description: 'Android versionCode (must increase for each release)'
+        required: true
+        default: '5'
+        type: string
   push:
     branches:
       - main
+
+env:
+  APP_VERSION: ${{ inputs.app_version || '2.3' }}
+  VERSION_CODE: ${{ inputs.version_code || '5' }}
 
 jobs:
   build:
@@ -62,25 +77,25 @@ jobs:
           rm -f "$RUNNER_TEMP/myadv-signing-test.csr"
           echo "Release signing configuration: OK"
 
-      - name: Repair malformed Kotlin source
+      - name: Verify source before build
         run: |
           set -euo pipefail
+          test -s app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt
+          if grep -F '\\n' app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt | grep -F 'actualSimPhone' >/dev/null; then
+            echo "ERROR: MainActivity.kt still contains escaped Kotlin source around SIM verification."
+            exit 1
+          fi
           python3 - <<'PY'
           from pathlib import Path
-
-          path = Path("app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt")
-          text = path.read_text(encoding="utf-8")
-
-          start = text.index("        val actualSimPhone =\n")
-          end = text.index("        val smsManager =\n", start)
-          replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n'''
-          text = text[:start] + replacement + text[end:]
-          text = text.replace(
-              "is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)",
-              "is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))"
-          )
-          path.write_text(text, encoding="utf-8")
-          print("Repaired MainActivity.kt")
+          path = Path('app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt')
+          text = path.read_text(encoding='utf-8')
+          old = 'is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)'
+          new = 'is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))'
+          if old in text:
+              path.write_text(text.replace(old, new), encoding='utf-8')
+              print('Fixed EditText hint color API usage for this build.')
+          else:
+              print('No hint color source repair required.')
           PY
 
       - name: Build both signed release APKs
@@ -89,7 +104,7 @@ jobs:
           MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease
+        run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
 
       - name: Locate and rename APKs for distribution
         run: |
@@ -106,6 +121,7 @@ jobs:
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
           test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          echo "Built MyAdv version: $APP_VERSION (versionCode $VERSION_CODE)"
           echo "Final distribution APKs:"
           ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
