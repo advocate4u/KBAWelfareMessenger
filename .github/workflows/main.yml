@@ -91,19 +91,19 @@ jobs:
         run: |
           set -euo pipefail
           APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv.apk' -print -quit)
-          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv-License-Manager.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdvAnIT.apk' -print -quit)
           test -n "$APP_APK"
           test -n "$LICENSE_APK"
           cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
-          cp "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          cp "$LICENSE_APK" licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
 
       - name: Verify APKs
         run: |
           set -euo pipefail
           test -s app/build/outputs/apk/release/MyAdv.apk
-          test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          test -s licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
           echo "MyAdv version: ${{ steps.version.outputs.app_version }} (versionCode ${{ steps.version.outputs.version_code }})"
-          ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
 
       - name: Upload MyAdv-APKs
         uses: actions/upload-artifact@v4
@@ -111,7 +111,7 @@ jobs:
           name: MyAdv-APKs
           path: |
             app/build/outputs/apk/release/MyAdv.apk
-            licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+            licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
           if-no-files-found: error
 
       - name: Persist release version
