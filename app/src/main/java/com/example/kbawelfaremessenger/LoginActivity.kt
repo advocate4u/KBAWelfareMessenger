@@ -16,6 +16,14 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // License installation must happen before the login/account screen.
+        // This also handles an expired/cleared license by returning the user to activation.
+        if (!LicenseManager.isLicenseValid(this)) {
+            openLicenseActivation()
+            return
+        }
+
         setContentView(R.layout.activity_login)
         initialiseViews()
         setupLoginScreen()
@@ -23,7 +31,13 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::btnLogin.isInitialized) setupLoginScreen()
+        if (::btnLogin.isInitialized) {
+            if (!LicenseManager.isLicenseValid(this)) {
+                openLicenseActivation()
+            } else {
+                setupLoginScreen()
+            }
+        }
     }
 
     private fun initialiseViews() {
@@ -44,14 +58,14 @@ class LoginActivity : AppCompatActivity() {
         btnLogin.setOnClickListener {
             if (hasUser) loginUser() else activateFirstLogin()
         }
-        btnLicense.setOnClickListener { startActivity(Intent(this, LicenseActivity::class.java)) }
+        btnLicense.setOnClickListener { openLicenseActivation() }
     }
 
     private fun activateFirstLogin() {
         val license = LicenseManager.getValidLicense(this)
         if (license == null) {
             UiFeedback.error(this, "Install your MyAdv license first. The license determines whether this account is SUPER ADMIN, ADMIN, or USER.", true)
-            startActivity(Intent(this, LicenseActivity::class.java))
+            openLicenseActivation()
             return
         }
 
@@ -86,6 +100,19 @@ class LoginActivity : AppCompatActivity() {
         val password = edtPassword.text.toString()
         if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
         if (password.isEmpty()) { edtPassword.error = "Enter password"; edtPassword.requestFocus(); return }
+
+        val license = LicenseManager.getValidLicense(this)
+        if (license == null) {
+            openLicenseActivation()
+            return
+        }
+        val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
+        val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
+        if (licensedPhone != enteredPhone) {
+            UiFeedback.error(this, "License phone does not match the current User ID.", true)
+            return
+        }
+
         if (SecurityManager.authenticate(this, userId, password)) {
             AppLogger.info(this, "AUTH", "User login successful.")
             UiFeedback.success(this, "Welcome to MyAdv")
@@ -94,6 +121,11 @@ class LoginActivity : AppCompatActivity() {
             AppLogger.warning(this, "AUTH", "Invalid login attempt.")
             UiFeedback.error(this, "Invalid User ID or password.", true)
         }
+    }
+
+    private fun openLicenseActivation() {
+        startActivity(Intent(this, LicenseActivity::class.java))
+        finish()
     }
 
     private fun openMainActivity() {
