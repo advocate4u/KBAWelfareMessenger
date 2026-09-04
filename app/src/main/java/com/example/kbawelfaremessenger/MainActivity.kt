@@ -418,6 +418,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun initialiseViews() {
 
+        txtWelcome = findViewById(R.id.txtWelcome)
+        txtLicenseRemaining = findViewById(R.id.txtLicenseRemaining)
+
         btnSettings =
             findViewById(R.id.btnSettings)
 
