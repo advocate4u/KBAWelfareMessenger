@@ -25,8 +25,10 @@ class LicenseManagerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The screen already has its own MyAdvAnIT heading. Hide the action bar
+        // so the application label is not rendered a second time above it.
+        supportActionBar?.hide()
         setContentView(R.layout.activity_license_manager)
-        title = "MyAdv License Manager"
         phone = findViewById(R.id.licensePhone)
         phone2 = findViewById(R.id.licensePhone2)
         issue = findViewById(R.id.issueDate)
