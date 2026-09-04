@@ -158,10 +158,10 @@ object LicenseManager {
             loggingEnabled = boolField("loggingEnabled", true),
             removeDuplicates = boolField("removeDuplicates", true),
             skipInvalidNumbers = boolField("skipInvalidNumbers", true),
-            preview = boolField("preview", true),
-            testSms = boolField("testSms", true),
-            whatsapp = boolField("whatsapp", true),
-            rangeSelection = boolField("rangeSelection", true)
+            preview = boolField("preview", false),
+            testSms = boolField("testSms", false),
+            whatsapp = boolField("whatsapp", false),
+            rangeSelection = boolField("rangeSelection", false)
         )
         return License(id, phone, expiry, issue, role, options)
     }

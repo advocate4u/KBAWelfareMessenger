@@ -366,6 +366,8 @@ class MainActivity : AppCompatActivity() {
         setupCollapsibleSections()
         setupSmsReceiver()
         setupButtonColors()
+        applyLicenseFeatureVisibility()
+        applyThemeTextColors(findViewById(android.R.id.content))
 
         updateCounts()
     }
@@ -528,8 +530,7 @@ class MainActivity : AppCompatActivity() {
         recyclerContacts.adapter =
             adapter
 
-        recyclerContacts.isNestedScrollingEnabled =
-            false
+        recyclerContacts.isNestedScrollingEnabled = true
 
         recyclerContacts.setHasFixedSize(
             false
@@ -537,6 +538,29 @@ class MainActivity : AppCompatActivity() {
 
         recyclerContacts.overScrollMode =
             View.OVER_SCROLL_IF_CONTENT_SCROLLS
+    }
+
+    private fun applyThemeTextColors(view: View) {
+        val night = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val primary = if (night) Color.WHITE else Color.DKGRAY
+        val secondary = if (night) Color.LTGRAY else Color.DKGRAY
+        when (view) {
+            is EditText -> view.hintTextColor = ColorStateList.valueOf(secondary)
+            is TextView -> if (view !is Button && view !is CheckBox) view.setTextColor(primary)
+        }
+        if (view is ViewGroup) for (index in 0 until view.childCount) applyThemeTextColors(view.getChildAt(index))
+    }
+
+    private fun applyLicenseFeatureVisibility() {
+        val preview = LicenseManager.isFeatureEnabled(this, "preview")
+        val test = LicenseManager.isFeatureEnabled(this, "test_sms")
+        val whatsapp = LicenseManager.isFeatureEnabled(this, "whatsapp")
+        val range = LicenseManager.isFeatureEnabled(this, "range_selection")
+        btnPreview.visibility = if (preview) View.VISIBLE else View.GONE
+        btnTestSms.visibility = if (test) View.VISIBLE else View.GONE
+        btnWhatsApp.visibility = if (whatsapp) View.VISIBLE else View.GONE
+        txtRangeHeader.visibility = if (range) View.VISIBLE else View.GONE
+        layoutRangeSection.visibility = if (range && layoutRangeSection.visibility == View.VISIBLE) View.VISIBLE else if (range) View.GONE else View.GONE
     }
 
     // ---------------------------------------------------------
@@ -2242,44 +2266,7 @@ class MainActivity : AppCompatActivity() {
                 ?.trim()
                 .orEmpty()
 
-        if (rawSimPhone.isEmpty()) {
-
-            throw SmsLicenseException(
-                "Android could not verify the phone number of the selected SMS SIM.\n\n" +
-                        "For security reasons SMS sending is blocked."
-            )
-        }
-
-        val actualSimPhone =
-            normalizePhone(
-                rawSimPhone
-            )
-
-        if (actualSimPhone.isEmpty()) {
-
-            throw SmsLicenseException(
-                "The selected SMS SIM returned an invalid phone number.\n\n" +
-                        "SMS sending is blocked."
-            )
-        }
-
-        if (actualSimPhone != licensedPhone) {
-
-            AppLogger.warning(
-                this,
-                "LICENSE",
-                "Licensed phone does not match selected SMS SIM."
-            )
-
-            throw SmsLicenseException(
-                "License/SIM mismatch.\n\n" +
-                        "Licensed phone: $licensedPhone\n" +
-                        "Selected SMS SIM: $actualSimPhone\n\n" +
-                        "SMS sending is blocked."
-            )
-        }
-
-        val smsManager =
+        val actualSimPhone = normalizePhone(rawSimPhone)\n\n        // validatePhone=false explicitly permits SMS from any active SIM.\n        if (license.options.validatePhone && actualSimPhone != licensedPhone) {\n            AppLogger.warning(this, "LICENSE", "Licensed phone does not match selected SMS SIM.")\n            throw SmsLicenseException(\n                "License/SIM mismatch.\\n\\n" +\n                        "Licensed phone: $licensedPhone\\n" +\n                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n                        "SMS sending is blocked."\n            )\n        }\n\n        val smsManager =
             try {
 
                 SmsManager.getSmsManagerForSubscriptionId(
@@ -3570,7 +3557,7 @@ Do you want to continue?
                     13f
 
                 detailsText.setTextColor(
-                    Color.DKGRAY
+                    if ((root.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES) Color.LTGRAY else Color.DKGRAY
                 )
 
                 statusText.textSize =

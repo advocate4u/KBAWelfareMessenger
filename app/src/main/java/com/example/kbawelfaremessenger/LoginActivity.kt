@@ -18,10 +18,6 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!LicenseManager.isLicenseValid(this)) {
-            openLicenseActivation()
-            return
-        }
         setContentView(R.layout.activity_login)
         initialiseViews()
         setupLoginScreen()
@@ -29,9 +25,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::btnLogin.isInitialized) {
-            if (!LicenseManager.isLicenseValid(this)) openLicenseActivation() else setupLoginScreen()
-        }
+        if (::btnLogin.isInitialized) setupLoginScreen()
     }
 
     private fun initialiseViews() {
@@ -47,7 +41,26 @@ class LoginActivity : AppCompatActivity() {
     private fun setupLoginScreen() {
         val hasUser = SecurityManager.hasUser(this)
         val license = LicenseManager.getValidLicense(this)
-        txtLoginTitle.text = "MyAdv"
+        txtLoginTitle.text = ""
+        txtLoginTitle.visibility = android.view.View.GONE
+
+        if (license == null) {
+            txtLoginMode.text = "INSTALL LICENSE FIRST"
+            txtLoginDescription.text = "Install a valid MyAdv license to continue."
+            edtUserId.setText("")
+            edtPassword.setText("")
+            edtUserId.isEnabled = false
+            edtPassword.isEnabled = false
+            btnLogin.text = "INSTALL LICENSE"
+            btnLicense.text = "INSTALL LICENSE"
+            btnLogin.setOnClickListener { openLicenseActivation() }
+            btnLicense.setOnClickListener { openLicenseActivation() }
+            return
+        }
+        edtPassword.isEnabled = true
+        edtUserId.isEnabled = hasUser
+        edtUserId.isFocusable = hasUser
+        edtUserId.isClickable = hasUser
 
         if (hasUser) {
             txtLoginMode.text = "LOGIN"
@@ -56,10 +69,10 @@ class LoginActivity : AppCompatActivity() {
             btnLogin.text = "LOGIN"
         } else {
             txtLoginMode.text = "CREATE YOUR MYADV LOGIN"
-            txtLoginDescription.text = "License verified. Create the administrator account for this licensed device. No administrator password is pre-shared."
-            edtPassword.hint = "Create Password (minimum 6 characters)"
+            txtLoginDescription.text = "License verified. Create your 4-digit PIN for this licensed device."
+            edtPassword.hint = "Create 4-digit PIN"
             btnLogin.text = "CREATE LOGIN & CONTINUE"
-            if (edtUserId.text.isNullOrBlank() && license != null) {
+            if (license != null) {
                 edtUserId.setText(license.phone.filter { it.isDigit() }.takeLast(10))
                 edtUserId.setSelection(edtUserId.text.length)
             }
@@ -75,7 +88,7 @@ class LoginActivity : AppCompatActivity() {
         val userId = edtUserId.text.toString().trim()
         val password = edtPassword.text.toString()
         if (userId.isEmpty()) { edtUserId.error = "Enter User ID / phone number"; edtUserId.requestFocus(); return }
-        if (password.length < 6) { edtPassword.error = "Create a password of at least 6 characters"; edtPassword.requestFocus(); return }
+        if (!password.matches(Regex("^\\d{4}$"))) { edtPassword.error = "Enter a 4-digit PIN"; edtPassword.requestFocus(); return }
 
         val licensedPhone = license.phone.filter { it.isDigit() }.takeLast(10)
         val enteredPhone = userId.filter { it.isDigit() }.takeLast(10)
