@@ -9,8 +9,6 @@ name: Build MyAdv APKs
 permissions:
   contents: write
 
-# Never cancel an active release build just because another repository event occurs.
-# A release build must finish so that its APKs can be inspected and published.
 concurrency:
   group: myadv-release-build
   cancel-in-progress: false
@@ -32,6 +30,13 @@ jobs:
           java-version: '17'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+      - name: Install Android build tools for APK verification
+        run: |
+          set -euo pipefail
+          sdkmanager "build-tools;35.0.0"
+          echo "$ANDROID_SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" version
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign" -h >/dev/null
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
@@ -94,8 +99,6 @@ jobs:
           LICENSE=licensemanager/build/outputs/apk/release/MyAdvAnIT.apk
           test -s "$APP"
           test -s "$LICENSE"
-          command -v apksigner >/dev/null 2>&1
-          command -v zipalign >/dev/null 2>&1
           apksigner verify --verbose --print-certs "$APP"
           apksigner verify --verbose --print-certs "$LICENSE"
           zipalign -c -v 4 "$APP"
