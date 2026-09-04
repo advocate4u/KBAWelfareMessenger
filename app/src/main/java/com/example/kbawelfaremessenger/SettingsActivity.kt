@@ -3,6 +3,7 @@ package com.example.kbawelfaremessenger
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -46,10 +47,26 @@ class SettingsActivity : AppCompatActivity() {
         btnClearLogs.setOnClickListener { AlertDialog.Builder(this).setTitle("Clear logs?").setMessage("All local application logs will be deleted.").setNegativeButton("CANCEL",null).setPositiveButton("CLEAR"){_,_->AppLogger.clear(this);Toast.makeText(this,"Logs cleared",Toast.LENGTH_SHORT).show()}.show() }
     }
     private fun addDiaryLauncher() {
-        val root=findViewById<LinearLayout>(android.R.id.content).getChildAt(0) as? ScrollView ?: return
-        val content=root.getChildAt(0) as? LinearLayout ?: return
-        val button=Button(this).apply { text="OPEN ADVOCATE DIARY"; setOnClickListener { if(LicenseManager.isFeatureEnabled(this@SettingsActivity,"advocate_diary")) startActivity(Intent(this@SettingsActivity,AdvocateDiaryActivity::class.java)) else Toast.makeText(this@SettingsActivity,"Advocate Diary is not enabled in this license.",Toast.LENGTH_LONG).show() } }
-        content.addView(button,3)
+        // android.R.id.content is a FrameLayout, not a LinearLayout. Casting it
+        // directly caused SettingsActivity to crash as soon as it was opened.
+        val contentRoot = findViewById<ViewGroup>(android.R.id.content)
+        val scrollView = (0 until contentRoot.childCount)
+            .asSequence()
+            .map { contentRoot.getChildAt(it) }
+            .filterIsInstance<ScrollView>()
+            .firstOrNull() ?: return
+        val content = scrollView.getChildAt(0) as? LinearLayout ?: return
+        val button = Button(this).apply {
+            text = "OPEN ADVOCATE DIARY"
+            setOnClickListener {
+                if (LicenseManager.isFeatureEnabled(this@SettingsActivity, "advocate_diary")) {
+                    startActivity(Intent(this@SettingsActivity, AdvocateDiaryActivity::class.java))
+                } else {
+                    Toast.makeText(this@SettingsActivity, "Advocate Diary is not enabled in this license.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        content.addView(button, minOf(3, content.childCount))
     }
     private fun showLogs() {
         if(!LicenseManager.isFeatureEnabled(this,"sms_logs")&&!SecurityManager.isAdmin(this)){Toast.makeText(this,"Logs are not enabled in this license.",Toast.LENGTH_LONG).show();return}
