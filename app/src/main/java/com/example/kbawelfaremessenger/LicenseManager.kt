@@ -47,23 +47,50 @@ object LicenseManager {
 
     data class LicenseCheckResult(val allowed: Boolean, val message: String)
 
-    fun installLicense(c: Context, idInput: String, token: String): LicenseCheckResult {
+    fun installLicense(c: Context, idInput: String, token: String): LicenseCheckResult =
+        installInternal(c, idInput, token, false)
+
+    fun renewLicense(c: Context, idInput: String, token: String): LicenseCheckResult =
+        installInternal(c, idInput, token, true)
+
+    private fun installInternal(c: Context, idInput: String, token: String, renewal: Boolean): LicenseCheckResult {
         return try {
             val id = idInput.trim().uppercase().replace(" ", "")
-            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) return LicenseCheckResult(false, "Invalid license ID format.")
+            if (!Regex("^$PREFIX[A-Z0-9]-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$").matches(id)) {
+                return LicenseCheckResult(false, "Invalid license ID format.")
+            }
             val license = verify(id, token) ?: return LicenseCheckResult(false, "License verification failed.")
             val today = LocalDate.now()
             if (today.isBefore(license.issueDate)) return LicenseCheckResult(false, "This license is not active yet.")
             if (today.isAfter(license.expiryDate)) return LicenseCheckResult(false, "This license has expired.")
+
+            val oldLicense = if (renewal) getInstalledLicense(c) else null
+            val samePrimaryPhone = oldLicense != null && norm(oldLicense.phone) == norm(license.phone)
+
             c.getSharedPreferences(PREF_NAME, 0).edit()
                 .putString(KEY_LICENSE_ID, license.licenseId)
                 .putString(KEY_LICENSE_TOKEN, token.trim())
                 .apply()
-            AppLogger.success(c, "LICENSE", "License activated: ${license.licenseId}")
-            LicenseCheckResult(true, "License activated successfully.")
+
+            if (renewal && !samePrimaryPhone) {
+                SecurityManager.resetLocalLogin(c)
+                AppLogger.info(c, "LICENSE", "License renewed with a different primary phone; local login reset.")
+            } else if (renewal) {
+                AppLogger.info(c, "LICENSE", "License renewed for the same primary phone; existing login preserved.")
+            } else {
+                AppLogger.success(c, "LICENSE", "License activated: ${license.licenseId}")
+            }
+
+            LicenseCheckResult(
+                true,
+                if (renewal) {
+                    if (samePrimaryPhone) "License renewed successfully. Existing login has been preserved."
+                    else "License renewed successfully. A new login is required for the new primary phone."
+                } else "License activated successfully."
+            )
         } catch (e: Exception) {
-            AppLogger.error(c, "LICENSE", "License installation failed: ${e.message}")
-            LicenseCheckResult(false, "Unable to install license.")
+            AppLogger.error(c, "LICENSE", "License ${if (renewal) "renewal" else "installation"} failed: ${e.message}")
+            LicenseCheckResult(false, "Unable to ${if (renewal) "renew" else "install"} license.")
         }
     }
 
@@ -166,7 +193,15 @@ object LicenseManager {
             rangeSelection = boolField("rangeSelection", false)
         )
         val secondaryPhone = fields["phone2"]?.let(::norm)?.takeIf { it.isNotBlank() }
-        return License(id, phone, expiry, issue, role, options, secondaryPhone)
+        return License(
+            licenseId = id,
+            phone = phone,
+            secondaryPhone = secondaryPhone,
+            expiryDate = expiry,
+            issueDate = issue,
+            role = role,
+            options = options
+        )
     }
 
     private fun norm(value: String): String {
