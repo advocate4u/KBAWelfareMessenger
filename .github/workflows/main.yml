@@ -70,29 +70,31 @@ jobs:
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease :licensemanager:assembleRelease
 
-      - name: Verify APK outputs
+      - name: Locate and rename APKs for distribution
         run: |
           set -euo pipefail
-          test -n "$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
-          test -n "$(find licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
-          echo "Generated APKs:"
-          find app/build/outputs/apk/release licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          AM_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APP_APK"
+          test -n "$AM_APK"
+          cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
+          cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
-      - name: Rename APKs for distribution
+      - name: Verify final APK outputs
         run: |
           set -euo pipefail
-          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
-          AM_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
-          cp "$APP_APK" app/build/outputs/apk/release/MyAdv-release.apk
-          cp "$AM_APK" licensemanager/build/outputs/apk/release/MyAdvAM-release.apk
+          test -s app/build/outputs/apk/release/MyAdv.apk
+          test -s licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
+          echo "Final distribution APKs:"
+          ls -lh app/build/outputs/apk/release/MyAdv.apk licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
 
       - name: Upload both APKs
         uses: actions/upload-artifact@v4
         with:
           name: MyAdv-APKs
           path: |
-            app/build/outputs/apk/release/MyAdv-release.apk
-            licensemanager/build/outputs/apk/release/MyAdvAM-release.apk
+            app/build/outputs/apk/release/MyAdv.apk
+            licensemanager/build/outputs/apk/release/MyAdv-License-Manager.apk
           if-no-files-found: error
 
       - name: Remove private build material
