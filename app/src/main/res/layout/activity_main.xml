@@ -128,18 +128,21 @@
                     android:text="UNSELECT ALL" />
             </LinearLayout>
 
-            <!-- CONTACT LIST: kept inside CSV / CONTACTS so the existing
-                 collapse header also collapses the full contact list. -->
+            <!--
+                The contact list is intentionally a bounded nested scroller.
+                The screen itself remains vertically scrollable, while the
+                contact area gets its own scroll gesture for large CSV files.
+            -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerContacts"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="360dp"
                 android:layout_marginTop="4dp"
                 android:minHeight="120dp"
                 android:clipToPadding="false"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
-                android:nestedScrollingEnabled="false"
+                android:nestedScrollingEnabled="true"
                 android:overScrollMode="ifContentScrolls" />
 
         </LinearLayout>

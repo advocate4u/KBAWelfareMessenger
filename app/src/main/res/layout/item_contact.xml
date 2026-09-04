@@ -30,7 +30,7 @@
             android:text="Contact Name"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#212121"
+            android:textColor="?android:attr/textColorPrimary"
             android:maxLines="2" />
 
         <TextView
@@ -40,7 +40,7 @@
             android:layout_marginTop="2dp"
             android:text="919876543210"
             android:textSize="14sp"
-            android:textColor="#555555" />
+            android:textColor="?android:attr/textColorSecondary" />
 
         <TextView
             android:id="@+id/txtOtherFields"
@@ -48,7 +48,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
             android:textSize="12sp"
-            android:textColor="#666666"
+            android:textColor="?android:attr/textColorSecondary"
             android:maxLines="3"
             android:ellipsize="end" />
 
