@@ -35,6 +35,9 @@ android {
             this.storePassword = storePassword
             this.keyAlias = keyAlias
             this.keyPassword = keyPassword
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
