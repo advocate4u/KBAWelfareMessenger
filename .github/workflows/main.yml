@@ -83,11 +83,22 @@ jobs:
           MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
           MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
         run: ./gradlew --no-daemon --stacktrace :app:assembleRelease :licensemanager:assembleRelease -PAPP_VERSION="$APP_VERSION" -PVERSION_CODE="$VERSION_CODE"
+      - name: Verify Gradle produced signed APKs
+        run: |
+          set -euo pipefail
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          test -n "$APP_APK"
+          test -n "$LICENSE_APK"
+          BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APP_APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$LICENSE_APK"
+
       - name: Rename final APKs
         run: |
           set -euo pipefail
-          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdv.apk' -print -quit)
-          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' ! -name 'MyAdvAnIT.apk' -print -quit)
+          APP_APK=$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          LICENSE_APK=$(find licensemanager/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)
           test -n "$APP_APK"
           test -n "$LICENSE_APK"
           cp "$APP_APK" app/build/outputs/apk/release/MyAdv.apk
