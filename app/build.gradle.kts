@@ -25,21 +25,15 @@ android {
             val keyAlias = System.getenv("MYADV_KEY_ALIAS")
             val keyPassword = System.getenv("MYADV_KEY_PASSWORD")
 
-            if (!keystoreFile.isNullOrBlank()) {
-                storeFile = file(keystoreFile)
-            }
+            require(!keystoreFile.isNullOrBlank()) { "MYADV_KEYSTORE_FILE is required for release signing" }
+            require(!storePassword.isNullOrBlank()) { "MYADV_STORE_PASSWORD is required for release signing" }
+            require(!keyAlias.isNullOrBlank()) { "MYADV_KEY_ALIAS is required for release signing" }
+            require(!keyPassword.isNullOrBlank()) { "MYADV_KEY_PASSWORD is required for release signing" }
 
-            if (!storePassword.isNullOrBlank()) {
-                this.storePassword = storePassword
-            }
-
-            if (!keyAlias.isNullOrBlank()) {
-                this.keyAlias = keyAlias
-            }
-
-            if (!keyPassword.isNullOrBlank()) {
-                this.keyPassword = keyPassword
-            }
+            storeFile = file(keystoreFile)
+            this.storePassword = storePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
         }
     }
 
