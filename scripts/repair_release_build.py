@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 MAIN = Path("app/src/main/java/com/example/kbawelfaremessenger/MainActivity.kt")
 VERSION = Path("app/src/main/java/com/example/kbawelfaremessenger/AppVersionTextView.kt")
@@ -10,16 +9,37 @@ text = text.replace(
     "is EditText -> view.setHintTextColor(ColorStateList.valueOf(secondary))",
 )
 
-# Enforce multi-SIM license validation in the release source. A license may
-# authorize both the primary phone and an optional secondary phone.
-pattern = re.compile(
-    r'(?P<indent>\\s*)if \(license\\.options\\.validatePhone && actualSimPhone != licensedPhone\) \{.*?\\n(?P=indent)\}\\n\\n(?P=indent)val smsManager =',
-    re.DOTALL,
-)
-replacement = '''\\g<indent>val licensedPhones = listOfNotNull(\n\\g<indent>    license.phone,\n\\g<indent>    license.secondaryPhone\n\\g<indent>).map(::normalizePhone).filter { it.isNotBlank() }\n\n\\g<indent>// validatePhone=false explicitly permits SMS from any active SIM.\n\\g<indent>// When validation is enabled, either licensed SIM may be selected.\n\\g<indent>if (license.options.validatePhone && actualSimPhone !in licensedPhones) {\n\\g<indent>    AppLogger.warning(this, "LICENSE", "Selected SMS SIM is not licensed.")\n\\g<indent>    throw SmsLicenseException(\n\\g<indent>        "License/SIM mismatch.\\n\\n" +\n\\g<indent>                "Licensed phones: " + licensedPhones.joinToString(", ").ifBlank { "Unknown" } + "\\n" +\n\\g<indent>                "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +\n\\g<indent>                "SMS sending is blocked."\n\\g<indent>    )\n\\g<indent>}\n\n\\g<indent>val smsManager ='''
-text, count = pattern.subn(replacement, text, count=1)
-if count != 1:
-    raise SystemExit("Could not locate SMS license validation block")
+# The release build previously contained a malformed escaped validation block.
+# Normalize that block and enforce BOTH licensed SIM numbers.
+start = text.find("        val actualSimPhone = normalizePhone(rawSimPhone)")
+end_marker = "        val smsManager ="
+if start < 0:
+    raise SystemExit("Could not locate SMS phone validation start")
+end = text.find(end_marker, start)
+if end < 0:
+    raise SystemExit("Could not locate SMS manager after phone validation")
+
+replacement = '''        val actualSimPhone = normalizePhone(rawSimPhone)
+
+        val licensedPhones = listOfNotNull(
+            license.phone,
+            license.secondaryPhone
+        ).map(::normalizePhone).filter { it.isNotBlank() }
+
+        // validatePhone=false explicitly permits SMS from any active SIM.
+        // When validation is enabled, either licensed SIM may be selected.
+        if (license.options.validatePhone && actualSimPhone !in licensedPhones) {
+            AppLogger.warning(this, "LICENSE", "Selected SMS SIM is not licensed.")
+            throw SmsLicenseException(
+                "License/SIM mismatch.\\n\\n" +
+                        "Licensed phones: " + licensedPhones.joinToString(", ").ifBlank { "Unknown" } + "\\n" +
+                        "Selected SMS SIM: " + actualSimPhone.ifBlank { "Unknown" } + "\\n\\n" +
+                        "SMS sending is blocked."
+            )
+        }
+
+'''
+text = text[:start] + replacement + text[end:]
 MAIN.write_text(text, encoding="utf-8")
 
 version_text = VERSION.read_text(encoding="utf-8-sig")
