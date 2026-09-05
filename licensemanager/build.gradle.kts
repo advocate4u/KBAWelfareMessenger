@@ -4,7 +4,8 @@ plugins {
 }
 
 android {
-    namespace = "com.MyAdvocate.licensemanager"
+    // Keep the Kotlin source package stable; applicationId controls the installed APK identity.
+    namespace = "com.example.myadvlicensemanager"
     compileSdk = 35
 
     defaultConfig {
