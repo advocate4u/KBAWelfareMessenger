@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myadvlicensemanager"
+    namespace = "com.MyAdvocate.licensemanager"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.myadvlicensemanager"
+        applicationId = "com.MyAdvocate.licensemanager"
         minSdk = 26
         targetSdk = 35
 
