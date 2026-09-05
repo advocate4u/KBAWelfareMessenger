@@ -41,19 +41,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
         with:
           cache-disabled: true
-      - name: Generate Gradle wrapper
-        run: gradle wrapper
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-      - name: Calculate release version
-        id: version
-        run: python3 scripts/compute_release_version.py
-      - name: Show release version
-        run: |
-          echo "Building MyAdv v${{ steps.version.outputs.app_version }}"
-          echo "Android versionCode: ${{ steps.version.outputs.version_code }}"
-      - name: Repair known Kotlin source issues
-        run: python3 scripts/repair_release_build.py
       - name: Prepare release keystore
         env:
           MYADV_KEYSTORE_BASE64: ${{ secrets.MYADV_KEYSTORE_BASE64 }}
@@ -74,6 +61,24 @@ jobs:
           test -n "$KEY_ALIAS"
           test -n "$KEY_PASSWORD"
           keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+      - name: Generate Gradle wrapper
+        env:
+          MYADV_KEYSTORE_FILE: ${{ github.workspace }}/myadv-release.jks
+          MYADV_STORE_PASSWORD: ${{ secrets.MYADV_STORE_PASSWORD }}
+          MYADV_KEY_ALIAS: ${{ secrets.MYADV_KEY_ALIAS }}
+          MYADV_KEY_PASSWORD: ${{ secrets.MYADV_KEY_PASSWORD }}
+        run: gradle wrapper
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Calculate release version
+        id: version
+        run: python3 scripts/compute_release_version.py
+      - name: Show release version
+        run: |
+          echo "Building MyAdv v${{ steps.version.outputs.app_version }}"
+          echo "Android versionCode: ${{ steps.version.outputs.version_code }}"
+      - name: Repair known Kotlin source issues
+        run: python3 scripts/repair_release_build.py
       - name: Build both release APKs
         env:
           APP_VERSION: ${{ steps.version.outputs.app_version }}
@@ -93,7 +98,6 @@ jobs:
           BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APP_APK"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$LICENSE_APK"
-
       - name: Rename final APKs
         run: |
           set -euo pipefail
