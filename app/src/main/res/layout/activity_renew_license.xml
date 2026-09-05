@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.example.kbawelfaremessenger.SafeInsetScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
@@ -83,4 +83,4 @@
             android:text="If the new license has the same primary phone, your existing login is kept. If the primary phone changes, the local login is cleared and MyAdv will ask you to create a new login."
             android:alpha="0.75" />
     </LinearLayout>
-</ScrollView>
+</com.example.kbawelfaremessenger.SafeInsetScrollView>
