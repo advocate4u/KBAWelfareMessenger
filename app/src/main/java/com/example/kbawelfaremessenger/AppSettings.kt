@@ -7,6 +7,8 @@ import java.io.File
 data class AppSettings(
     var nameColumn: String = "Name",
     var phoneColumn: String = "Phone 1 - Value",
+    var namePrefixToRemove: String = "KBA ",
+    var nameSuffixToRemove: String = "",
     var defaultCountryCode: String = "91",
     var removeDuplicates: Boolean = true,
     var skipInvalidNumbers: Boolean = true,
@@ -68,6 +70,8 @@ object AppSettingsManager {
         val csv = JSONObject()
             .put("nameColumn", settings.nameColumn)
             .put("phoneColumn", settings.phoneColumn)
+            .put("namePrefixToRemove", settings.namePrefixToRemove)
+            .put("nameSuffixToRemove", settings.nameSuffixToRemove)
             .put("defaultCountryCode", settings.defaultCountryCode)
             .put("removeDuplicates", settings.removeDuplicates)
             .put("skipInvalidNumbers", settings.skipInvalidNumbers)
@@ -102,6 +106,8 @@ object AppSettingsManager {
         return AppSettings(
             nameColumn = csv.optString("nameColumn", defaults.nameColumn),
             phoneColumn = csv.optString("phoneColumn", defaults.phoneColumn),
+            namePrefixToRemove = csv.optString("namePrefixToRemove", defaults.namePrefixToRemove),
+            nameSuffixToRemove = csv.optString("nameSuffixToRemove", defaults.nameSuffixToRemove),
             defaultCountryCode = csv.optString("defaultCountryCode", defaults.defaultCountryCode),
             removeDuplicates = csv.optBoolean("removeDuplicates", defaults.removeDuplicates),
             skipInvalidNumbers = csv.optBoolean("skipInvalidNumbers", defaults.skipInvalidNumbers),
