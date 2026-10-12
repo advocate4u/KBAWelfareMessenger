@@ -1605,12 +1605,17 @@ class MainActivity : AppCompatActivity() {
     private fun cleanName(
         value: String
     ): String {
+        var name = value.trim()
+        val prefix = appSettings.namePrefixToRemove
+        val suffix = appSettings.nameSuffixToRemove
 
-        return value
-            .trim()
-            .removePrefix("KBA ")
-            .removePrefix("KNL ")
-            .trim()
+        if (prefix.isNotEmpty() && name.startsWith(prefix, ignoreCase = true)) {
+            name = name.substring(prefix.length).trimStart()
+        }
+        if (suffix.isNotEmpty() && name.endsWith(suffix, ignoreCase = true)) {
+            name = name.dropLast(suffix.length).trimEnd()
+        }
+        return name.trim()
     }
 
     // ---------------------------------------------------------
