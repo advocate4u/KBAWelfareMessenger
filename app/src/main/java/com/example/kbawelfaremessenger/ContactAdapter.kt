@@ -31,7 +31,7 @@ class ContactAdapter(
     override fun onBindViewHolder(holder: ContactViewHolder, position: Int) {
         val contact = filteredContacts[position]
         holder.txtName.text = contact.name
-        holder.txtPhone.text = contact.phone
+        holder.txtPhone.text = "Phone: ${contact.phone}"
         holder.checkBox.setOnCheckedChangeListener(null)
         holder.checkBox.isChecked = selectedPhones.contains(contact.phone)
         holder.txtOtherFields.text = buildOtherFields(contact)
