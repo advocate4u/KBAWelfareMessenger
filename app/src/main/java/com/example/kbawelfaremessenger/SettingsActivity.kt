@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 class SettingsActivity : AppCompatActivity() {
     private lateinit var edtNameColumn: EditText
     private lateinit var edtPhoneColumn: EditText
+    private lateinit var edtNamePrefix: EditText
+    private lateinit var edtNameSuffix: EditText
     private lateinit var edtNamePrefixToRemove: EditText
     private lateinit var edtNameSuffixToRemove: EditText
     private lateinit var edtDefaultMessage: EditText
@@ -45,6 +47,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun initialiseViews() {
         edtNameColumn = findViewById(R.id.edtNameColumn)
         edtPhoneColumn = findViewById(R.id.edtPhoneColumn)
+        edtNamePrefix = findViewById(R.id.edtNamePrefix)
+        edtNameSuffix = findViewById(R.id.edtNameSuffix)
         edtNamePrefixToRemove = findViewById(R.id.edtNamePrefixToRemove)
         edtNameSuffixToRemove = findViewById(R.id.edtNameSuffixToRemove)
         edtDefaultMessage = findViewById(R.id.edtDefaultMessage)
@@ -70,6 +74,8 @@ class SettingsActivity : AppCompatActivity() {
         settings = AppSettingsManager.load(this)
         edtNameColumn.setText(settings.nameColumn)
         edtPhoneColumn.setText(settings.phoneColumn)
+        edtNamePrefix.setText(settings.namePrefix)
+        edtNameSuffix.setText(settings.nameSuffix)
         edtNamePrefixToRemove.setText(settings.namePrefixToRemove)
         edtNameSuffixToRemove.setText(settings.nameSuffixToRemove)
         edtDefaultMessage.setText(settings.defaultMessage)

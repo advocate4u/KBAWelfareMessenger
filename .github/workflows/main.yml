@@ -119,6 +119,7 @@ jobs:
           test -s "$LICENSE"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APP"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$LICENSE"
+          "$BUILD_TOOLS/aapt" dump badging "$APP" | grep -Fq "package: name='com.example.kbawelfaremessenger'" || { echo "Unexpected MyAdv applicationId; refusing to publish an incompatible update."; exit 1; }
           "$BUILD_TOOLS/zipalign" -c -v -P 16 4 "$APP"
           "$BUILD_TOOLS/zipalign" -c -v -P 16 4 "$LICENSE"
       - name: Upload MyAdv-APKs

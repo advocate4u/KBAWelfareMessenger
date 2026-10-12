@@ -8,7 +8,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.MyAdvocate.Diary"
+        applicationId = "com.example.kbawelfaremessenger"
         minSdk = 26
         targetSdk = 35
 

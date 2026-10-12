@@ -1717,11 +1717,13 @@ class MainActivity : AppCompatActivity() {
         val replacements =
             linkedMapOf<String, String>()
 
+        val personalizedName = appSettings.namePrefix + contact.name + appSettings.nameSuffix
+
         replacements["{{name}}"] =
-            contact.name
+            personalizedName
 
         replacements["{{Name}}"] =
-            contact.name
+            personalizedName
 
         replacements["{{MobileNumber}}"] =
             contact.phone
