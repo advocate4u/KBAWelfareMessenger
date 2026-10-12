@@ -7,6 +7,8 @@ import java.io.File
 data class AppSettings(
     var nameColumn: String = "Name",
     var phoneColumn: String = "Phone 1 - Value",
+    var namePrefix: String = "R/m ",
+    var nameSuffix: String = " ji",
     var defaultCountryCode: String = "91",
     var removeDuplicates: Boolean = true,
     var skipInvalidNumbers: Boolean = true,
@@ -68,6 +70,8 @@ object AppSettingsManager {
         val csv = JSONObject()
             .put("nameColumn", settings.nameColumn)
             .put("phoneColumn", settings.phoneColumn)
+            .put("namePrefix", settings.namePrefix)
+            .put("nameSuffix", settings.nameSuffix)
             .put("defaultCountryCode", settings.defaultCountryCode)
             .put("removeDuplicates", settings.removeDuplicates)
             .put("skipInvalidNumbers", settings.skipInvalidNumbers)
@@ -102,10 +106,13 @@ object AppSettingsManager {
         return AppSettings(
             nameColumn = csv.optString("nameColumn", defaults.nameColumn),
             phoneColumn = csv.optString("phoneColumn", defaults.phoneColumn),
+            namePrefix = csv.optString("namePrefix", defaults.namePrefix),
+            nameSuffix = csv.optString("nameSuffix", defaults.nameSuffix),
             defaultCountryCode = csv.optString("defaultCountryCode", defaults.defaultCountryCode),
             removeDuplicates = csv.optBoolean("removeDuplicates", defaults.removeDuplicates),
             skipInvalidNumbers = csv.optBoolean("skipInvalidNumbers", defaults.skipInvalidNumbers),
-            defaultMessage = message.optString("defaultMessage", defaults.defaultMessage),
+            defaultMessage = message.optString("defaultMessage", defaults.defaultMessage)
+                .replace("R/m {{name}} ji,", "{{name}},"),
             editMessageOnScreen = message.optBoolean("editMessageOnScreen", defaults.editMessageOnScreen),
             smsDelayMs = sms.optLong("delayMs", defaults.smsDelayMs).coerceAtLeast(0L),
             skipAlreadySent = sms.optBoolean("skipAlreadySent", defaults.skipAlreadySent),
