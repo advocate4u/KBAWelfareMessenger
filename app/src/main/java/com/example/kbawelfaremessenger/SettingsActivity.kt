@@ -125,6 +125,8 @@ class SettingsActivity : AppCompatActivity() {
             settings = settings.copy(
                 nameColumn = nameColumn,
                 phoneColumn = phoneColumn,
+                namePrefix = edtNamePrefix.text.toString(),
+                nameSuffix = edtNameSuffix.text.toString(),
                 namePrefixToRemove = namePrefixToRemove,
                 nameSuffixToRemove = nameSuffixToRemove,
                 defaultMessage = defaultMessage,
