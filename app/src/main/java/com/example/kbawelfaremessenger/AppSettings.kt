@@ -13,7 +13,7 @@ data class AppSettings(
     var removeDuplicates: Boolean = true,
     var skipInvalidNumbers: Boolean = true,
     var defaultMessage: String =
-        "R/m {{name}} ji,\n\n" +
+        "{{name}},\n\n" +
         "Kindly support & vote for Mohit Arora (Ch.547) " +
         "for Treasurer, DBA Karnal election. Your blessings mean a lot.\n\n" +
         "Thank you- Mohit Arora, 9518804747",
