@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 class SettingsActivity : AppCompatActivity() {
     private lateinit var edtNameColumn: EditText
     private lateinit var edtPhoneColumn: EditText
+    private lateinit var edtNamePrefixToRemove: EditText
+    private lateinit var edtNameSuffixToRemove: EditText
     private lateinit var edtDefaultMessage: EditText
     private lateinit var edtSmsDelay: EditText
     private lateinit var switchEditMessage: Switch
@@ -43,6 +45,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun initialiseViews() {
         edtNameColumn = findViewById(R.id.edtNameColumn)
         edtPhoneColumn = findViewById(R.id.edtPhoneColumn)
+        edtNamePrefixToRemove = findViewById(R.id.edtNamePrefixToRemove)
+        edtNameSuffixToRemove = findViewById(R.id.edtNameSuffixToRemove)
         edtDefaultMessage = findViewById(R.id.edtDefaultMessage)
         edtSmsDelay = findViewById(R.id.edtSmsDelay)
         switchEditMessage = findViewById(R.id.switchEditMessage)
@@ -66,6 +70,8 @@ class SettingsActivity : AppCompatActivity() {
         settings = AppSettingsManager.load(this)
         edtNameColumn.setText(settings.nameColumn)
         edtPhoneColumn.setText(settings.phoneColumn)
+        edtNamePrefixToRemove.setText(settings.namePrefixToRemove)
+        edtNameSuffixToRemove.setText(settings.nameSuffixToRemove)
         edtDefaultMessage.setText(settings.defaultMessage)
         edtSmsDelay.setText(settings.smsDelayMs.toString())
         switchEditMessage.isChecked = settings.editMessageOnScreen
@@ -102,6 +108,8 @@ class SettingsActivity : AppCompatActivity() {
         btnSaveSettings.setOnClickListener {
             val nameColumn = edtNameColumn.text.toString().trim()
             val phoneColumn = edtPhoneColumn.text.toString().trim()
+            val namePrefixToRemove = edtNamePrefixToRemove.text.toString()
+            val nameSuffixToRemove = edtNameSuffixToRemove.text.toString()
             val defaultMessage = edtDefaultMessage.text.toString().trim()
             if (nameColumn.isEmpty()) { edtNameColumn.error = "Enter Name column"; return@setOnClickListener }
             if (phoneColumn.isEmpty()) { edtPhoneColumn.error = "Enter Phone column"; return@setOnClickListener }
@@ -111,6 +119,8 @@ class SettingsActivity : AppCompatActivity() {
             settings = settings.copy(
                 nameColumn = nameColumn,
                 phoneColumn = phoneColumn,
+                namePrefixToRemove = namePrefixToRemove,
+                nameSuffixToRemove = nameSuffixToRemove,
                 defaultMessage = defaultMessage,
                 smsDelayMs = smsDelay,
                 editMessageOnScreen = if (LicenseManager.isFeatureEnabled(this, "edit_message")) switchEditMessage.isChecked else false,

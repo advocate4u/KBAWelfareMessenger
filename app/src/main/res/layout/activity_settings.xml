@@ -16,6 +16,10 @@
         <EditText android:id="@+id/edtNameColumn" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: Name" android:inputType="text" android:singleLine="true" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Phone Column" android:textStyle="bold" android:layout_marginTop="12dp" />
         <EditText android:id="@+id/edtPhoneColumn" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: Phone 1 - Value" android:inputType="text" android:singleLine="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Prefix to Remove (optional)" android:textStyle="bold" android:layout_marginTop="12dp" />
+        <EditText android:id="@+id/edtNamePrefixToRemove" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: KBA (leave blank to keep)" android:inputType="text" android:singleLine="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Suffix / Postfix to Remove (optional)" android:textStyle="bold" android:layout_marginTop="12dp" />
+        <EditText android:id="@+id/edtNameSuffixToRemove" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: Ji (leave blank to keep)" android:inputType="text" android:singleLine="true" />
 
         <TextView android:id="@+id/txtAuthenticationSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Authentication" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="12dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Manage application authentication and administrator access." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
@@ -23,6 +27,7 @@
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Message Settings" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="12dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Default Message" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Contact placeholders: {{name}}, {{MobileNumber}}, {{Mobile}}, {{Phone}}. Phone placeholders are replaced with the selected contact number." android:textSize="13sp" android:alpha="0.8" android:paddingBottom="6dp" />
         <EditText android:id="@+id/edtDefaultMessage" android:layout_width="match_parent" android:layout_height="150dp" android:gravity="top|start" android:hint="Enter default message" android:inputType="textMultiLine" android:padding="10dp" />
         <Switch android:id="@+id/switchEditMessage" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Edit Message on Screen" android:textSize="16sp" android:paddingTop="8dp" android:paddingBottom="8dp" />
 
