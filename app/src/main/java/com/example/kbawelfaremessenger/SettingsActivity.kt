@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 class SettingsActivity : AppCompatActivity() {
     private lateinit var edtNameColumn: EditText
     private lateinit var edtPhoneColumn: EditText
+    private lateinit var edtNamePrefix: EditText
+    private lateinit var edtNameSuffix: EditText
     private lateinit var edtDefaultMessage: EditText
     private lateinit var edtSmsDelay: EditText
     private lateinit var switchEditMessage: Switch
@@ -43,6 +45,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun initialiseViews() {
         edtNameColumn = findViewById(R.id.edtNameColumn)
         edtPhoneColumn = findViewById(R.id.edtPhoneColumn)
+        edtNamePrefix = findViewById(R.id.edtNamePrefix)
+        edtNameSuffix = findViewById(R.id.edtNameSuffix)
         edtDefaultMessage = findViewById(R.id.edtDefaultMessage)
         edtSmsDelay = findViewById(R.id.edtSmsDelay)
         switchEditMessage = findViewById(R.id.switchEditMessage)
@@ -66,6 +70,8 @@ class SettingsActivity : AppCompatActivity() {
         settings = AppSettingsManager.load(this)
         edtNameColumn.setText(settings.nameColumn)
         edtPhoneColumn.setText(settings.phoneColumn)
+        edtNamePrefix.setText(settings.namePrefix)
+        edtNameSuffix.setText(settings.nameSuffix)
         edtDefaultMessage.setText(settings.defaultMessage)
         edtSmsDelay.setText(settings.smsDelayMs.toString())
         switchEditMessage.isChecked = settings.editMessageOnScreen
@@ -111,6 +117,8 @@ class SettingsActivity : AppCompatActivity() {
             settings = settings.copy(
                 nameColumn = nameColumn,
                 phoneColumn = phoneColumn,
+                namePrefix = edtNamePrefix.text.toString(),
+                nameSuffix = edtNameSuffix.text.toString(),
                 defaultMessage = defaultMessage,
                 smsDelayMs = smsDelay,
                 editMessageOnScreen = if (LicenseManager.isFeatureEnabled(this, "edit_message")) switchEditMessage.isChecked else false,
