@@ -13,8 +13,6 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var edtPhoneColumn: EditText
     private lateinit var edtNamePrefixToRemove: EditText
     private lateinit var edtNameSuffixToRemove: EditText
-    private lateinit var edtNamePrefixToRemove: EditText
-    private lateinit var edtNameSuffixToRemove: EditText
     private lateinit var edtDefaultMessage: EditText
     private lateinit var edtSmsDelay: EditText
     private lateinit var switchEditMessage: Switch
@@ -49,8 +47,6 @@ class SettingsActivity : AppCompatActivity() {
         edtPhoneColumn = findViewById(R.id.edtPhoneColumn)
         edtNamePrefixToRemove = findViewById(R.id.edtNamePrefixToRemove)
         edtNameSuffixToRemove = findViewById(R.id.edtNameSuffixToRemove)
-        edtNamePrefixToRemove = findViewById(R.id.edtNamePrefixToRemove)
-        edtNameSuffixToRemove = findViewById(R.id.edtNameSuffixToRemove)
         edtDefaultMessage = findViewById(R.id.edtDefaultMessage)
         edtSmsDelay = findViewById(R.id.edtSmsDelay)
         switchEditMessage = findViewById(R.id.switchEditMessage)
@@ -74,8 +70,6 @@ class SettingsActivity : AppCompatActivity() {
         settings = AppSettingsManager.load(this)
         edtNameColumn.setText(settings.nameColumn)
         edtPhoneColumn.setText(settings.phoneColumn)
-        edtNamePrefixToRemove.setText(settings.namePrefixToRemove)
-        edtNameSuffixToRemove.setText(settings.nameSuffixToRemove)
         edtNamePrefixToRemove.setText(settings.namePrefixToRemove)
         edtNameSuffixToRemove.setText(settings.nameSuffixToRemove)
         edtDefaultMessage.setText(settings.defaultMessage)
