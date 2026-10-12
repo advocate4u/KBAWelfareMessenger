@@ -21,12 +21,12 @@
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Suffix / Postfix to Remove (optional)" android:textStyle="bold" android:layout_marginTop="12dp" />
         <EditText android:id="@+id/edtNameSuffixToRemove" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: Ji (leave blank to keep)" android:inputType="text" android:singleLine="true" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Personalization" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="8dp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Optional text before and after each contact name. Leave either field blank to remove it." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Prefix" android:textStyle="bold" />
-        <EditText android:id="@+id/edtNamePrefix" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: R/m " android:inputType="textCapSentences" android:singleLine="true" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Suffix" android:textStyle="bold" android:layout_marginTop="8dp" />
-        <EditText android:id="@+id/edtNameSuffix" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example:  ji" android:inputType="textCapSentences" android:singleLine="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Cleanup" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="8dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Remove a fixed prefix or suffix from imported contact names. Leave blank to keep names unchanged." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Prefix to Remove" android:textStyle="bold" />
+        <EditText android:id="@+id/edtNamePrefixToRemove" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Example: KBA " android:inputType="textCapSentences" android:singleLine="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Name Suffix to Remove" android:textStyle="bold" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/edtNameSuffixToRemove" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Optional suffix to remove" android:inputType="textCapSentences" android:singleLine="true" />
 
         <TextView android:id="@+id/txtAuthenticationSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Authentication" android:textSize="20sp" android:textStyle="bold" android:layout_marginTop="24dp" android:paddingBottom="12dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Manage application authentication and administrator access." android:textSize="14sp" android:alpha="0.75" android:paddingBottom="8dp" />
